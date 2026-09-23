@@ -68,6 +68,18 @@ _Avoid_: control, reference
 Camille's games held back from every other use, reserved for measurement.
 _Avoid_: validation set, holdout (both mean different things in training)
 
+**Phase**:
+Which stretch of a game a position belongs to, by ply: opening (1-10),
+middlegame (11-30), endgame (31+). Every measurement is reported per Phase,
+because a single aggregate hides the opening's easy predictability.
+_Avoid_: stage, part of the game
+
+**Style Fingerprint**:
+A vector of distributional statistics describing how a player plays — error
+shape, piece preferences, capture and trade rates, material remaining. It is the
+only way to compare Camille against the Bot on games that share no positions.
+_Avoid_: profile (that is the Blunder Profile), signature, playstyle vector
+
 **Session Game**:
 A game played by a visitor against the Bot on the site. Evidence about the Bot's
 behaviour; never training data about Camille, since he did not play it.
