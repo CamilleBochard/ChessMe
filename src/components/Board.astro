@@ -1,0 +1,74 @@
+---
+// Renders a chessboard. Ticket #2 shows the starting position and nothing else:
+// the board is display-only until ticket #3 makes the pieces movable.
+import type { Colour } from '../board/starting-position';
+
+interface Props {
+  /** Which side sits at the bottom of the board. */
+  orientation?: Colour;
+}
+
+const { orientation = 'white' } = Astro.props;
+---
+
+<div class="board-frame">
+  <div class="board" data-orientation={orientation}></div>
+</div>
+
+<script>
+  import { Chessground } from '@lichess-org/chessground';
+  import { STARTING_FEN, type Colour } from '../board/starting-position';
+
+  // Astro bundles this script once per page, however many times the component
+  // is used, so it has to set up every board on the page rather than the first
+  // one it finds.
+  const elements = document.querySelectorAll<HTMLElement>('.board');
+
+  for (const element of elements) {
+    const orientation = (element.dataset.orientation ?? 'white') as Colour;
+
+    Chessground(element, {
+      fen: STARTING_FEN,
+      orientation: orientation,
+      coordinates: true,
+      // Nothing is interactive yet. Ticket #3 turns this off and wires up the
+      // legal-move rules behind it.
+      viewOnly: true,
+    });
+  }
+</script>
+
+<style is:global>
+  @import '@lichess-org/chessground/assets/chessground.base.css';
+  @import '@lichess-org/chessground/assets/chessground.brown.css';
+  @import '@lichess-org/chessground/assets/chessground.cburnett.css';
+
+  /* Chessground's stock coordinates hang outside the board: the file letters
+     sit at left: 24px with width: 100%, so they run 24px past the right edge,
+     and the rank digits sit at top: -20px. On a phone that overhang becomes
+     horizontal page scroll, and the file letters land under the wrong files.
+     Pull both back inside the board. */
+  .board-frame .cg-wrap coords.files {
+    left: 0;
+  }
+
+  .board-frame .cg-wrap coords.ranks {
+    top: 0;
+  }
+</style>
+
+<style>
+  /* The frame caps the board on wide screens and lets it shrink on a phone.
+     Chessground sizes itself to its container, so the container is where the
+     responsive behaviour belongs. */
+  .board-frame {
+    width: 100%;
+    max-width: min(90vh, 40rem);
+    margin-inline: auto;
+  }
+
+  .board {
+    width: 100%;
+    aspect-ratio: 1;
+  }
+</style>

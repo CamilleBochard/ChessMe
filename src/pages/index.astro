@@ -1,0 +1,71 @@
+---
+// The page a visitor lands on to play the Bot. Ticket #2 renders the board and
+// nothing more; the game itself arrives with tickets #3 to #5.
+import Board from '../components/Board.astro';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ChessMe</title>
+    <meta
+      name="description"
+      content="Play a game of chess against a bot that imitates Camille."
+    />
+  </head>
+  <body>
+    <main>
+      <h1>ChessMe</h1>
+      <p>Play a game against a bot that imitates Camille.</p>
+      <Board orientation="white" />
+    </main>
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    color-scheme: light dark;
+    --page-background: #f4f1ea;
+    --page-text: #2a2722;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page-background: #1c1a17;
+      --page-text: #e8e3d9;
+    }
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    background: var(--page-background);
+    color: var(--page-text);
+    font-family: system-ui, sans-serif;
+  }
+</style>
+
+<style>
+  main {
+    /* 1rem of gutter keeps the board clear of the screen edge on a phone, and
+       the max-width stops the text sprawling on a desktop. */
+    max-width: 48rem;
+    margin-inline: auto;
+    padding: 1.5rem 1rem;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+    margin: 0 0 0.25rem;
+  }
+
+  p {
+    margin: 0 0 1.5rem;
+    opacity: 0.75;
+  }
+</style>
