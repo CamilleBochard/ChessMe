@@ -1,6 +1,7 @@
 ---
-// Renders a chessboard at the starting position. The board is display-only
-// until the game rules are wired in behind it.
+// A playable chessboard. One person moves the pieces for both sides; the rules
+// live in src/game/, and this component only translates between them and
+// chessground, which draws the board and handles dragging and clicking.
 import type { Colour } from '../board/starting-position';
 
 interface Props {
@@ -11,27 +12,159 @@ interface Props {
 const { orientation = 'white' } = Astro.props;
 ---
 
-<div class="board-frame">
+<div class="board-frame" data-board-frame>
   <div class="board" data-orientation={orientation}></div>
+  <p class="status" data-status aria-live="polite"></p>
+
+  <dialog class="promotion" data-promotion aria-label="Choose a promotion piece">
+    <form method="dialog">
+      <p>Promote to</p>
+      <div class="promotion-choices">
+        <button value="queen">Queen</button>
+        <button value="rook">Rook</button>
+        <button value="bishop">Bishop</button>
+        <button value="knight">Knight</button>
+      </div>
+    </form>
+  </dialog>
 </div>
 
 <script>
   import { Chessground } from '@lichess-org/chessground';
-  import { STARTING_FEN, type Colour } from '../board/starting-position';
+  import type { Api } from '@lichess-org/chessground/api';
+  import type { Key } from '@lichess-org/chessground/types';
+  import type { SquareName } from 'chessops/types';
+  import type { Colour } from '../board/starting-position';
+  import {
+    currentFen,
+    isInCheck,
+    isPromotion,
+    legalDestinations,
+    newGame,
+    playMove,
+    sideToMove,
+    type Game,
+    type MoveRequest,
+    type PromotionPiece,
+  } from '../game/game';
+  import { describeResult, gameStatus } from '../game/game-status';
 
   // Astro bundles this script once per page, however many times the component
   // is used, so it has to set up every board on the page rather than the first
   // one it finds.
-  const elements = document.querySelectorAll<HTMLElement>('.board');
+  const frames = document.querySelectorAll<HTMLElement>('[data-board-frame]');
+  for (const frame of frames) {
+    setUpBoard(frame);
+  }
 
-  for (const element of elements) {
-    const orientation = (element.dataset.orientation ?? 'white') as Colour;
+  /** Starts a new game on one board and keeps it in step with the player's moves. */
+  function setUpBoard(frame: HTMLElement): void {
+    const boardElement = frame.querySelector<HTMLElement>('.board')!;
+    const statusElement = frame.querySelector<HTMLElement>('[data-status]')!;
+    const promotionDialog = frame.querySelector<HTMLDialogElement>('[data-promotion]')!;
+    const orientation = (boardElement.dataset.orientation ?? 'white') as Colour;
 
-    Chessground(element, {
-      fen: STARTING_FEN,
+    let game = newGame();
+
+    const board = Chessground(boardElement, {
       orientation: orientation,
       coordinates: true,
-      viewOnly: true,
+      premovable: { enabled: false },
+      movable: {
+        free: false,
+        color: 'both',
+        showDests: true,
+        events: {
+          after: (from, to) => {
+            void onPlayerMove(from, to);
+          },
+        },
+      },
+    });
+    showGame(board, statusElement, game);
+
+    async function onPlayerMove(from: Key, to: Key): Promise<void> {
+      // Chessground only lets a piece go to a square from legalDestinations,
+      // which never contains its 'a0' placeholder, so both keys are real squares.
+      const move: MoveRequest = {
+        from: from as SquareName,
+        to: to as SquareName,
+      };
+
+      if (isPromotion(game, move.from, move.to)) {
+        const piece = await askPromotionPiece(promotionDialog);
+        if (piece === null) {
+          // The player closed the dialog: take the pawn back to its square.
+          showGame(board, statusElement, game);
+          return;
+        }
+        move.promotion = piece;
+      }
+
+      const next = playMove(game, move);
+      if (next !== null) {
+        game = next;
+      }
+      // Redraw from the game even after a legal move: chessground moved only
+      // the piece that was dragged, so a pawn taken en passant or a promoted
+      // pawn would otherwise still show its old state.
+      showGame(board, statusElement, game);
+    }
+  }
+
+  /** Draws the game on the board and states whose turn it is or how it ended. */
+  function showGame(board: Api, statusElement: HTMLElement, game: Game): void {
+    const status = gameStatus(game);
+    const result = describeResult(status);
+    const isOver = result !== null;
+
+    let lastMove: Key[] | undefined = undefined;
+    if (game.lastMove !== undefined) {
+      lastMove = [game.lastMove.from, game.lastMove.to];
+    }
+
+    let movableColour: Colour | 'both' | undefined = 'both';
+    if (isOver) {
+      movableColour = undefined;
+    }
+
+    board.set({
+      fen: currentFen(game),
+      turnColor: sideToMove(game),
+      lastMove: lastMove,
+      check: isInCheck(game),
+      movable: {
+        color: movableColour,
+        dests: legalDestinations(game),
+      },
+    });
+
+    if (isOver) {
+      statusElement.textContent = result;
+    } else if (sideToMove(game) === 'white') {
+      statusElement.textContent = 'White to move.';
+    } else {
+      statusElement.textContent = 'Black to move.';
+    }
+  }
+
+  /** Opens the promotion dialog and resolves with the chosen piece, or null if it was dismissed. */
+  function askPromotionPiece(dialog: HTMLDialogElement): Promise<PromotionPiece | null> {
+    return new Promise((resolve) => {
+      dialog.returnValue = '';
+      dialog.addEventListener(
+        'close',
+        () => {
+          const choice = dialog.returnValue;
+          if (choice === 'queen' || choice === 'rook' || choice === 'bishop' || choice === 'knight') {
+            resolve(choice);
+          } else {
+            resolve(null);
+          }
+        },
+        { once: true },
+      );
+      dialog.showModal();
     });
   }
 </script>
@@ -68,5 +201,45 @@ const { orientation = 'white' } = Astro.props;
   .board {
     width: 100%;
     aspect-ratio: 1;
+  }
+
+  .status {
+    margin: 0.75rem 0 0;
+    min-height: 1.5em;
+    text-align: center;
+    font-weight: 600;
+  }
+
+  .promotion {
+    border: none;
+    border-radius: 0.5rem;
+    padding: 1rem 1.25rem;
+    background: var(--page-background);
+    color: var(--page-text);
+  }
+
+  .promotion::backdrop {
+    background: rgb(0 0 0 / 0.4);
+  }
+
+  .promotion p {
+    margin: 0 0 0.75rem;
+    text-align: center;
+  }
+
+  .promotion-choices {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(6rem, 1fr));
+    gap: 0.5rem;
+  }
+
+  .promotion-choices button {
+    font: inherit;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid currentColor;
+    border-radius: 0.375rem;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
   }
 </style>
