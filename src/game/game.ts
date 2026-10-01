@@ -6,7 +6,19 @@
 
 import { Chess } from 'chessops/chess';
 import { makeFen, parseFen } from 'chessops/fen';
+import type { NormalMove, SquareName } from 'chessops/types';
+import { parseSquare } from 'chessops/util';
 import type { Colour } from '../board/starting-position';
+
+/** The pieces a pawn may become when it reaches the last rank. */
+export type PromotionPiece = 'queen' | 'rook' | 'bishop' | 'knight';
+
+/** A move as the board reports it: two squares, plus a piece when promoting. */
+export interface MoveRequest {
+  from: SquareName;
+  to: SquareName;
+  promotion?: PromotionPiece;
+}
 
 /**
  * One game at one moment. Treated as a value: playing a move returns a new
@@ -45,6 +57,29 @@ export function gameFromFen(fen: string): Game {
     position: position.value,
   };
   return game;
+}
+
+/**
+ * Plays a move if it is legal and returns the new game. Returns null for an
+ * illegal move, which is the board's signal to put the piece back.
+ */
+export function playMove(game: Game, move: MoveRequest): Game | null {
+  const chessopsMove: NormalMove = {
+    from: parseSquare(move.from),
+    to: parseSquare(move.to),
+    promotion: move.promotion,
+  };
+  if (!game.position.isLegal(chessopsMove)) {
+    return null;
+  }
+
+  const position = game.position.clone();
+  position.play(chessopsMove);
+
+  const next: Game = {
+    position: position,
+  };
+  return next;
 }
 
 /** The position as FEN, for handing to chessground. */
