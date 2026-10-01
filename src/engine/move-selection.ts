@@ -15,13 +15,18 @@ export interface EngineOptions {
 /**
  * Chooses the Bot's move in the position the FEN describes. Asynchronous
  * because choosing will involve running a model. For now the choice is a
- * legal move picked uniformly at random.
+ * legal move picked uniformly at random. Throws when the side to move has no
+ * legal move, since the Bot is never asked to move in a finished game.
  */
 export async function selectMove(fen: string, options: EngineOptions = {}): Promise<MoveRequest> {
   const random = options.random ?? Math.random;
 
   const game = gameFromFen(fen);
   const candidates = legalMoves(game);
+  if (candidates.length === 0) {
+    // A finished game reaching the engine is a bug in the caller.
+    throw new Error(`No legal move to choose in ${fen}`);
+  }
 
   const index = Math.floor(random() * candidates.length);
   return candidates[index];

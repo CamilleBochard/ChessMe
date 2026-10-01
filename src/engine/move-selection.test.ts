@@ -15,4 +15,11 @@ describe('selectMove', () => {
 
     expect(move).toEqual({ from: 'a1', to: 'b2' });
   });
+
+  it('refuses a position where the side to move has no legal move', async () => {
+    // Black's king on h8 is stalemated by the queen on f7 and the king on g6.
+    const stalemate = '7k/5Q2/6K1/8/8/8/8/8 b - - 0 1';
+
+    await expect(selectMove(stalemate)).rejects.toThrow(`No legal move to choose in ${stalemate}`);
+  });
 });
