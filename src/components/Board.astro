@@ -1,11 +1,12 @@
 ---
-// A playable chessboard. One person moves the pieces for both sides; the rules
-// live in src/game/, and this component only translates between them and
-// chessground, which draws the board and handles dragging and clicking.
+// A chessboard where the visitor plays one side and the Bot plays the other.
+// The rules live in src/game/ and the Bot's choice in src/engine/; this
+// component only translates between them and chessground, which draws the
+// board and handles dragging and clicking.
 import type { Colour } from '../board/starting-position';
 
 interface Props {
-  /** Which side sits at the bottom of the board. */
+  /** The visitor's side, which also sits at the bottom of the board. */
   orientation?: Colour;
 }
 
@@ -48,6 +49,7 @@ const { orientation = 'white' } = Astro.props;
     type PromotionPiece,
   } from '../game/game';
   import { describeResult, gameStatus } from '../game/game-status';
+  import { selectMove } from '../engine/move-selection';
 
   // Astro bundles this script once per page, however many times the component
   // is used, so it has to set up every board on the page rather than the first
@@ -57,22 +59,21 @@ const { orientation = 'white' } = Astro.props;
     setUpBoard(frame);
   }
 
-  /** Starts a new game on one board and keeps it in step with the player's moves. */
+  /** Starts a new game on one board, with the visitor on the side facing them. */
   function setUpBoard(frame: HTMLElement): void {
     const boardElement = frame.querySelector<HTMLElement>('.board')!;
     const statusElement = frame.querySelector<HTMLElement>('[data-status]')!;
     const promotionDialog = frame.querySelector<HTMLDialogElement>('[data-promotion]')!;
-    const orientation = (boardElement.dataset.orientation ?? 'white') as Colour;
+    const playerColour = (boardElement.dataset.orientation ?? 'white') as Colour;
 
     let game = newGame();
 
     const board = Chessground(boardElement, {
-      orientation: orientation,
+      orientation: playerColour,
       coordinates: true,
       premovable: { enabled: false },
       movable: {
         free: false,
-        color: 'both',
         showDests: true,
         events: {
           after: (from, to) => {
@@ -81,7 +82,11 @@ const { orientation = 'white' } = Astro.props;
         },
       },
     });
-    showGame(board, statusElement, game);
+    showGame(board, statusElement, game, playerColour);
+
+    if (sideToMove(game) !== playerColour) {
+      void playBotMove();
+    }
 
     async function onPlayerMove(from: Key, to: Key): Promise<void> {
       // Chessground only lets a piece go to a square from legalDestinations,
@@ -95,37 +100,62 @@ const { orientation = 'white' } = Astro.props;
         const piece = await askPromotionPiece(promotionDialog);
         if (piece === null) {
           // The player closed the dialog: take the pawn back to its square.
-          showGame(board, statusElement, game);
+          showGame(board, statusElement, game, playerColour);
           return;
         }
         move.promotion = piece;
       }
 
       const next = playMove(game, move);
-      if (next !== null) {
-        game = next;
+      if (next === null) {
+        // Refused: redraw the current game, which puts the piece back.
+        showGame(board, statusElement, game, playerColour);
+        return;
       }
+
+      game = next;
       // Redraw from the game even after a legal move: chessground moved only
       // the piece that was dragged, so a pawn taken en passant or a promoted
       // pawn would otherwise still show its old state.
-      showGame(board, statusElement, game);
+      showGame(board, statusElement, game, playerColour);
+
+      if (gameStatus(game).kind === 'ongoing') {
+        await playBotMove();
+      }
+    }
+
+    /** Asks the engine for the Bot's reply and plays it. */
+    async function playBotMove(): Promise<void> {
+      const reply = await selectMove(currentFen(game));
+
+      const next = playMove(game, reply);
+      if (next === null) {
+        throw new Error(`The engine chose an illegal move: ${reply.from}-${reply.to} in ${currentFen(game)}`);
+      }
+
+      game = next;
+      showGame(board, statusElement, game, playerColour);
     }
   }
 
-  /** Draws the game on the board and states whose turn it is or how it ended. */
-  function showGame(board: Api, statusElement: HTMLElement, game: Game): void {
+  /**
+   * Draws the game on the board and states whose turn it is or how it ended.
+   * Only the visitor's pieces can be moved, and only on the visitor's turn.
+   */
+  function showGame(board: Api, statusElement: HTMLElement, game: Game, playerColour: Colour): void {
     const status = gameStatus(game);
     const result = describeResult(status);
     const isOver = result !== null;
+    const isPlayersTurn = sideToMove(game) === playerColour;
 
     let lastMove: Key[] | undefined = undefined;
     if (game.lastMove !== undefined) {
       lastMove = [game.lastMove.from, game.lastMove.to];
     }
 
-    let movableColour: Colour | 'both' | undefined = 'both';
-    if (isOver) {
-      movableColour = undefined;
+    let movableColour: Colour | undefined = undefined;
+    if (!isOver && isPlayersTurn) {
+      movableColour = playerColour;
     }
 
     board.set({
@@ -141,10 +171,10 @@ const { orientation = 'white' } = Astro.props;
 
     if (isOver) {
       statusElement.textContent = result;
-    } else if (sideToMove(game) === 'white') {
-      statusElement.textContent = 'White to move.';
+    } else if (isPlayersTurn) {
+      statusElement.textContent = 'Your move.';
     } else {
-      statusElement.textContent = 'Black to move.';
+      statusElement.textContent = 'The Bot is thinking…';
     }
   }
 
