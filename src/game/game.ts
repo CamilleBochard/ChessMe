@@ -28,14 +28,23 @@ export interface MoveRequest {
 export interface Game {
   /** The current position, as chessops understands it. */
   readonly position: Chess;
+  /**
+   * Every position reached so far, oldest first and including the current one,
+   * reduced to what counts for threefold repetition: the pieces, the side to
+   * move, castling rights and a capturable en passant square.
+   */
+  readonly repetitionKeys: readonly string[];
   /** The last move played, for the board to highlight. Absent at the start. */
   readonly lastMove?: MoveRequest;
 }
 
 /** A game at the standard starting position. */
 export function newGame(): Game {
+  const position = Chess.default();
+
   const game: Game = {
-    position: Chess.default(),
+    position: position,
+    repetitionKeys: [repetitionKey(position)],
   };
   return game;
 }
@@ -58,6 +67,7 @@ export function gameFromFen(fen: string): Game {
 
   const game: Game = {
     position: position.value,
+    repetitionKeys: [repetitionKey(position.value)],
   };
   return game;
 }
@@ -81,6 +91,7 @@ export function playMove(game: Game, move: MoveRequest): Game | null {
 
   const next: Game = {
     position: position,
+    repetitionKeys: [...game.repetitionKeys, repetitionKey(position)],
     lastMove: move,
   };
   return next;
@@ -123,4 +134,17 @@ export function sideToMove(game: Game): Colour {
 /** True when the side to move is in check, so the board can highlight the king. */
 export function isInCheck(game: Game): boolean {
   return game.position.isCheck();
+}
+
+/**
+ * The part of a position that decides whether it repeats an earlier one: the
+ * first four fields of its FEN. The move counters are left out, and chessops
+ * only writes an en passant square when a capture there is legal, which is the
+ * rule threefold repetition uses.
+ */
+function repetitionKey(position: Chess): string {
+  const fen = makeFen(position.toSetup());
+  const fields = fen.split(' ');
+  const placementTurnCastlingEnPassant = fields.slice(0, 4);
+  return placementTurnCastlingEnPassant.join(' ');
 }

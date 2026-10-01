@@ -39,5 +39,29 @@ export function gameStatus(game: Game): GameStatus {
     return { kind: 'insufficient-material' };
   }
 
+  // The halfmove clock counts moves since the last capture or pawn move; fifty
+  // moves by each side is a hundred half-moves.
+  if (position.halfmoves >= 100) {
+    return { kind: 'fifty-move-rule' };
+  }
+
+  if (occurrencesOfCurrentPosition(game) >= 3) {
+    return { kind: 'threefold-repetition' };
+  }
+
   return { kind: 'ongoing' };
+}
+
+/** How many times the current position has occurred in this game, itself included. */
+function occurrencesOfCurrentPosition(game: Game): number {
+  const keys = game.repetitionKeys;
+  const currentKey = keys[keys.length - 1];
+
+  let count = 0;
+  for (const key of keys) {
+    if (key === currentKey) {
+      count = count + 1;
+    }
+  }
+  return count;
 }

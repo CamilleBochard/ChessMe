@@ -81,4 +81,76 @@ describe('gameStatus', () => {
 
     expect(gameStatus(loneRook)).toEqual({ kind: 'ongoing' });
   });
+
+  describe('fifty-move rule', () => {
+    // 99 half-moves have passed without a capture or a pawn move.
+    const oneHalfMoveShort = '4k3/8/8/8/8/8/4P3/R3K3 w - - 99 80';
+
+    it('ends the game on the hundredth half-move without a capture or pawn move', () => {
+      const game = gameFromFen(oneHalfMoveShort);
+
+      const quietRookMove = playMoves([{ from: 'a1', to: 'a2' }], game);
+
+      expect(gameStatus(quietRookMove)).toEqual({ kind: 'fifty-move-rule' });
+    });
+
+    it('keeps going when that move is a pawn move, which resets the count', () => {
+      const game = gameFromFen(oneHalfMoveShort);
+
+      const pawnMove = playMoves([{ from: 'e2', to: 'e3' }], game);
+
+      expect(gameStatus(pawnMove)).toEqual({ kind: 'ongoing' });
+    });
+
+    it('lets a checkmate on the hundredth half-move stand as checkmate', () => {
+      const backRankMateAvailable = gameFromFen('6k1/5ppp/8/8/8/8/8/R5K1 w - - 99 80');
+
+      const mateOnTheLastMove = playMoves([{ from: 'a1', to: 'a8' }], backRankMateAvailable);
+
+      expect(gameStatus(mateOnTheLastMove)).toEqual({ kind: 'checkmate', winner: 'white' });
+    });
+  });
+
+  describe('threefold repetition', () => {
+    // Both knights go out and come back, returning to the starting position.
+    const knightsOutAndBack: MoveRequest[] = [
+      { from: 'g1', to: 'f3' },
+      { from: 'g8', to: 'f6' },
+      { from: 'f3', to: 'g1' },
+      { from: 'f6', to: 'g8' },
+    ];
+
+    it('ends the game when the starting position occurs for the third time', () => {
+      const thirdOccurrence = playMoves([...knightsOutAndBack, ...knightsOutAndBack]);
+
+      expect(gameStatus(thirdOccurrence)).toEqual({ kind: 'threefold-repetition' });
+    });
+
+    it('keeps going on the second occurrence', () => {
+      const secondOccurrence = playMoves(knightsOutAndBack);
+
+      expect(gameStatus(secondOccurrence)).toEqual({ kind: 'ongoing' });
+    });
+
+    it('does not count a position as repeated once castling rights have been lost', () => {
+      // After 1.e4 e5 both kings walk out and back twice. The pieces stand where
+      // they stood after 1...e5 three times, but the first time both sides could
+      // still castle, so by the rules it has only occurred twice.
+      const kingsWalkOutAndBack: MoveRequest[] = [
+        { from: 'e1', to: 'e2' },
+        { from: 'e8', to: 'e7' },
+        { from: 'e2', to: 'e1' },
+        { from: 'e7', to: 'e8' },
+      ];
+
+      const game = playMoves([
+        { from: 'e2', to: 'e4' },
+        { from: 'e7', to: 'e5' },
+        ...kingsWalkOutAndBack,
+        ...kingsWalkOutAndBack,
+      ]);
+
+      expect(gameStatus(game)).toEqual({ kind: 'ongoing' });
+    });
+  });
 });
