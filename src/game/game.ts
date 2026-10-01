@@ -7,7 +7,7 @@
 import { Chess } from 'chessops/chess';
 import { makeFen, parseFen } from 'chessops/fen';
 import type { NormalMove, SquareName } from 'chessops/types';
-import { parseSquare } from 'chessops/util';
+import { parseSquare, squareRank } from 'chessops/util';
 import type { Colour } from '../board/starting-position';
 
 /** The pieces a pawn may become when it reaches the last rank. */
@@ -80,6 +80,20 @@ export function playMove(game: Game, move: MoveRequest): Game | null {
     position: position,
   };
   return next;
+}
+
+/** True when this move takes a pawn onto the last rank, so the board must ask which piece. */
+export function isPromotion(game: Game, from: SquareName, to: SquareName): boolean {
+  const movingRole = game.position.board.getRole(parseSquare(from));
+  if (movingRole !== 'pawn') {
+    return false;
+  }
+
+  // Ranks count from 0, so the first rank is 0 and the eighth is 7. A pawn only
+  // ever moves forward, so whichever of the two it reaches is its last rank.
+  const targetRank = squareRank(parseSquare(to));
+  const reachesLastRank = targetRank === 0 || targetRank === 7;
+  return reachesLastRank;
 }
 
 /** The position as FEN, for handing to chessground. */
