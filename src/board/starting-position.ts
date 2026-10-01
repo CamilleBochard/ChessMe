@@ -1,7 +1,7 @@
 // The position every game opens from, and the vocabulary for talking about it.
-// Deliberately free of anything Astro or DOM: ticket #4 requires the engine
-// side of the codebase to be callable from Node with no browser present, and
-// this module sits on that side of the line.
+// Deliberately free of anything Astro or DOM: the Move-Selection Engine runs
+// under Node with no browser present, and this module sits on its side of the
+// line.
 
 /**
  * Forsyth-Edwards Notation for the standard opening position.

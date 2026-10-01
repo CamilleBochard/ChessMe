@@ -1,6 +1,6 @@
 ---
-// Renders a chessboard. Ticket #2 shows the starting position and nothing else:
-// the board is display-only until ticket #3 makes the pieces movable.
+// Renders a chessboard at the starting position. The board is display-only
+// until the game rules are wired in behind it.
 import type { Colour } from '../board/starting-position';
 
 interface Props {
@@ -31,8 +31,6 @@ const { orientation = 'white' } = Astro.props;
       fen: STARTING_FEN,
       orientation: orientation,
       coordinates: true,
-      // Nothing is interactive yet. Ticket #3 turns this off and wires up the
-      // legal-move rules behind it.
       viewOnly: true,
     });
   }
