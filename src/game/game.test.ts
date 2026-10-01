@@ -9,6 +9,7 @@ import {
   isInCheck,
   isPromotion,
   legalDestinations,
+  legalMoves,
   newGame,
   playMove,
   sideToMove,
@@ -209,5 +210,40 @@ describe('isInCheck', () => {
 
   it('is false at the start', () => {
     expect(isInCheck(newGame())).toBe(false);
+  });
+});
+
+describe('legalMoves', () => {
+  it('lists the twenty opening moves', () => {
+    const moves = legalMoves(newGame());
+
+    expect(moves).toHaveLength(20);
+    expect(moves).toContainEqual({ from: 'e2', to: 'e4' });
+    expect(moves).toContainEqual({ from: 'g1', to: 'f3' });
+  });
+
+  it('lists castling once, as the king stepping two squares', () => {
+    // The king is hemmed in by its own pieces: its only moves are f1 and castling.
+    const game = gameFromFen('k7/8/8/8/8/8/3PPP2/3QK2R w K - 0 1');
+
+    const kingMoves = legalMoves(game).filter((move) => move.from === 'e1');
+
+    expect(kingMoves).toContainEqual({ from: 'e1', to: 'g1' });
+    expect(kingMoves).not.toContainEqual({ from: 'e1', to: 'h1' });
+    expect(kingMoves).toHaveLength(2);
+  });
+
+  it('lists a promotion once for each piece the pawn may become', () => {
+    // The white king on a1 is boxed in by the two rooks, so the pawn on g7 is
+    // the only piece that can move, and it can only step onto g8.
+    const game = gameFromFen('8/6P1/8/4k3/8/1r6/7r/K7 w - - 0 1');
+
+    const moves = legalMoves(game);
+
+    expect(moves).toHaveLength(4);
+    expect(moves).toContainEqual({ from: 'g7', to: 'g8', promotion: 'queen' });
+    expect(moves).toContainEqual({ from: 'g7', to: 'g8', promotion: 'rook' });
+    expect(moves).toContainEqual({ from: 'g7', to: 'g8', promotion: 'bishop' });
+    expect(moves).toContainEqual({ from: 'g7', to: 'g8', promotion: 'knight' });
   });
 });

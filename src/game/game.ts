@@ -14,6 +14,8 @@ import type { Colour } from '../board/starting-position';
 /** The pieces a pawn may become when it reaches the last rank. */
 export type PromotionPiece = 'queen' | 'rook' | 'bishop' | 'knight';
 
+const PROMOTION_PIECES: readonly PromotionPiece[] = ['queen', 'rook', 'bishop', 'knight'];
+
 /** A move as the board reports it: two squares, plus a piece when promoting. */
 export interface MoveRequest {
   from: SquareName;
@@ -104,6 +106,42 @@ export function playMove(game: Game, move: MoveRequest): Game | null {
  */
 export function legalDestinations(game: Game): Map<SquareName, SquareName[]> {
   return chessgroundDests(game.position);
+}
+
+/**
+ * Every legal move in the current position, each listed once and in the form
+ * playMove accepts: castling as the king's two-square step, and a pawn reaching
+ * the last rank once for each piece it may become.
+ */
+export function legalMoves(game: Game): MoveRequest[] {
+  const board = game.position.board;
+  const moves: MoveRequest[] = [];
+
+  for (const [from, destinations] of legalDestinations(game)) {
+    const movingPiece = board.get(parseSquare(from));
+
+    for (const to of destinations) {
+      // chessground also lets a king castle by landing on its own rook. The
+      // same castling is already listed as the king's two-square step.
+      const pieceOnTarget = board.get(parseSquare(to));
+      const isKingOntoOwnRook =
+        movingPiece?.role === 'king' &&
+        pieceOnTarget?.role === 'rook' &&
+        pieceOnTarget.color === movingPiece.color;
+      if (isKingOntoOwnRook) {
+        continue;
+      }
+
+      if (isPromotion(game, from, to)) {
+        for (const piece of PROMOTION_PIECES) {
+          moves.push({ from: from, to: to, promotion: piece });
+        }
+      } else {
+        moves.push({ from: from, to: to });
+      }
+    }
+  }
+  return moves;
 }
 
 /** True when this move takes a pawn onto the last rank, so the board must ask which piece. */
