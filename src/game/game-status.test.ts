@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { gameFromFen, newGame, playMove, type Game, type MoveRequest } from './game';
-import { gameStatus } from './game-status';
+import { describeResult, gameStatus } from './game-status';
 
 /** Plays a sequence of moves, failing loudly if one is illegal. */
 function playMoves(moves: MoveRequest[], from: Game = newGame()): Game {
@@ -152,5 +152,25 @@ describe('gameStatus', () => {
 
       expect(gameStatus(game)).toEqual({ kind: 'ongoing' });
     });
+  });
+});
+
+describe('describeResult', () => {
+  it('names the winner on checkmate', () => {
+    expect(describeResult({ kind: 'checkmate', winner: 'white' })).toBe('Checkmate. White wins.');
+    expect(describeResult({ kind: 'checkmate', winner: 'black' })).toBe('Checkmate. Black wins.');
+  });
+
+  it.each([
+    [{ kind: 'stalemate' } as const, 'Draw by stalemate.'],
+    [{ kind: 'insufficient-material' } as const, 'Draw by insufficient material.'],
+    [{ kind: 'fifty-move-rule' } as const, 'Draw by the fifty-move rule.'],
+    [{ kind: 'threefold-repetition' } as const, 'Draw by threefold repetition.'],
+  ])('names the rule that drew the game: %o', (status, sentence) => {
+    expect(describeResult(status)).toBe(sentence);
+  });
+
+  it('is null while the game is ongoing', () => {
+    expect(describeResult({ kind: 'ongoing' })).toBeNull();
   });
 });

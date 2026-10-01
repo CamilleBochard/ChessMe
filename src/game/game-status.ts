@@ -52,6 +52,27 @@ export function gameStatus(game: Game): GameStatus {
   return { kind: 'ongoing' };
 }
 
+/** The sentence the page shows when the game ends. Null while the game is ongoing. */
+export function describeResult(status: GameStatus): string | null {
+  switch (status.kind) {
+    case 'ongoing':
+      return null;
+    case 'checkmate':
+      if (status.winner === 'white') {
+        return 'Checkmate. White wins.';
+      }
+      return 'Checkmate. Black wins.';
+    case 'stalemate':
+      return 'Draw by stalemate.';
+    case 'insufficient-material':
+      return 'Draw by insufficient material.';
+    case 'fifty-move-rule':
+      return 'Draw by the fifty-move rule.';
+    case 'threefold-repetition':
+      return 'Draw by threefold repetition.';
+  }
+}
+
 /** How many times the current position has occurred in this game, itself included. */
 function occurrencesOfCurrentPosition(game: Game): number {
   const keys = game.repetitionKeys;
