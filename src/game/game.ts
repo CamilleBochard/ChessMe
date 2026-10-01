@@ -5,6 +5,7 @@
 // under Node.
 
 import { Chess } from 'chessops/chess';
+import { chessgroundDests } from 'chessops/compat';
 import { makeFen, parseFen } from 'chessops/fen';
 import type { NormalMove, SquareName } from 'chessops/types';
 import { parseSquare, squareRank } from 'chessops/util';
@@ -27,6 +28,8 @@ export interface MoveRequest {
 export interface Game {
   /** The current position, as chessops understands it. */
   readonly position: Chess;
+  /** The last move played, for the board to highlight. Absent at the start. */
+  readonly lastMove?: MoveRequest;
 }
 
 /** A game at the standard starting position. */
@@ -78,8 +81,18 @@ export function playMove(game: Game, move: MoveRequest): Game | null {
 
   const next: Game = {
     position: position,
+    lastMove: move,
   };
   return next;
+}
+
+/**
+ * Where each piece of the side to move may go, in the shape chessground wants
+ * for its `movable.dests` option. A king that may castle lists both the square
+ * it lands on and its rook's square, since chessground accepts either gesture.
+ */
+export function legalDestinations(game: Game): Map<SquareName, SquareName[]> {
+  return chessgroundDests(game.position);
 }
 
 /** True when this move takes a pawn onto the last rank, so the board must ask which piece. */
@@ -105,4 +118,9 @@ export function currentFen(game: Game): string {
 /** Whose turn it is. */
 export function sideToMove(game: Game): Colour {
   return game.position.turn;
+}
+
+/** True when the side to move is in check, so the board can highlight the king. */
+export function isInCheck(game: Game): boolean {
+  return game.position.isCheck();
 }

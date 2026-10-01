@@ -3,7 +3,16 @@
 // rules of chess, written out by hand, never from asking chessops.
 
 import { describe, expect, it } from 'vitest';
-import { currentFen, gameFromFen, isPromotion, newGame, playMove, sideToMove } from './game';
+import {
+  currentFen,
+  gameFromFen,
+  isInCheck,
+  isPromotion,
+  legalDestinations,
+  newGame,
+  playMove,
+  sideToMove,
+} from './game';
 
 describe('newGame', () => {
   it('starts from the standard position with white to move', () => {
@@ -78,6 +87,15 @@ describe('playMove', () => {
 
     expect(currentFen(game)).toBe('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
   });
+
+  it('remembers the move just played so the board can highlight it', () => {
+    const game = newGame();
+
+    const next = playMove(game, { from: 'g1', to: 'f3' });
+
+    expect(game.lastMove).toBeUndefined();
+    expect(next!.lastMove).toEqual({ from: 'g1', to: 'f3' });
+  });
 });
 
 describe('castling', () => {
@@ -97,6 +115,14 @@ describe('castling', () => {
     const castled = playMove(game, { from: 'e1', to: 'c1' });
 
     expect(currentFen(castled!)).toBe('r3k2r/8/8/8/8/8/8/2KR3R b kq - 1 1');
+  });
+
+  it('castles when the king is dropped on its own rook, as chessground also allows', () => {
+    const game = gameFromFen(readyToCastle);
+
+    const castled = playMove(game, { from: 'e1', to: 'h1' });
+
+    expect(currentFen(castled!)).toBe('r3k2r/8/8/8/8/8/8/R4RK1 b kq - 1 1');
   });
 });
 
@@ -155,5 +181,33 @@ describe('isPromotion', () => {
     const game = gameFromFen('4k3/8/8/8/8/8/8/R3K3 w - - 0 1');
 
     expect(isPromotion(game, 'a1', 'a8')).toBe(false);
+  });
+});
+
+describe('legalDestinations', () => {
+  it('lists the twenty opening moves: two for each pawn and two for each knight', () => {
+    const game = newGame();
+
+    const destinations = legalDestinations(game);
+
+    expect(destinations.get('e2')).toEqual(['e3', 'e4']);
+    expect(destinations.get('g1')).toEqual(['f3', 'h3']);
+    let moveCount = 0;
+    for (const squares of destinations.values()) {
+      moveCount = moveCount + squares.length;
+    }
+    expect(moveCount).toBe(20);
+  });
+});
+
+describe('isInCheck', () => {
+  it('is true when the side to move has its king attacked', () => {
+    const rookChecksAlongTheFile = gameFromFen('4r1k1/8/8/8/8/8/8/4K3 w - - 0 1');
+
+    expect(isInCheck(rookChecksAlongTheFile)).toBe(true);
+  });
+
+  it('is false at the start', () => {
+    expect(isInCheck(newGame())).toBe(false);
   });
 });
