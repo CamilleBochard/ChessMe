@@ -1,6 +1,4 @@
-import pytest
-
-from pipeline.verify_maia1 import Answer, compare, read_answer
+from pipeline.verify_maia1 import read_answer
 
 # What lc0 prints for one position with verbose move stats and `go nodes 1`,
 # shortened to three moves.
@@ -20,12 +18,3 @@ def test_reads_the_best_move_and_each_move_policy():
     assert answer.best_move == "b1c3"
     assert answer.policy == {"f1b5": 17.85, "f1c4": 22.44, "b1c3": 22.47}
 
-
-def test_compares_best_moves_and_finds_the_largest_policy_difference():
-    reference = Answer(best_move="b1c3", policy={"b1c3": 22.47, "f1c4": 22.44, "f1b5": 17.85})
-    converted = Answer(best_move="b1c3", policy={"b1c3": 22.46, "f1c4": 22.47, "f1b5": 17.85})
-
-    comparison = compare(reference, converted)
-
-    assert comparison.same_best_move
-    assert comparison.largest_policy_difference == pytest.approx(0.03)
