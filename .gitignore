@@ -18,3 +18,7 @@ data/dataset/
 
 # Personal working notes, kept out of the repository
 notes/
+
+# Built tools and downloaded or converted models, recreated by the scripts
+tools/
+models/
