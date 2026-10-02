@@ -7,6 +7,7 @@
 import { Chess } from 'chessops/chess';
 import { chessgroundDests } from 'chessops/compat';
 import { makeFen, parseFen } from 'chessops/fen';
+import { makeSan } from 'chessops/san';
 import type { NormalMove, SquareName } from 'chessops/types';
 import { parseSquare, squareRank } from 'chessops/util';
 import type { Colour } from '../board/starting-position';
@@ -38,6 +39,19 @@ export interface Game {
   readonly repetitionKeys: readonly string[];
   /** The last move played, for the board to highlight. Absent at the start. */
   readonly lastMove?: MoveRequest;
+  /** The last move in standard algebraic notation, for the move list. Absent at the start. */
+  readonly lastMoveSan?: string;
+  /** The game one move earlier. Absent at the start. */
+  readonly previous?: Game;
+}
+
+/** One line of the move list: a move number, White's move and Black's reply. */
+export interface MoveListRow {
+  moveNumber: number;
+  /** Null when the game started from a position with Black to move. */
+  white: string | null;
+  /** Null while White's move is still waiting for a reply. */
+  black: string | null;
 }
 
 /** A game at the standard starting position. */
@@ -88,6 +102,7 @@ export function playMove(game: Game, move: MoveRequest): Game | null {
     return null;
   }
 
+  const san = makeSan(game.position, chessopsMove);
   const position = game.position.clone();
   position.play(chessopsMove);
 
@@ -95,8 +110,37 @@ export function playMove(game: Game, move: MoveRequest): Game | null {
     position: position,
     repetitionKeys: [...game.repetitionKeys, repetitionKey(position)],
     lastMove: move,
+    lastMoveSan: san,
+    previous: game,
   };
   return next;
+}
+
+/**
+ * The moves played so far, in algebraic notation and grouped the way a
+ * scoresheet groups them: one numbered row per White move and Black reply.
+ */
+export function moveList(game: Game): MoveListRow[] {
+  const rows: MoveListRow[] = [];
+
+  for (const moment of momentsAfterEachMove(game)) {
+    // The position before the move says who played it and under which number.
+    const before = moment.previous!.position;
+    const san = moment.lastMoveSan!;
+
+    if (before.turn === 'white') {
+      rows.push({ moveNumber: before.fullmoves, white: san, black: null });
+      continue;
+    }
+
+    const lastRow = rows[rows.length - 1];
+    if (lastRow !== undefined && lastRow.moveNumber === before.fullmoves) {
+      lastRow.black = san;
+    } else {
+      rows.push({ moveNumber: before.fullmoves, white: null, black: san });
+    }
+  }
+  return rows;
 }
 
 /**
@@ -172,6 +216,18 @@ export function sideToMove(game: Game): Colour {
 /** True when the side to move is in check, so the board can highlight the king. */
 export function isInCheck(game: Game): boolean {
   return game.position.isCheck();
+}
+
+/** Every moment of the game that follows a move, oldest first. */
+function momentsAfterEachMove(game: Game): Game[] {
+  const moments: Game[] = [];
+  let moment: Game | undefined = game;
+  while (moment !== undefined && moment.previous !== undefined) {
+    moments.push(moment);
+    moment = moment.previous;
+  }
+  moments.reverse();
+  return moments;
 }
 
 /**
