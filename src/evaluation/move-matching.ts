@@ -24,7 +24,16 @@ export interface MoveMatchingScore {
 
 export interface MoveMatchingReport {
   overall: MoveMatchingScore;
+  /**
+   * Positions from ply 11 on. Published Maia figures leave out each game's
+   * first ten plies, where the opening makes moves easy to predict, so this is
+   * the score to compare with them.
+   */
+  afterPly10: MoveMatchingScore;
 }
+
+/** The last ply left out of the score compared with published Maia figures. */
+const LAST_OPENING_PLY = 10;
 
 /** Whatever chooses a move for a position, usually the Move-Selection Engine. */
 export type ChooseMove = (fen: string) => Promise<MoveRequest>;
@@ -45,17 +54,25 @@ export function readTestSet(jsonLines: string): TestPosition[] {
 /** Asks the engine for its move in every position and counts the ones that match Camille's. */
 export async function measureMoveMatching(testSet: TestPosition[], chooseMove: ChooseMove): Promise<MoveMatchingReport> {
   const overall: MoveMatchingScore = { matched: 0, positions: 0 };
+  const afterPly10: MoveMatchingScore = { matched: 0, positions: 0 };
 
   for (const position of testSet) {
     const engineMove = await chooseMove(position.fen);
     const isMatch = uciName(engineMove) === position.move;
 
-    overall.positions = overall.positions + 1;
-    if (isMatch) {
-      overall.matched = overall.matched + 1;
+    addToScore(overall, isMatch);
+    if (position.ply > LAST_OPENING_PLY) {
+      addToScore(afterPly10, isMatch);
     }
   }
-  return { overall: overall };
+  return { overall: overall, afterPly10: afterPly10 };
+}
+
+function addToScore(score: MoveMatchingScore, isMatch: boolean): void {
+  score.positions = score.positions + 1;
+  if (isMatch) {
+    score.matched = score.matched + 1;
+  }
 }
 
 /** The move in UCI form, the form the Test Set records Camille's moves in. */

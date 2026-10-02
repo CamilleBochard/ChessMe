@@ -42,4 +42,13 @@ describe('measureMoveMatching', () => {
 
     expect(report.overall).toEqual({ matched: 5, positions: 7 });
   });
+
+  it('scores the positions after ply 10 on their own', async () => {
+    const testSet = readTestSet(await readFile(FIXTURE_TEST_SET, 'utf-8'));
+
+    const report = await measureMoveMatching(testSet, answerFromTable);
+
+    // Plies 11, 30 and 81; the engine agrees at 30 and 81. Ply 10 is left out.
+    expect(report.afterPly10).toEqual({ matched: 2, positions: 3 });
+  });
 });

@@ -5,7 +5,7 @@
     "types": [],
     "noEmit": true
   },
-  "include": ["src/engine/**/*.ts", "src/game/**/*.ts", "src/board/**/*.ts"],
+  "include": ["src/engine/**/*.ts", "src/evaluation/**/*.ts", "src/game/**/*.ts", "src/board/**/*.ts"],
   // Tests run under Node and may read files, which the code they test must not.
   "exclude": ["src/**/*.test.ts"]
 }
