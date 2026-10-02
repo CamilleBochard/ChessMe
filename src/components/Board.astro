@@ -26,7 +26,17 @@
   </div>
 
   <aside class="moves">
-    <h2 id="moves-heading">Moves</h2>
+    <div class="moves-header">
+      <h2 id="moves-heading">Moves</h2>
+      <div class="browse">
+        <button type="button" data-view-back aria-label="Previous position" title="Previous position (←)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
+        </button>
+        <button type="button" data-view-forward aria-label="Next position" title="Next position (→)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+        </button>
+      </div>
+    </div>
     <ol class="move-list" data-move-list aria-labelledby="moves-heading"></ol>
   </aside>
 
@@ -85,6 +95,8 @@
     const resignButton = frame.querySelector<HTMLButtonElement>('[data-resign]')!;
     const newGameButton = frame.querySelector<HTMLButtonElement>('[data-new-game]')!;
     const moveListElement = frame.querySelector<HTMLOListElement>('[data-move-list]')!;
+    const viewBackButton = frame.querySelector<HTMLButtonElement>('[data-view-back]')!;
+    const viewForwardButton = frame.querySelector<HTMLButtonElement>('[data-view-forward]')!;
     const promotionDialog = frame.querySelector<HTMLDialogElement>('[data-promotion]')!;
 
     const session = createSessionGame({
@@ -130,6 +142,29 @@
       session.startOver();
     });
 
+    viewBackButton.addEventListener('click', () => {
+      session.viewBack();
+    });
+
+    viewForwardButton.addEventListener('click', () => {
+      session.viewForward();
+    });
+
+    // The arrow keys step through positions too, as on Lichess and Chess.com.
+    // Left alone while the promotion dialog is open, where they belong to it.
+    document.addEventListener('keydown', (event) => {
+      if (promotionDialog.open) {
+        return;
+      }
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        session.viewBack();
+      } else if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        session.viewForward();
+      }
+    });
+
     async function onVisitorMove(from: Key, to: Key): Promise<void> {
       // Chessground only lets a piece go to a square from legalDestinations,
       // which never contains its 'a0' placeholder, so both keys are real squares.
@@ -156,37 +191,40 @@
     }
 
     /**
-     * Draws the game on the board, states whose turn it is or how it ended,
-     * and enables only the controls the session allows right now. Redrawing
-     * from the game after every move matters even for a legal one: chessground
+     * Draws the position on display, states whose turn it is or how the game
+     * ended, and enables only the controls the session allows right now.
+     * Redrawing after every move matters even for a legal one: chessground
      * moved only the piece that was dragged, so a pawn taken en passant or a
      * promoted pawn would otherwise still show its old state.
      */
     function showGame(): void {
       const game = session.game();
+      const shown = session.viewedGame();
       const visitor = session.visitor();
       const isOngoing = gameStatus(game).kind === 'ongoing';
       const isVisitorsTurn = sideToMove(game) === visitor;
+      const isShowingCurrent = shown === game;
 
       let lastMove: Key[] | undefined = undefined;
-      if (game.lastMove !== undefined) {
-        lastMove = [game.lastMove.from, game.lastMove.to];
+      if (shown.lastMove !== undefined) {
+        lastMove = [shown.lastMove.from, shown.lastMove.to];
       }
 
-      // Only the visitor's pieces can be moved, and only on the visitor's turn.
+      // Only the visitor's pieces can be moved, only on the visitor's turn,
+      // and only on the current position, not while looking back.
       let movableColour: Colour | undefined = undefined;
-      if (visitor !== null && isOngoing && isVisitorsTurn) {
+      if (visitor !== null && isOngoing && isVisitorsTurn && isShowingCurrent) {
         movableColour = visitor;
       }
 
       board.set({
-        fen: currentFen(game),
-        turnColor: sideToMove(game),
+        fen: currentFen(shown),
+        turnColor: sideToMove(shown),
         lastMove: lastMove,
-        check: isInCheck(game),
+        check: isInCheck(shown),
         movable: {
           color: movableColour,
-          dests: legalDestinations(game),
+          dests: legalDestinations(shown),
         },
       });
 
@@ -196,20 +234,30 @@
       statusElement.textContent = session.status();
       takeBackButton.disabled = !session.canTakeBack();
       resignButton.disabled = !session.canResign();
+      viewBackButton.disabled = !session.canViewBack();
+      viewForwardButton.disabled = !session.canViewForward();
 
-      showMoveList(moveListElement, moveList(game));
+      showMoveList(moveListElement, moveList(game), moveList(shown));
     }
   }
 
   /**
-   * Writes the moves so far as numbered rows, marks the latest move so the eye
-   * finds it, and keeps it in view.
+   * Writes the moves so far as numbered rows and marks the move that led to
+   * the position on display, so the eye finds it, keeping it in view. The
+   * shown rows are the list up to that position: its last move is the one to
+   * mark, and none is marked at the starting position.
    */
-  function showMoveList(listElement: HTMLOListElement, rows: MoveListRow[]): void {
-    const items: HTMLLIElement[] = [];
-    let latestMove: HTMLSpanElement | null = null;
+  function showMoveList(listElement: HTMLOListElement, rows: MoveListRow[], shownRows: MoveListRow[]): void {
+    const markedRowIndex = shownRows.length - 1;
+    let isBlackMoveMarked = false;
+    if (markedRowIndex >= 0) {
+      isBlackMoveMarked = shownRows[markedRowIndex].black !== null;
+    }
 
-    for (const row of rows) {
+    const items: HTMLLIElement[] = [];
+    let markedMove: HTMLSpanElement | null = null;
+
+    for (const [rowIndex, row] of rows.entries()) {
       const whiteMove = moveListCell('move', row.white ?? '…');
       const blackMove = moveListCell('move', row.black ?? '');
 
@@ -217,18 +265,36 @@
       item.append(moveListCell('move-number', `${row.moveNumber}.`), whiteMove, blackMove);
       items.push(item);
 
-      if (row.black !== null) {
-        latestMove = blackMove;
-      } else {
-        latestMove = whiteMove;
+      if (rowIndex === markedRowIndex) {
+        if (isBlackMoveMarked) {
+          markedMove = blackMove;
+        } else {
+          markedMove = whiteMove;
+        }
       }
     }
 
-    if (latestMove !== null) {
-      latestMove.classList.add('latest');
-    }
     listElement.replaceChildren(...items);
-    listElement.scrollTop = listElement.scrollHeight;
+    if (markedMove !== null) {
+      markedMove.classList.add('latest');
+      scrollListTo(listElement, markedMove);
+    }
+  }
+
+  /**
+   * Scrolls the list, and only the list, just enough to show the element.
+   * scrollIntoView would also scroll the page, which on a phone would jump
+   * from the board down to the list after every move.
+   */
+  function scrollListTo(listElement: HTMLElement, element: HTMLElement): void {
+    const listBox = listElement.getBoundingClientRect();
+    const elementBox = element.getBoundingClientRect();
+
+    if (elementBox.top < listBox.top) {
+      listElement.scrollTop -= listBox.top - elementBox.top;
+    } else if (elementBox.bottom > listBox.bottom) {
+      listElement.scrollTop += elementBox.bottom - listBox.bottom;
+    }
   }
 
   function moveListCell(className: string, text: string): HTMLSpanElement {
@@ -366,8 +432,53 @@
     padding-top: 1.25rem;
   }
 
+  .moves-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+  }
+
+  .browse {
+    display: flex;
+    gap: 0.25rem;
+  }
+
+  .browse button {
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2rem;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 0.5rem;
+    background: var(--default-soft);
+    color: var(--text-1);
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+
+  .browse button:hover:not(:disabled) {
+    border-color: var(--brand);
+  }
+
+  .browse button:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  .browse svg {
+    width: 1.125rem;
+    height: 1.125rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.25;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
   .moves h2 {
-    margin: 0 0 0.75rem;
+    margin: 0;
     font-size: 0.8125rem;
     font-weight: 600;
     letter-spacing: 0.04em;
