@@ -17,6 +17,7 @@ FIRST_DAY_KEPT = date(2025, 6, 1)
 @dataclass(frozen=True)
 class Position:
     game_id: str
+    source: str
     ply: int
     phase: str
     move: str
@@ -64,6 +65,7 @@ def _player_positions(game: chess.pgn.Game, player: str) -> list[Position]:
     player_is_white = game.headers["White"].lower() == player.lower()
     player_colour = chess.WHITE if player_is_white else chess.BLACK
     game_id = _game_id(game)
+    source = _source(game)
 
     positions = []
     board = game.board()
@@ -71,7 +73,13 @@ def _player_positions(game: chess.pgn.Game, player: str) -> list[Position]:
         # The ply of the move about to be played: White's first move is ply 1.
         ply = board.ply() + 1
         if board.turn == player_colour:
-            position = Position(game_id=game_id, ply=ply, phase=_phase_of(ply), move=move.uci())
+            position = Position(
+                game_id=game_id,
+                source=source,
+                ply=ply,
+                phase=_phase_of(ply),
+                move=move.uci(),
+            )
             positions.append(position)
         board.push(move)
     return positions

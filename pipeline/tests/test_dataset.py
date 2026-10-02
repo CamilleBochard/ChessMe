@@ -47,3 +47,11 @@ def test_records_the_phase_of_each_position_by_ply():
     # Camille is White, so he moves on the odd plies 1 to 33.
     phases = [p.phase for p in dataset.train if p.game_id == "lichess:long0001"]
     assert phases == ["opening"] * 5 + ["middlegame"] * 10 + ["endgame"] * 2
+
+
+def test_records_which_site_each_position_comes_from():
+    dataset = build_dataset([CHESSCOM, LICHESS], player="punkycam", test_fraction=0)
+
+    sources = {p.game_id: p.source for p in dataset.train}
+    assert sources["chesscom:1001"] == "chesscom"
+    assert sources["lichess:abcd1234"] == "lichess"
