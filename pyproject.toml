@@ -8,8 +8,18 @@ dependencies = ["chess>=1.11"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
-# Converting, verifying and measuring the candidate Base Models.
-models = ["brotli>=1.1"]
+# Converting, verifying and measuring the candidate Base Models. Install the
+# CPU build of torch first, from https://download.pytorch.org/whl/cpu, or pip
+# pulls the much larger GPU build.
+models = [
+    "brotli>=1.1",
+    "torch>=2.5",
+    "onnx>=1.17",
+    "onnxscript>=0.2",
+    "onnxruntime>=1.20",
+    # CSSLab's reference implementation of Maia-3, pinned to a commit.
+    "maia3 @ git+https://github.com/CSSLab/maia3@1e13597c42d4858b7cfd7cfdae01e297263364b2",
+]
 
 [tool.setuptools]
 packages = ["pipeline"]

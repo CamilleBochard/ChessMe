@@ -70,5 +70,13 @@
     "url": "https://raw.githubusercontent.com/CSSLab/maia-chess/749204cf5979ce7f8b0412e804a4ee7c83c49ff8/maia_weights/maia-1900.pb.gz",
     "sha256": "e2f565f42d7cd9f122557e6dc4eb84e5bbaedceda1d404dc485d3611c7c97a12",
     "file_name": "maia-1900.pb.gz"
+  },
+  {
+    "name": "maia3-5m",
+    "family": "maia3",
+    "licence": "AGPL-3.0 (the CSSLab/maia3 repository; the model card points there)",
+    "url": "https://huggingface.co/UofTCSSLab/Maia3-5M/resolve/b6559de2398d7140b985f28fd2c19fb5e47ddabe/maia3-5m.pt",
+    "sha256": "ba14208b2992d85502f5fb501934abf6aaaeb355e9f3fdf90e326911f562524f",
+    "file_name": "maia3-5m.pt"
   }
 ]
