@@ -4,7 +4,9 @@
 // into moves the game understands.
 // Free of anything DOM so that it runs unchanged under Node.
 
-import { parseSquare } from 'chessops/util';
+import { Chess } from 'chessops/chess';
+import type { Color, Role, Square, SquareName } from 'chessops/types';
+import { parseSquare, squareFile } from 'chessops/util';
 import type { Game, MoveRequest } from '../game/game';
 
 /** The tensor names lc0 gives a converted Maia-1 network. */
@@ -17,12 +19,153 @@ const SQUARES_PER_PLANE = 64;
 /** The shape of one position's input: planes, ranks, files. */
 export const MAIA1_INPUT_SHAPE = [PLANE_COUNT, 8, 8];
 
+/** Eight positions of history, the current one first, each 13 planes deep. */
+const HISTORY_LENGTH = 8;
+const PLANES_PER_POSITION = 13;
+const ROLES_IN_PLANE_ORDER: readonly Role[] = ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king'];
+
+/** The planes after the history, each filled with a single value. */
+const OUR_QUEENSIDE_CASTLING_PLANE = 104;
+const OUR_KINGSIDE_CASTLING_PLANE = 105;
+const THEIR_QUEENSIDE_CASTLING_PLANE = 106;
+const THEIR_KINGSIDE_CASTLING_PLANE = 107;
+const BLACK_TO_MOVE_PLANE = 108;
+const FIFTY_MOVE_COUNTER_PLANE = 109;
+const ALL_ONES_PLANE = 111;
+
 /**
- * The 112 input planes for the position, flattened plane by plane. Each plane
- * holds one value per square.
+ * The 112 input planes for the position, flattened plane by plane, each plane
+ * holding one value per square from a1 to h8. This follows lc0's encoder for
+ * the classical 112-plane format, which is the one Maia-1 was trained on.
+ *
+ * Everything is seen from the side to move: "our" pieces are the mover's, and
+ * for Black the board is mirrored top to bottom so that Black's pieces start
+ * on the first ranks.
+ *
+ * The network reads the last eight positions, but the engine is handed a single
+ * position. lc0, given a position with no moves before it, fills every earlier
+ * slot with a copy of the current position, and so does this function. The
+ * exception is the starting position, where lc0 knows nothing came before and
+ * leaves the earlier slots empty.
  */
 export function encodeMaia1(game: Game): Float32Array {
-  return new Float32Array(PLANE_COUNT * SQUARES_PER_PLANE);
+  const planes = new Float32Array(PLANE_COUNT * SQUARES_PER_PLANE);
+  const position = game.position;
+  const us = position.turn;
+  const them = opposite(us);
+
+  let positionsToWrite = HISTORY_LENGTH;
+  if (isStartingPosition(game)) {
+    positionsToWrite = 1;
+  }
+  for (let slot = 0; slot < positionsToWrite; slot++) {
+    const firstPlane = slot * PLANES_PER_POSITION;
+    for (const [roleIndex, role] of ROLES_IN_PLANE_ORDER.entries()) {
+      for (const square of position.board.pieces(us, role)) {
+        setSquare(planes, firstPlane + roleIndex, fromMoversSide(square, us));
+      }
+      for (const square of position.board.pieces(them, role)) {
+        setSquare(planes, firstPlane + 6 + roleIndex, fromMoversSide(square, us));
+      }
+    }
+    // Plane 12 of each slot marks a repeated position. A copy made to fill
+    // the history is not a repetition, so it stays empty.
+
+    // A capturable en passant square says the opponent's last move was a
+    // two-square pawn push, so lc0 puts that pawn back on its starting square
+    // in the copies standing in for earlier positions.
+    const isEarlierPosition = slot > 0;
+    if (isEarlierPosition && position.epSquare !== undefined) {
+      const pushedPawnFile = squareFile(position.epSquare);
+      const theirPawnPlane = firstPlane + 6;
+      // From the mover's side, their pawn has just arrived on the fifth rank
+      // from the seventh.
+      clearSquare(planes, theirPawnPlane, 4 * 8 + pushedPawnFile);
+      setSquare(planes, theirPawnPlane, 6 * 8 + pushedPawnFile);
+    }
+  }
+
+  const castlingRooks = position.castles.castlingRights;
+  if (castlingRooks.has(cornerSquare(us, 'queenside'))) {
+    fillPlane(planes, OUR_QUEENSIDE_CASTLING_PLANE, 1);
+  }
+  if (castlingRooks.has(cornerSquare(us, 'kingside'))) {
+    fillPlane(planes, OUR_KINGSIDE_CASTLING_PLANE, 1);
+  }
+  if (castlingRooks.has(cornerSquare(them, 'queenside'))) {
+    fillPlane(planes, THEIR_QUEENSIDE_CASTLING_PLANE, 1);
+  }
+  if (castlingRooks.has(cornerSquare(them, 'kingside'))) {
+    fillPlane(planes, THEIR_KINGSIDE_CASTLING_PLANE, 1);
+  }
+  if (us === 'black') {
+    fillPlane(planes, BLACK_TO_MOVE_PLANE, 1);
+  }
+  // The raw count of half-moves since the last capture or pawn move, not
+  // scaled: Maia-1 was trained on it as is.
+  fillPlane(planes, FIFTY_MOVE_COUNTER_PLANE, position.halfmoves);
+  // An all-ones plane lets the network's convolutions find the board's edges.
+  fillPlane(planes, ALL_ONES_PLANE, 1);
+
+  return planes;
+}
+
+/**
+ * True for the standard starting position with White to move and every
+ * castling right, which lc0 treats as the start of a game with no history.
+ */
+function isStartingPosition(game: Game): boolean {
+  const start = Chess.default();
+  const position = game.position;
+  return (
+    position.turn === 'white' &&
+    position.board.occupied.equals(start.board.occupied) &&
+    position.board.white.equals(start.board.white) &&
+    ROLES_IN_PLANE_ORDER.every((role) => position.board[role].equals(start.board[role])) &&
+    position.castles.castlingRights.equals(start.castles.castlingRights) &&
+    position.epSquare === undefined
+  );
+}
+
+function opposite(colour: Color): Color {
+  if (colour === 'white') {
+    return 'black';
+  }
+  return 'white';
+}
+
+/** The square as the side to move sees it: unchanged for White, mirrored top to bottom for Black. */
+function fromMoversSide(square: Square, mover: Color): Square {
+  if (mover === 'black') {
+    return square ^ 56;
+  }
+  return square;
+}
+
+/** The corner a castling rook starts from. */
+function cornerSquare(colour: Color, side: 'queenside' | 'kingside'): Square {
+  let file = 'h';
+  if (side === 'queenside') {
+    file = 'a';
+  }
+  let rank = '1';
+  if (colour === 'black') {
+    rank = '8';
+  }
+  return parseSquare(`${file}${rank}` as SquareName);
+}
+
+function setSquare(planes: Float32Array, plane: number, square: Square): void {
+  planes[plane * SQUARES_PER_PLANE + square] = 1;
+}
+
+function clearSquare(planes: Float32Array, plane: number, square: Square): void {
+  planes[plane * SQUARES_PER_PLANE + square] = 0;
+}
+
+function fillPlane(planes: Float32Array, plane: number, value: number): void {
+  const start = plane * SQUARES_PER_PLANE;
+  planes.fill(value, start, start + SQUARES_PER_PLANE);
 }
 
 /**
