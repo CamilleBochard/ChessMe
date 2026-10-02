@@ -1,0 +1,30 @@
+[Event "rated rapid game"]
+[Site "https://lichess.org/abcd1234"]
+[Date "2026.01.10"]
+[Round "-"]
+[White "Opponent5"]
+[Black "Punkycam"]
+[Result "0-1"]
+[GameId "abcd1234"]
+[UTCDate "2026.01.10"]
+[UTCTime "09:00:00"]
+[Variant "Standard"]
+[TimeControl "600+0"]
+
+1. d4 d5 2. c4 e6 3. Nc3 Nf6 0-1
+
+[Event "rated rapid game"]
+[Site "https://lichess.org/long0001"]
+[Date "2026.02.01"]
+[Round "-"]
+[White "Punkycam"]
+[Black "Opponent6"]
+[Result "1/2-1/2"]
+[GameId "long0001"]
+[UTCDate "2026.02.01"]
+[UTCTime "09:00:00"]
+[Variant "Standard"]
+[TimeControl "600+0"]
+
+1. Nf3 Nf6 2. Ng1 Ng8 3. Nf3 Nf6 4. Ng1 Ng8 5. Nf3 Nf6 6. Ng1 Ng8 7. Nf3 Nf6 8. Ng1 Ng8 9. Nf3 Nf6 10. Ng1 Ng8 11. Nf3 Nf6 12. Ng1 Ng8 13. Nf3 Nf6 14. Ng1 Ng8 15. Nf3 Nf6 16. Ng1 Ng8 17. Nf3 Nf6 1/2-1/2
+
