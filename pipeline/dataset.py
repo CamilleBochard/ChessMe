@@ -1,5 +1,6 @@
 """Turns raw PGN exports into the positions the Bot is built and measured on."""
 
+import hashlib
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
@@ -31,7 +32,13 @@ class Dataset:
 
 
 def build_dataset(pgn_paths: list[Path], player: str, test_fraction: float) -> Dataset:
-    positions = []
+    """Filters the games in pgn_paths and splits the player's positions into train and test.
+
+    The split is made per game, so a game's positions all land on the same
+    side, and roughly test_fraction of the games are held back as the Test Set.
+    """
+    train = []
+    test = []
     for path in pgn_paths:
         with open(path, encoding="utf-8") as pgn_file:
             while (game := chess.pgn.read_game(pgn_file)) is not None:
@@ -39,8 +46,24 @@ def build_dataset(pgn_paths: list[Path], player: str, test_fraction: float) -> D
                     continue
                 if _played_on(game) < FIRST_DAY_KEPT:
                     continue
-                positions.extend(_player_positions(game, player))
-    return Dataset(train=positions, test=[])
+                positions = _player_positions(game, player)
+                if _is_held_back(_game_id(game), test_fraction):
+                    test.extend(positions)
+                else:
+                    train.extend(positions)
+    return Dataset(train=train, test=test)
+
+
+def _is_held_back(game_id: str, test_fraction: float) -> bool:
+    """Whether a game belongs to the Test Set.
+
+    The decision depends on the game's id alone, through a hash, so it is the
+    same on every run and a game keeps its side when new games are added.
+    """
+    digest = hashlib.sha256(game_id.encode("utf-8")).digest()
+    # The first 8 bytes read as a number spread evenly over [0, 1).
+    position_in_unit_interval = int.from_bytes(digest[:8], "big") / 2**64
+    return position_in_unit_interval < test_fraction
 
 
 def _is_ten_minutes(game: chess.pgn.Game) -> bool:

@@ -54,3 +54,45 @@
 
 1. f3 {[%clk 0:09:59]} 1... e5 {[%clk 0:09:58]} 2. g4 {[%clk 0:09:57]} 2... Qh4# {[%clk 0:09:56]} 0-1
 
+[Event "Live Chess"]
+[Site "Chess.com"]
+[Date "2025.08.20"]
+[Round "-"]
+[White "Opponent5"]
+[Black "punkycam"]
+[Result "1-0"]
+[UTCDate "2025.08.20"]
+[UTCTime "20:00:00"]
+[TimeControl "600"]
+[Link "https://www.chess.com/game/live/1005"]
+
+1. e4 {[%clk 0:09:59]} 1... c5 {[%clk 0:09:58]} 2. Nf3 {[%clk 0:09:57]} 2... d6 {[%clk 0:09:56]} 1-0
+
+[Event "Live Chess"]
+[Site "Chess.com"]
+[Date "2025.09.20"]
+[Round "-"]
+[White "Opponent6"]
+[Black "punkycam"]
+[Result "1-0"]
+[UTCDate "2025.09.20"]
+[UTCTime "20:00:00"]
+[TimeControl "600"]
+[Link "https://www.chess.com/game/live/1006"]
+
+1. e4 {[%clk 0:09:59]} 1... c5 {[%clk 0:09:58]} 2. Nf3 {[%clk 0:09:57]} 2... d6 {[%clk 0:09:56]} 1-0
+
+[Event "Live Chess"]
+[Site "Chess.com"]
+[Date "2025.10.20"]
+[Round "-"]
+[White "Opponent7"]
+[Black "punkycam"]
+[Result "1-0"]
+[UTCDate "2025.10.20"]
+[UTCTime "20:00:00"]
+[TimeControl "600"]
+[Link "https://www.chess.com/game/live/1007"]
+
+1. e4 {[%clk 0:09:59]} 1... c5 {[%clk 0:09:58]} 2. Nf3 {[%clk 0:09:57]} 2... d6 {[%clk 0:09:56]} 1-0
+

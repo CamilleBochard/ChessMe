@@ -62,3 +62,20 @@ def test_records_the_position_camille_faced_before_each_move():
 
     first = next(p for p in dataset.train if p.game_id == "lichess:abcd1234")
     assert first.fen == "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1"
+
+
+def test_holds_back_whole_games_so_none_straddles_the_split():
+    dataset = build_dataset([CHESSCOM, LICHESS], player="punkycam", test_fraction=0.5)
+
+    train_games = game_ids(dataset.train)
+    test_games = game_ids(dataset.test)
+    assert train_games and test_games
+    assert train_games.isdisjoint(test_games)
+    assert train_games | test_games == {
+        "chesscom:1001",
+        "chesscom:1005",
+        "chesscom:1006",
+        "chesscom:1007",
+        "lichess:abcd1234",
+        "lichess:long0001",
+    }
