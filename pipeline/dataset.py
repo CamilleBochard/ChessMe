@@ -20,6 +20,7 @@ class Position:
     source: str
     ply: int
     phase: str
+    fen: str
     move: str
 
 
@@ -78,6 +79,7 @@ def _player_positions(game: chess.pgn.Game, player: str) -> list[Position]:
                 source=source,
                 ply=ply,
                 phase=_phase_of(ply),
+                fen=board.fen(),
                 move=move.uci(),
             )
             positions.append(position)

@@ -55,3 +55,10 @@ def test_records_which_site_each_position_comes_from():
     sources = {p.game_id: p.source for p in dataset.train}
     assert sources["chesscom:1001"] == "chesscom"
     assert sources["lichess:abcd1234"] == "lichess"
+
+
+def test_records_the_position_camille_faced_before_each_move():
+    dataset = build_dataset([LICHESS], player="punkycam", test_fraction=0)
+
+    first = next(p for p in dataset.train if p.game_id == "lichess:abcd1234")
+    assert first.fen == "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1"
