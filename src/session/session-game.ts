@@ -23,8 +23,9 @@ export type ChooseMove = (fen: string) => Promise<MoveRequest>;
 export interface SessionGameOptions {
   chooseMove: ChooseMove;
   /**
-   * Called after every change to the game or the visitor's side, including a
-   * Bot reply that lands on its own time, so the page can redraw.
+   * Called after every change to the game, the visitor's side or the position
+   * on display, including a Bot reply that lands on its own time, so the page
+   * can redraw.
    */
   onChange?: () => void;
 }
@@ -57,18 +58,60 @@ export interface SessionGame {
   resign(): void;
   /** Goes back to the starting position, waiting for the visitor to pick a side. */
   startOver(): void;
+  /**
+   * The position on display. Usually the current one, but the visitor may
+   * step back through the game to look at earlier positions. Looking never
+   * changes the game itself.
+   */
+  viewedGame(): Game;
+  /** True when there is an earlier position to show. */
+  canViewBack(): boolean;
+  /** Shows the position one move earlier than the one on display. */
+  viewBack(): void;
+  /** True while an earlier position is on display. */
+  canViewForward(): boolean;
+  /** Shows the position one move later, stopping at the current position. */
+  viewForward(): void;
 }
 
 export function createSessionGame(options: SessionGameOptions): SessionGame {
   let game = newGame();
   let visitor: Colour | null = null;
+  // How many moves before the current position the visitor is looking.
+  // Zero means the current position.
+  let stepsBack = 0;
 
-  /** The only place the game is replaced, so the page never misses a change. */
+  /**
+   * The only place the game is replaced, so the page never misses a change.
+   * Any change brings the view back to the current position: a visitor looking
+   * at an earlier move should see the Bot's reply, a takeback or a new game.
+   */
   function setGame(next: Game): void {
     game = next;
+    stepsBack = 0;
+    notifyPage();
+  }
+
+  function notifyPage(): void {
     if (options.onChange !== undefined) {
       options.onChange();
     }
+  }
+
+  function viewedGame(): Game {
+    let viewed = game;
+    for (let step = 0; step < stepsBack; step++) {
+      viewed = viewed.previous!;
+    }
+    return viewed;
+  }
+
+  function canViewBack(): boolean {
+    return viewedGame().previous !== undefined;
+  }
+
+  function canViewForward(): boolean {
+    return stepsBack > 0;
   }
 
   /** True once the visitor has picked a side and until the game ends. */
@@ -135,11 +178,13 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
 
     async playVisitorMove(move: MoveRequest): Promise<boolean> {
       // A legal move is not enough. It must also be the visitor's own turn,
-      // or the visitor could move the Bot's pieces while it is choosing, and
-      // the game must still be going, since the position does not show a
-      // resignation.
+      // or the visitor could move the Bot's pieces while it is choosing; the
+      // game must still be going, since the position does not show a
+      // resignation; and the current position must be the one on display,
+      // or the move would land somewhere other than where it was made.
       const isVisitorsTurn = sideToMove(game) === visitor;
-      if (!isGameInProgress() || !isVisitorsTurn) {
+      const isViewingCurrent = stepsBack === 0;
+      if (!isGameInProgress() || !isVisitorsTurn || !isViewingCurrent) {
         return false;
       }
 
@@ -174,6 +219,28 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
         return;
       }
       setGame(resign(game, visitor));
+    },
+
+    viewedGame: viewedGame,
+
+    canViewBack: canViewBack,
+
+    viewBack(): void {
+      if (!canViewBack()) {
+        return;
+      }
+      stepsBack = stepsBack + 1;
+      notifyPage();
+    },
+
+    canViewForward: canViewForward,
+
+    viewForward(): void {
+      if (!canViewForward()) {
+        return;
+      }
+      stepsBack = stepsBack - 1;
+      notifyPage();
     },
 
     startOver(): void {

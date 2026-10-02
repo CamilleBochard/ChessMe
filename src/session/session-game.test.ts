@@ -3,7 +3,7 @@
 // reply comes and, when it matters, exactly when it arrives.
 
 import { describe, expect, it } from 'vitest';
-import { moveList, type MoveRequest } from '../game/game';
+import { currentFen, moveList, type MoveRequest } from '../game/game';
 import { gameStatus } from '../game/game-status';
 import { createSessionGame } from './session-game';
 
@@ -212,5 +212,91 @@ describe('createSessionGame', () => {
       [{ moveNumber: 1, white: 'e4', black: null }],
       [{ moveNumber: 1, white: 'e4', black: 'e5' }],
     ]);
+  });
+});
+
+describe('browsing earlier positions', () => {
+  it('shows the position before the last move without changing the game', async () => {
+    const session = createSessionGame({ chooseMove: scriptedBot([{ from: 'e7', to: 'e5' }]) });
+    await session.start('white');
+    await session.playVisitorMove({ from: 'e2', to: 'e4' });
+
+    session.viewBack();
+
+    expect(currentFen(session.viewedGame())).toBe('rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1');
+    expect(moveList(session.game())).toEqual([{ moveNumber: 1, white: 'e4', black: 'e5' }]);
+  });
+
+  it('steps forward again up to the current position and no further', async () => {
+    const session = createSessionGame({ chooseMove: scriptedBot([{ from: 'e7', to: 'e5' }]) });
+    await session.start('white');
+    await session.playVisitorMove({ from: 'e2', to: 'e4' });
+    session.viewBack();
+    session.viewBack();
+
+    session.viewForward();
+    session.viewForward();
+    session.viewForward();
+
+    expect(session.viewedGame()).toBe(session.game());
+  });
+
+  it('offers each arrow only when it leads somewhere', async () => {
+    const session = createSessionGame({ chooseMove: scriptedBot([{ from: 'e7', to: 'e5' }]) });
+    await session.start('white');
+    await session.playVisitorMove({ from: 'e2', to: 'e4' });
+
+    const atCurrent = [session.canViewBack(), session.canViewForward()];
+    session.viewBack();
+    const inBetween = [session.canViewBack(), session.canViewForward()];
+    session.viewBack();
+    const atStart = [session.canViewBack(), session.canViewForward()];
+
+    expect(atCurrent).toEqual([true, false]);
+    expect(inBetween).toEqual([true, true]);
+    expect(atStart).toEqual([false, true]);
+  });
+
+  it("returns to the current position when the Bot's reply lands", async () => {
+    const bot = slowBot();
+    const session = createSessionGame({ chooseMove: bot.chooseMove });
+    await session.start('white');
+
+    const visitorMove = session.playVisitorMove({ from: 'e2', to: 'e4' });
+    session.viewBack();
+    bot.reply({ from: 'e7', to: 'e5' });
+    await visitorMove;
+
+    expect(session.viewedGame()).toBe(session.game());
+  });
+
+  it('tells the page each time the position on display changes', async () => {
+    let changes = 0;
+    const session = createSessionGame({
+      chooseMove: scriptedBot([{ from: 'e7', to: 'e5' }]),
+      onChange: () => {
+        changes = changes + 1;
+      },
+    });
+    await session.start('white');
+    await session.playVisitorMove({ from: 'e2', to: 'e4' });
+    changes = 0;
+
+    session.viewBack();
+    session.viewForward();
+
+    expect(changes).toBe(2);
+  });
+
+  it('refuses a move while an earlier position is on display', async () => {
+    const session = createSessionGame({ chooseMove: scriptedBot([{ from: 'e7', to: 'e5' }]) });
+    await session.start('white');
+    await session.playVisitorMove({ from: 'e2', to: 'e4' });
+    session.viewBack();
+
+    const accepted = await session.playVisitorMove({ from: 'g1', to: 'f3' });
+
+    expect(accepted).toBe(false);
+    expect(moveList(session.game())).toEqual([{ moveNumber: 1, white: 'e4', black: 'e5' }]);
   });
 });
