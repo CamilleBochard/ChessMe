@@ -154,9 +154,14 @@ export function resign(game: Game, side: Colour): Game {
 /**
  * The game as it stood just before the given side's most recent move, which
  * also removes any reply played after it. Returns null when that side has not
- * moved yet, so there is nothing to take back.
+ * moved yet, or when the game was resigned: resigning is final, unlike a
+ * checkmate or draw that a misclick may have walked into.
  */
 export function takeBack(game: Game, side: Colour): Game | null {
+  if (game.resignedBy !== undefined) {
+    return null;
+  }
+
   let moment = game;
   while (moment.previous !== undefined) {
     const earlier = moment.previous;

@@ -13,6 +13,7 @@ import {
   moveList,
   newGame,
   playMove,
+  resign,
   sideToMove,
   takeBack,
   type Game,
@@ -332,6 +333,15 @@ describe('takeBack', () => {
 
     expect(takeBack(newGame(), 'white')).toBeNull();
     expect(takeBack(afterWhitesFirstMove, 'black')).toBeNull();
+  });
+
+  it('has nothing to take back once a side has resigned, since resigning is final', () => {
+    const afterOneMoveEach = playMoves([
+      { from: 'e2', to: 'e4' },
+      { from: 'e7', to: 'e5' },
+    ]);
+
+    expect(takeBack(resign(afterOneMoveEach, 'white'), 'white')).toBeNull();
   });
 
   it('can be repeated to go back several moves', () => {

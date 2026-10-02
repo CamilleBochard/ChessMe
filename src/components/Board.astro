@@ -188,8 +188,8 @@
       const askedAbout = game;
       const reply = await selectMove(currentFen(askedAbout));
 
-      // While the engine was choosing, the visitor may have resigned or
-      // started a new game. The reply answers a game that is gone.
+      // While the Move-Selection Engine was choosing, the visitor may have
+      // resigned or started a new game. The reply answers a game that is gone.
       if (game !== askedAbout) {
         return;
       }
@@ -245,10 +245,9 @@
       }
 
       // Taking back waits for the Bot's reply, so the reply is taken back with
-      // the move it answers. A resignation is final.
+      // the move it answers.
       const hasMoveToTakeBack = takeBack(game, playerColour) !== null;
-      const isResigned = status.kind === 'resignation';
-      takeBackButton.disabled = isBotThinking || isResigned || !hasMoveToTakeBack;
+      takeBackButton.disabled = isBotThinking || !hasMoveToTakeBack;
       resignButton.disabled = isOver;
 
       showMoveList(moveListElement, moveList(game));
