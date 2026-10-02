@@ -64,5 +64,19 @@ def _player_positions(game: chess.pgn.Game, player: str) -> list[Position]:
 
 
 def _game_id(game: chess.pgn.Game) -> str:
+    """Names a game uniquely across both sites, as "<source>:<site's own id>"."""
+    source = _source(game)
+    if source == "lichess":
+        return "lichess:" + game.headers["GameId"]
+    # Chess.com gives no id header; the game's URL ends with it.
     link = game.headers["Link"]
     return "chesscom:" + link.rsplit("/", 1)[-1]
+
+
+def _source(game: chess.pgn.Game) -> str:
+    site = game.headers["Site"]
+    if site == "Chess.com":
+        return "chesscom"
+    if "lichess.org" in site:
+        return "lichess"
+    raise ValueError(f"Game from an unknown site: {site!r}")

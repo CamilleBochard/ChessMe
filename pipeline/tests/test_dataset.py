@@ -4,6 +4,7 @@ from pipeline.dataset import build_dataset
 
 FIXTURES = Path(__file__).parent / "fixtures"
 CHESSCOM = FIXTURES / "chesscom.pgn"
+LICHESS = FIXTURES / "lichess.pgn"
 
 
 def moves_of(positions, game_id):
@@ -31,3 +32,10 @@ def test_leaves_out_games_played_before_june_2025():
     dataset = build_dataset([CHESSCOM], player="punkycam", test_fraction=0)
 
     assert "chesscom:1004" not in game_ids(dataset.train)
+
+
+def test_merges_lichess_games_with_chesscom_games():
+    dataset = build_dataset([CHESSCOM, LICHESS], player="punkycam", test_fraction=0)
+
+    assert moves_of(dataset.train, "chesscom:1001") == ["e2e4", "g1f3", "f1b5"]
+    assert moves_of(dataset.train, "lichess:abcd1234") == ["d7d5", "e7e6", "g8f6"]
