@@ -25,3 +25,9 @@ def test_leaves_out_games_that_are_not_ten_minutes():
 
     assert "chesscom:1002" not in game_ids(dataset.train)
     assert "chesscom:1003" not in game_ids(dataset.train)
+
+
+def test_leaves_out_games_played_before_june_2025():
+    dataset = build_dataset([CHESSCOM], player="punkycam", test_fraction=0)
+
+    assert "chesscom:1004" not in game_ids(dataset.train)
