@@ -8,6 +8,8 @@ dependencies = ["chess>=1.11"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8"]
+# Converting, verifying and measuring the candidate Base Models.
+models = ["brotli>=1.1"]
 
 [tool.setuptools]
 packages = ["pipeline"]
