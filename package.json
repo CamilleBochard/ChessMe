@@ -10,7 +10,8 @@
     "preview": "astro preview",
     "typecheck": "astro check && tsc -p tsconfig.engine.json",
     "test": "vitest run",
-    "check-models": "node --experimental-strip-types --no-warnings scripts/check-models.ts"
+    "check-models": "node --experimental-strip-types --no-warnings scripts/check-models.ts",
+    "move-matching": "tsx scripts/move-matching.ts"
   },
   "dependencies": {
     "@lichess-org/chessground": "^10.1.1",
@@ -20,6 +21,7 @@
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
     "onnxruntime-web": "^1.30.0",
+    "tsx": "^4.23.15",
     "typescript": "^5.9.3",
     "vitest": "^5.0.1"
   }
