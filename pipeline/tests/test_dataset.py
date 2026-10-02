@@ -108,3 +108,9 @@ def test_refuses_a_game_the_player_did_not_play(tmp_path):
 
     with pytest.raises(ValueError, match="chesscom:2001"):
         build_dataset([spectated], player="punkycam", test_fraction=0)
+
+
+def test_leaves_out_games_of_other_variants():
+    dataset = build_dataset([LICHESS], player="punkycam", test_fraction=0)
+
+    assert "lichess:c9600001" not in game_ids(dataset.train)

@@ -44,6 +44,8 @@ def build_dataset(pgn_paths: list[Path], player: str, test_fraction: float) -> D
     for path in pgn_paths:
         with open(path, encoding="utf-8") as pgn_file:
             while (game := chess.pgn.read_game(pgn_file)) is not None:
+                if not _is_standard_chess(game):
+                    continue
                 if not _is_ten_minutes(game):
                     continue
                 if _played_on(game) < FIRST_DAY_KEPT:
@@ -71,6 +73,12 @@ def _is_held_back(game_id: str, test_fraction: float) -> bool:
     # The first 8 bytes read as a number spread evenly over [0, 1).
     position_in_unit_interval = int.from_bytes(digest[:8], "big") / 2**64
     return position_in_unit_interval < test_fraction
+
+
+def _is_standard_chess(game: chess.pgn.Game) -> bool:
+    # Chess.com leaves the header out of standard games; Lichess writes "Standard".
+    variant = game.headers.get("Variant", "Standard")
+    return variant == "Standard"
 
 
 def _is_ten_minutes(game: chess.pgn.Game) -> bool:
