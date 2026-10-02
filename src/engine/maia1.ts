@@ -29,8 +29,30 @@ export function encodeMaia1(game: Game): Float32Array {
  * move the network has no entry for, which no legal move should be.
  */
 export function maia1PolicyIndex(game: Game, move: MoveRequest): number | undefined {
-  const name = move.from + move.to;
+  const name = networkMoveName(game, move);
   return POLICY_INDEX_BY_MOVE.get(name);
+}
+
+/**
+ * The move as the network names it. lc0 shows the network every position from
+ * the side to move, as if that side were White, so a Black move is named with
+ * its ranks mirrored: e7e5 is read as e2e4.
+ */
+function networkMoveName(game: Game, move: MoveRequest): string {
+  let from: string = move.from;
+  let to: string = move.to;
+  if (game.position.turn === 'black') {
+    from = mirrorRank(from);
+    to = mirrorRank(to);
+  }
+  return from + to;
+}
+
+/** The same file on the rank seen from the other side: e7 becomes e2. */
+function mirrorRank(square: string): string {
+  const file = square[0];
+  const rank = Number(square[1]);
+  return `${file}${9 - rank}`;
 }
 
 const FILES = 'abcdefgh';

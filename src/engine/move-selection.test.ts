@@ -99,6 +99,17 @@ describe('selectMove with a Base Model', () => {
 
     expect(move).toEqual({ from: 'e2', to: 'e4' });
   });
+
+  it('reads the Base Model\'s moves from Black\'s side of the board when Black is to move', async () => {
+    const baseModel = await loadBaseModel(await readFile(FIXED_PREFERENCES_MODEL));
+    // The network sees every position from the side to move, so for Black its
+    // e2e4 is the pawn on e7 advancing two squares.
+    const afterKingsPawn = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1';
+
+    const move = await selectMove(afterKingsPawn, { baseModel });
+
+    expect(move).toEqual({ from: 'e7', to: 'e5' });
+  });
 });
 
 describe('selectMove over many positions', () => {
