@@ -1,6 +1,8 @@
 import hashlib
 from pathlib import Path
 
+import pytest
+
 from pipeline.fetch_models import Candidate, fetch
 
 
@@ -19,3 +21,14 @@ def test_stores_a_download_whose_hash_matches(tmp_path):
     fetch([candidate], tmp_path / "weights")
 
     assert (tmp_path / "weights" / "maia-1300.pb.gz").read_bytes() == b"weights"
+
+
+def test_refuses_a_download_whose_hash_differs(tmp_path):
+    url, _ = published_file(tmp_path / "published", "maia-1300.pb.gz", b"tampered weights")
+    expected_sha256 = hashlib.sha256(b"weights").hexdigest()
+    candidate = Candidate(name="maia1-1300", url=url, sha256=expected_sha256, file_name="maia-1300.pb.gz")
+
+    with pytest.raises(ValueError, match="maia1-1300"):
+        fetch([candidate], tmp_path / "weights")
+
+    assert not (tmp_path / "weights" / "maia-1300.pb.gz").exists()
