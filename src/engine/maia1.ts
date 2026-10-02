@@ -4,6 +4,7 @@
 // into moves the game understands.
 // Free of anything DOM so that it runs unchanged under Node.
 
+import { parseSquare } from 'chessops/util';
 import type { Game, MoveRequest } from '../game/game';
 
 /** The tensor names lc0 gives a converted Maia-1 network. */
@@ -36,16 +37,39 @@ export function maia1PolicyIndex(game: Game, move: MoveRequest): number | undefi
 /**
  * The move as the network names it. lc0 shows the network every position from
  * the side to move, as if that side were White, so a Black move is named with
- * its ranks mirrored: e7e5 is read as e2e4.
+ * its ranks mirrored: e7e5 is read as e2e4. Castling is named as the king
+ * taking its own rook, e1h1 rather than e1g1.
  */
 function networkMoveName(game: Game, move: MoveRequest): string {
   let from: string = move.from;
   let to: string = move.to;
+  if (isCastling(game, move)) {
+    to = castlingRookSquare(move);
+  }
   if (game.position.turn === 'black') {
     from = mirrorRank(from);
     to = mirrorRank(to);
   }
   return from + to;
+}
+
+/** True when the move is a king stepping two squares sideways, which is castling. */
+function isCastling(game: Game, move: MoveRequest): boolean {
+  const movingRole = game.position.board.getRole(parseSquare(move.from));
+  if (movingRole !== 'king') {
+    return false;
+  }
+  const filesCrossed = Math.abs(move.from.charCodeAt(0) - move.to.charCodeAt(0));
+  return filesCrossed === 2;
+}
+
+/** The corner the castling rook starts from: h1 for a king landing on g1, a1 for c1. */
+function castlingRookSquare(move: MoveRequest): string {
+  const rank = move.to[1];
+  if (move.to[0] === 'g') {
+    return `h${rank}`;
+  }
+  return `a${rank}`;
 }
 
 /** The same file on the rank seen from the other side: e7 becomes e2. */

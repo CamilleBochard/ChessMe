@@ -110,6 +110,18 @@ describe('selectMove with a Base Model', () => {
 
     expect(move).toEqual({ from: 'e7', to: 'e5' });
   });
+
+  it('castles when the Base Model ranks the king taking its own rook highest', async () => {
+    const baseModel = await loadBaseModel(await readFile(FIXED_PREFERENCES_MODEL));
+    // The network names castling kingside e1h1. White's rook on a1 is shut in
+    // by its own pawn and no white pawn stands on a7, so castling is the first
+    // legal preference.
+    const whiteMayCastleKingside = 'r3k2r/pppqbppp/2np1n2/4p3/2B1P3/2NP1N2/PPP2PPP/R2QK2R w Kkq - 0 8';
+
+    const move = await selectMove(whiteMayCastleKingside, { baseModel });
+
+    expect(move).toEqual({ from: 'e1', to: 'g1' });
+  });
 });
 
 describe('selectMove over many positions', () => {
