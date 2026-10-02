@@ -1,10 +1,10 @@
 ---
 // A chessboard where the visitor plays one side and the Bot plays the other,
 // with the controls around a game: choosing a side, taking back, resigning,
-// starting over, and the list of moves so far. The rules live in src/game/
-// and the Bot's choice in src/engine/; this component only translates between
-// them, chessground (which draws the board and handles dragging and clicking)
-// and a few buttons.
+// starting over, and the list of moves so far. The rules live in src/game/,
+// the Bot's choice in src/engine/ and what the visitor may do when in
+// src/session/; this component only translates between them, chessground
+// (which draws the board and handles dragging and clicking) and a few buttons.
 ---
 
 <div class="board-frame" data-board-frame>
@@ -51,17 +51,14 @@
     isPromotion,
     legalDestinations,
     moveList,
-    newGame,
-    playMove,
-    resign,
     sideToMove,
-    takeBack,
     type MoveListRow,
     type MoveRequest,
     type PromotionPiece,
   } from '../game/game';
-  import { describeTurn, gameStatus } from '../game/game-status';
+  import { gameStatus } from '../game/game-status';
   import { selectMove } from '../engine/move-selection';
+  import { createSessionGame } from '../session/session-game';
 
   // Astro bundles this script once per page, however many times the component
   // is used, so it has to set up every board on the page rather than the first
@@ -72,8 +69,9 @@
   }
 
   /**
-   * Wires one board and its controls. The board opens on the starting position
-   * and waits for the visitor to pick a side; New game brings it back there.
+   * Wires one board and its controls to a Session Game. The board opens on the
+   * starting position and waits for the visitor to pick a side; New game
+   * brings it back there.
    */
   function setUpBoard(frame: HTMLElement): void {
     const boardElement = frame.querySelector<HTMLElement>('.board')!;
@@ -86,12 +84,15 @@
     const moveListElement = frame.querySelector<HTMLOListElement>('[data-move-list]')!;
     const promotionDialog = frame.querySelector<HTMLDialogElement>('[data-promotion]')!;
 
-    let game = newGame();
-    let playerColour: Colour = 'white';
-    let hasStarted = false;
+    const session = createSessionGame({
+      chooseMove: (fen) => selectMove(fen),
+      onChange: () => {
+        showGame();
+      },
+    });
 
     const board = Chessground(boardElement, {
-      orientation: playerColour,
+      orientation: 'white',
       coordinates: true,
       premovable: { enabled: false },
       movable: {
@@ -99,7 +100,7 @@
         showDests: true,
         events: {
           after: (from, to) => {
-            void onPlayerMove(from, to);
+            void onVisitorMove(from, to);
           },
         },
       },
@@ -109,45 +110,24 @@
     for (const button of frame.querySelectorAll<HTMLButtonElement>('[data-play-as]')) {
       button.addEventListener('click', () => {
         const colour = button.dataset.playAs as Colour;
-        startGame(colour);
+        board.set({ orientation: colour });
+        void session.start(colour);
       });
     }
 
     takeBackButton.addEventListener('click', () => {
-      const earlier = takeBack(game, playerColour);
-      if (earlier === null) {
-        return;
-      }
-      game = earlier;
-      showGame();
+      session.takeBack();
     });
 
     resignButton.addEventListener('click', () => {
-      game = resign(game, playerColour);
-      showGame();
+      session.resign();
     });
 
     newGameButton.addEventListener('click', () => {
-      // Back to the starting position and the choice of side. A Bot reply
-      // still being computed for the old game is dropped by playBotMove.
-      game = newGame();
-      hasStarted = false;
-      showGame();
+      session.startOver();
     });
 
-    function startGame(colour: Colour): void {
-      playerColour = colour;
-      game = newGame();
-      hasStarted = true;
-      board.set({ orientation: playerColour });
-      showGame();
-
-      if (sideToMove(game) !== playerColour) {
-        void playBotMove();
-      }
-    }
-
-    async function onPlayerMove(from: Key, to: Key): Promise<void> {
+    async function onVisitorMove(from: Key, to: Key): Promise<void> {
       // Chessground only lets a piece go to a square from legalDestinations,
       // which never contains its 'a0' placeholder, so both keys are real squares.
       const move: MoveRequest = {
@@ -155,73 +135,45 @@
         to: to as SquareName,
       };
 
-      if (isPromotion(game, move.from, move.to)) {
+      if (isPromotion(session.game(), move.from, move.to)) {
         const piece = await askPromotionPiece(promotionDialog);
         if (piece === null) {
-          // The player closed the dialog: take the pawn back to its square.
+          // The visitor closed the dialog: take the pawn back to its square.
           showGame();
           return;
         }
         move.promotion = piece;
       }
 
-      const next = playMove(game, move);
-      if (next === null) {
+      const accepted = await session.playVisitorMove(move);
+      if (!accepted) {
         // Refused: redraw the current game, which puts the piece back.
         showGame();
-        return;
       }
-
-      game = next;
-      // Redraw from the game even after a legal move: chessground moved only
-      // the piece that was dragged, so a pawn taken en passant or a promoted
-      // pawn would otherwise still show its old state.
-      showGame();
-
-      if (gameStatus(game).kind === 'ongoing') {
-        await playBotMove();
-      }
-    }
-
-    /** Asks the engine for the Bot's reply and plays it. */
-    async function playBotMove(): Promise<void> {
-      const askedAbout = game;
-      const reply = await selectMove(currentFen(askedAbout));
-
-      // While the Move-Selection Engine was choosing, the visitor may have
-      // resigned or started a new game. The reply answers a game that is gone.
-      if (game !== askedAbout) {
-        return;
-      }
-
-      const next = playMove(game, reply);
-      if (next === null) {
-        throw new Error(`The engine chose an illegal move: ${reply.from}-${reply.to} in ${currentFen(game)}`);
-      }
-
-      game = next;
-      showGame();
     }
 
     /**
      * Draws the game on the board, states whose turn it is or how it ended,
-     * and enables only the controls that make sense right now. Only the
-     * visitor's pieces can be moved, and only on the visitor's turn.
+     * and enables only the controls the session allows right now. Redrawing
+     * from the game after every move matters even for a legal one: chessground
+     * moved only the piece that was dragged, so a pawn taken en passant or a
+     * promoted pawn would otherwise still show its old state.
      */
     function showGame(): void {
-      const status = gameStatus(game);
-      const isOver = status.kind !== 'ongoing';
-      const isPlayersTurn = sideToMove(game) === playerColour;
-      const isBotThinking = hasStarted && !isOver && !isPlayersTurn;
+      const game = session.game();
+      const visitor = session.visitor();
+      const isOngoing = gameStatus(game).kind === 'ongoing';
+      const isVisitorsTurn = sideToMove(game) === visitor;
 
       let lastMove: Key[] | undefined = undefined;
       if (game.lastMove !== undefined) {
         lastMove = [game.lastMove.from, game.lastMove.to];
       }
 
+      // Only the visitor's pieces can be moved, and only on the visitor's turn.
       let movableColour: Colour | undefined = undefined;
-      if (hasStarted && !isOver && isPlayersTurn) {
-        movableColour = playerColour;
+      if (visitor !== null && isOngoing && isVisitorsTurn) {
+        movableColour = visitor;
       }
 
       board.set({
@@ -235,20 +187,12 @@
         },
       });
 
+      const hasStarted = visitor !== null;
       setupElement.hidden = hasStarted;
       controlsElement.hidden = !hasStarted;
-
-      if (hasStarted) {
-        statusElement.textContent = describeTurn(game, playerColour);
-      } else {
-        statusElement.textContent = 'Choose a side to start.';
-      }
-
-      // Taking back waits for the Bot's reply, so the reply is taken back with
-      // the move it answers.
-      const hasMoveToTakeBack = takeBack(game, playerColour) !== null;
-      takeBackButton.disabled = isBotThinking || !hasMoveToTakeBack;
-      resignButton.disabled = isOver;
+      statusElement.textContent = session.status();
+      takeBackButton.disabled = !session.canTakeBack();
+      resignButton.disabled = !session.canResign();
 
       showMoveList(moveListElement, moveList(game));
     }
