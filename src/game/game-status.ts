@@ -79,6 +79,29 @@ export function describeResult(status: GameStatus): string | null {
   }
 }
 
+/**
+ * The line the page shows under the board, as seen by the visitor playing the
+ * given side: whose turn it is while the game goes on, how it ended once over.
+ */
+export function describeTurn(game: Game, visitor: Colour): string {
+  const result = describeResult(gameStatus(game));
+  if (result !== null) {
+    return result;
+  }
+
+  const toMove = game.position.turn;
+
+  let sideName = 'White';
+  if (toMove === 'black') {
+    sideName = 'Black';
+  }
+
+  if (toMove === visitor) {
+    return `${sideName} to move: your turn.`;
+  }
+  return `${sideName} to move: the Bot is thinking…`;
+}
+
 function opponentOf(side: Colour): Colour {
   if (side === 'white') {
     return 'black';
