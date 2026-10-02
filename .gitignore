@@ -7,3 +7,11 @@ dist/
 .vscode/
 .DS_Store
 *.swp
+
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+
+# Derived data, rebuilt from data/raw by the pipeline
+data/dataset/
