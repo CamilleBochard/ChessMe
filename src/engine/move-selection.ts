@@ -5,9 +5,12 @@
 // Free of anything DOM so that it runs unchanged under Node.
 
 import { gameFromFen, legalMoves, type MoveRequest } from '../game/game';
+import type { BaseModel } from './base-model';
 
 /** What the engine depends on, supplied by the caller so tests can fix it. */
 export interface EngineOptions {
+  /** The network consulted for the move. */
+  baseModel?: BaseModel;
   /** Returns a number in [0, 1), like Math.random. */
   random?: () => number;
 }
@@ -26,6 +29,11 @@ export async function selectMove(fen: string, options: EngineOptions = {}): Prom
   if (candidates.length === 0) {
     // A finished game reaching the engine is a bug in the caller.
     throw new Error(`No legal move to choose in ${fen}`);
+  }
+
+  if (options.baseModel !== undefined) {
+    const policy = await options.baseModel.movePolicy(game);
+    return policy[0].move;
   }
 
   const index = Math.floor(random() * candidates.length);

@@ -2,11 +2,21 @@
 // move it returns. Positions are chosen so the expected move is the only legal
 // one, which keeps every assertion independent of how the engine chooses.
 
+import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 import { parseSquare } from 'chessops/util';
 import { currentFen, legalMoves, newGame, playMove, type Game, type MoveRequest } from '../game/game';
 import { gameStatus } from '../game/game-status';
+import { loadBaseModel } from './base-model';
 import { selectMove } from './move-selection';
+
+/**
+ * A stand-in Base Model written by pipeline/fixture_models.py. Whatever the
+ * position, it ranks the same moves highest, best first, named from the side
+ * to move's point of view: a1a8, a7a8 promoting to a rook, e1h1 (castling
+ * kingside, written as the king taking its rook) and e2e4.
+ */
+const FIXED_PREFERENCES_MODEL = new URL('./fixtures/maia1-fixed-preferences.onnx', import.meta.url);
 
 /**
  * A seeded random number generator (mulberry32), so a failure seen once can be
@@ -75,6 +85,19 @@ describe('selectMove', () => {
     expect(move.from).toBe('g7');
     expect(move.to).toBe('g8');
     expect(['queen', 'rook', 'bishop', 'knight']).toContain(move.promotion);
+  });
+});
+
+describe('selectMove with a Base Model', () => {
+  it('plays the legal move the Base Model ranks highest', async () => {
+    const baseModel = await loadBaseModel(await readFile(FIXED_PREFERENCES_MODEL));
+    // In the starting position a1a8, a7a8 and e1h1 are all impossible, so the
+    // model's first legal preference is e2e4.
+    const startingPosition = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+
+    const move = await selectMove(startingPosition, { baseModel });
+
+    expect(move).toEqual({ from: 'e2', to: 'e4' });
   });
 });
 
