@@ -14,6 +14,7 @@ import {
   newGame,
   playMove,
   sideToMove,
+  takeBack,
   type Game,
   type MoveRequest,
 } from './game';
@@ -294,5 +295,64 @@ describe('moveList', () => {
 
   it('is empty before any move', () => {
     expect(moveList(newGame())).toEqual([]);
+  });
+});
+
+describe('takeBack', () => {
+  it("reverts the side's last move and the reply that followed it", () => {
+    const beforeWhitesMove = playMoves([
+      { from: 'e2', to: 'e4' },
+      { from: 'e7', to: 'e5' },
+    ]);
+    const afterBlacksReply = playMoves(
+      [
+        { from: 'g1', to: 'f3' },
+        { from: 'b8', to: 'c6' },
+      ],
+      beforeWhitesMove,
+    );
+
+    const restored = takeBack(afterBlacksReply, 'white');
+
+    expect(currentFen(restored!)).toBe(currentFen(beforeWhitesMove));
+    expect(moveList(restored!)).toEqual(moveList(beforeWhitesMove));
+  });
+
+  it('reverts only the side\'s move when no reply has been played yet', () => {
+    const start = newGame();
+    const afterWhitesMove = playMoves([{ from: 'e2', to: 'e4' }], start);
+
+    const restored = takeBack(afterWhitesMove, 'white');
+
+    expect(currentFen(restored!)).toBe(currentFen(start));
+  });
+
+  it('has nothing to take back when the side has not moved yet', () => {
+    const afterWhitesFirstMove = playMoves([{ from: 'e2', to: 'e4' }]);
+
+    expect(takeBack(newGame(), 'white')).toBeNull();
+    expect(takeBack(afterWhitesFirstMove, 'black')).toBeNull();
+  });
+
+  it('can be repeated to go back several moves', () => {
+    const start = newGame();
+    const afterTwoMovesEach = playMoves(
+      [
+        { from: 'd2', to: 'd4' },
+        { from: 'd7', to: 'd5' },
+        { from: 'c2', to: 'c4' },
+        { from: 'e7', to: 'e6' },
+      ],
+      start,
+    );
+
+    const once = takeBack(afterTwoMovesEach, 'black')!;
+    const twice = takeBack(once, 'black')!;
+
+    expect(moveList(once)).toEqual([
+      { moveNumber: 1, white: 'd4', black: 'd5' },
+      { moveNumber: 2, white: 'c4', black: null },
+    ]);
+    expect(moveList(twice)).toEqual([{ moveNumber: 1, white: 'd4', black: null }]);
   });
 });

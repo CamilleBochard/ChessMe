@@ -144,6 +144,24 @@ export function moveList(game: Game): MoveListRow[] {
 }
 
 /**
+ * The game as it stood just before the given side's most recent move, which
+ * also removes any reply played after it. Returns null when that side has not
+ * moved yet, so there is nothing to take back.
+ */
+export function takeBack(game: Game, side: Colour): Game | null {
+  let moment = game;
+  while (moment.previous !== undefined) {
+    const earlier = moment.previous;
+    const mover = earlier.position.turn;
+    if (mover === side) {
+      return earlier;
+    }
+    moment = earlier;
+  }
+  return null;
+}
+
+/**
  * Where each piece of the side to move may go, in the shape chessground wants
  * for its `movable.dests` option. A king that may castle lists both the square
  * it lands on and its rook's square, since chessground accepts either gesture.
