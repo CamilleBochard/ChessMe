@@ -1,0 +1,21 @@
+import hashlib
+from pathlib import Path
+
+from pipeline.fetch_models import Candidate, fetch
+
+
+def published_file(directory: Path, name: str, content: bytes) -> tuple[str, str]:
+    """Writes a file standing in for a published weight file; returns its URL and sha256."""
+    directory.mkdir(exist_ok=True)
+    path = directory / name
+    path.write_bytes(content)
+    return path.as_uri(), hashlib.sha256(content).hexdigest()
+
+
+def test_stores_a_download_whose_hash_matches(tmp_path):
+    url, sha256 = published_file(tmp_path / "published", "maia-1300.pb.gz", b"weights")
+    candidate = Candidate(name="maia1-1300", url=url, sha256=sha256, file_name="maia-1300.pb.gz")
+
+    fetch([candidate], tmp_path / "weights")
+
+    assert (tmp_path / "weights" / "maia-1300.pb.gz").read_bytes() == b"weights"
