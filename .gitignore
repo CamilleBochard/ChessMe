@@ -12,6 +12,7 @@ dist/
 .venv/
 __pycache__/
 .pytest_cache/
+*.egg-info/
 
 # Derived data, rebuilt from data/raw by the pipeline
 data/dataset/
