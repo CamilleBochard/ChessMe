@@ -39,3 +39,11 @@ def test_merges_lichess_games_with_chesscom_games():
 
     assert moves_of(dataset.train, "chesscom:1001") == ["e2e4", "g1f3", "f1b5"]
     assert moves_of(dataset.train, "lichess:abcd1234") == ["d7d5", "e7e6", "g8f6"]
+
+
+def test_records_the_phase_of_each_position_by_ply():
+    dataset = build_dataset([LICHESS], player="punkycam", test_fraction=0)
+
+    # Camille is White, so he moves on the odd plies 1 to 33.
+    phases = [p.phase for p in dataset.train if p.game_id == "lichess:long0001"]
+    assert phases == ["opening"] * 5 + ["middlegame"] * 10 + ["endgame"] * 2

@@ -17,6 +17,8 @@ FIRST_DAY_KEPT = date(2025, 6, 1)
 @dataclass(frozen=True)
 class Position:
     game_id: str
+    ply: int
+    phase: str
     move: str
 
 
@@ -43,6 +45,15 @@ def _is_ten_minutes(game: chess.pgn.Game) -> bool:
     return game.headers.get("TimeControl") in TEN_MINUTE_TIME_CONTROLS
 
 
+def _phase_of(ply: int) -> str:
+    """The Phase a move belongs to, by its ply: opening 1-10, middlegame 11-30, endgame 31+."""
+    if ply <= 10:
+        return "opening"
+    if ply <= 30:
+        return "middlegame"
+    return "endgame"
+
+
 def _played_on(game: chess.pgn.Game) -> date:
     # UTCDate rather than Date, so both sites agree on which day a game near
     # midnight belongs to.
@@ -57,8 +68,11 @@ def _player_positions(game: chess.pgn.Game, player: str) -> list[Position]:
     positions = []
     board = game.board()
     for move in game.mainline_moves():
+        # The ply of the move about to be played: White's first move is ply 1.
+        ply = board.ply() + 1
         if board.turn == player_colour:
-            positions.append(Position(game_id=game_id, move=move.uci()))
+            position = Position(game_id=game_id, ply=ply, phase=_phase_of(ply), move=move.uci())
+            positions.append(position)
         board.push(move)
     return positions
 
