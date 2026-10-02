@@ -5,5 +5,5 @@
     "types": [],
     "noEmit": true
   },
-  "include": ["src/engine/**/*.ts", "src/game/**/*.ts", "src/board/**/*.ts"]
+  "include": ["src/engine/**/*.ts", "src/game/**/*.ts", "src/board/**/*.ts", "src/session/**/*.ts"]
 }
