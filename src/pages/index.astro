@@ -70,8 +70,9 @@ import Board from '../components/Board.astro';
 
 <style>
   /* On a phone the intro sits above the board. From 960px the page becomes
-     three columns that fill the screen exactly: the intro on the left, the
-     board in the middle, the moves on the right. */
+     three columns that fill the screen exactly: the intro, set against the
+     board's left edge, then the board, then the moves on the far right. The
+     intro's column takes whatever width the board and the moves leave. */
   main {
     padding: 1.5rem 1rem;
   }
@@ -96,15 +97,22 @@ import Board from '../components/Board.astro';
   @media (min-width: 960px) {
     main {
       display: grid;
-      grid-template-columns: 17rem 1fr;
+      grid-template-columns: minmax(14rem, 1fr) auto 17rem;
       height: 100dvh;
       padding: 0;
     }
 
+    /* Top padding matches the board's, so the title lines up with the board's
+       top edge. */
     .intro {
       margin: 0;
       padding: 2rem 1.5rem;
-      border-right: 1px solid var(--divider);
+      text-align: right;
+    }
+
+    .intro p {
+      max-width: 16rem;
+      margin-left: auto;
     }
   }
 </style>

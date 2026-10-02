@@ -410,24 +410,24 @@
   }
 
   @media (min-width: 960px) {
+    /* The play area and the moves become columns of the page's own grid, so
+       the page can set the title right against the board's left edge. */
     .board-frame {
-      grid-template-columns: 1fr 17rem;
-      gap: 0;
-      height: 100%;
-      min-height: 0;
+      display: contents;
     }
 
     .play {
-      justify-content: center;
-      padding: 2rem;
+      padding: 2rem 2rem 2rem 0;
       min-height: 0;
     }
 
-    /* As large as the column allows while leaving room under the board for
-       the status line and one row of buttons, so the controls never fall
-       below the fold. */
+    /* As large as the screen height allows while leaving room under the board
+       for the status line and one row of buttons, so the controls never fall
+       below the fold. On a wide but short screen the width caps it instead,
+       keeping room for the title column (14rem), the moves column (17rem) and
+       the padding around the board. */
     .board {
-      width: min(100%, calc(100dvh - 9.5rem));
+      width: min(calc(100dvh - 9.5rem), calc(100vw - 17rem - 14rem - 2rem));
       max-width: none;
     }
 
