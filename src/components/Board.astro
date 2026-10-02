@@ -1,21 +1,31 @@
 ---
-// A chessboard where the visitor plays one side and the Bot plays the other.
-// The rules live in src/game/ and the Bot's choice in src/engine/; this
-// component only translates between them and chessground, which draws the
-// board and handles dragging and clicking.
-import type { Colour } from '../board/starting-position';
-
-interface Props {
-  /** The visitor's side, which also sits at the bottom of the board. */
-  orientation?: Colour;
-}
-
-const { orientation = 'white' } = Astro.props;
+// A chessboard where the visitor plays one side and the Bot plays the other,
+// with the controls around a game: choosing a side, taking back, resigning,
+// starting over, and the list of moves so far. The rules live in src/game/
+// and the Bot's choice in src/engine/; this component only translates between
+// them, chessground (which draws the board and handles dragging and clicking)
+// and a few buttons.
 ---
 
 <div class="board-frame" data-board-frame>
-  <div class="board" data-orientation={orientation}></div>
+  <div class="board"></div>
   <p class="status" data-status aria-live="polite"></p>
+
+  <div class="setup" data-setup>
+    <p>Play as</p>
+    <div class="buttons">
+      <button type="button" data-play-as="white">White</button>
+      <button type="button" data-play-as="black">Black</button>
+    </div>
+  </div>
+
+  <div class="buttons" data-controls hidden>
+    <button type="button" data-take-back>Take back</button>
+    <button type="button" data-resign>Resign</button>
+    <button type="button" data-new-game>New game</button>
+  </div>
+
+  <ol class="move-list" data-move-list aria-label="Moves played"></ol>
 
   <dialog class="promotion" data-promotion aria-label="Choose a promotion piece">
     <form method="dialog">
@@ -32,7 +42,6 @@ const { orientation = 'white' } = Astro.props;
 
 <script>
   import { Chessground } from '@lichess-org/chessground';
-  import type { Api } from '@lichess-org/chessground/api';
   import type { Key } from '@lichess-org/chessground/types';
   import type { SquareName } from 'chessops/types';
   import type { Colour } from '../board/starting-position';
@@ -41,14 +50,17 @@ const { orientation = 'white' } = Astro.props;
     isInCheck,
     isPromotion,
     legalDestinations,
+    moveList,
     newGame,
     playMove,
+    resign,
     sideToMove,
-    type Game,
+    takeBack,
+    type MoveListRow,
     type MoveRequest,
     type PromotionPiece,
   } from '../game/game';
-  import { describeResult, gameStatus } from '../game/game-status';
+  import { describeTurn, gameStatus } from '../game/game-status';
   import { selectMove } from '../engine/move-selection';
 
   // Astro bundles this script once per page, however many times the component
@@ -59,14 +71,24 @@ const { orientation = 'white' } = Astro.props;
     setUpBoard(frame);
   }
 
-  /** Starts a new game on one board, with the visitor on the side facing them. */
+  /**
+   * Wires one board and its controls. The board opens on the starting position
+   * and waits for the visitor to pick a side; New game brings it back there.
+   */
   function setUpBoard(frame: HTMLElement): void {
     const boardElement = frame.querySelector<HTMLElement>('.board')!;
     const statusElement = frame.querySelector<HTMLElement>('[data-status]')!;
+    const setupElement = frame.querySelector<HTMLElement>('[data-setup]')!;
+    const controlsElement = frame.querySelector<HTMLElement>('[data-controls]')!;
+    const takeBackButton = frame.querySelector<HTMLButtonElement>('[data-take-back]')!;
+    const resignButton = frame.querySelector<HTMLButtonElement>('[data-resign]')!;
+    const newGameButton = frame.querySelector<HTMLButtonElement>('[data-new-game]')!;
+    const moveListElement = frame.querySelector<HTMLOListElement>('[data-move-list]')!;
     const promotionDialog = frame.querySelector<HTMLDialogElement>('[data-promotion]')!;
-    const playerColour = (boardElement.dataset.orientation ?? 'white') as Colour;
 
     let game = newGame();
+    let playerColour: Colour = 'white';
+    let hasStarted = false;
 
     const board = Chessground(boardElement, {
       orientation: playerColour,
@@ -82,10 +104,47 @@ const { orientation = 'white' } = Astro.props;
         },
       },
     });
-    showGame(board, statusElement, game, playerColour);
+    showGame();
 
-    if (sideToMove(game) !== playerColour) {
-      void playBotMove();
+    for (const button of frame.querySelectorAll<HTMLButtonElement>('[data-play-as]')) {
+      button.addEventListener('click', () => {
+        const colour = button.dataset.playAs as Colour;
+        startGame(colour);
+      });
+    }
+
+    takeBackButton.addEventListener('click', () => {
+      const earlier = takeBack(game, playerColour);
+      if (earlier === null) {
+        return;
+      }
+      game = earlier;
+      showGame();
+    });
+
+    resignButton.addEventListener('click', () => {
+      game = resign(game, playerColour);
+      showGame();
+    });
+
+    newGameButton.addEventListener('click', () => {
+      // Back to the starting position and the choice of side. A Bot reply
+      // still being computed for the old game is dropped by playBotMove.
+      game = newGame();
+      hasStarted = false;
+      showGame();
+    });
+
+    function startGame(colour: Colour): void {
+      playerColour = colour;
+      game = newGame();
+      hasStarted = true;
+      board.set({ orientation: playerColour });
+      showGame();
+
+      if (sideToMove(game) !== playerColour) {
+        void playBotMove();
+      }
     }
 
     async function onPlayerMove(from: Key, to: Key): Promise<void> {
@@ -100,7 +159,7 @@ const { orientation = 'white' } = Astro.props;
         const piece = await askPromotionPiece(promotionDialog);
         if (piece === null) {
           // The player closed the dialog: take the pawn back to its square.
-          showGame(board, statusElement, game, playerColour);
+          showGame();
           return;
         }
         move.promotion = piece;
@@ -109,7 +168,7 @@ const { orientation = 'white' } = Astro.props;
       const next = playMove(game, move);
       if (next === null) {
         // Refused: redraw the current game, which puts the piece back.
-        showGame(board, statusElement, game, playerColour);
+        showGame();
         return;
       }
 
@@ -117,7 +176,7 @@ const { orientation = 'white' } = Astro.props;
       // Redraw from the game even after a legal move: chessground moved only
       // the piece that was dragged, so a pawn taken en passant or a promoted
       // pawn would otherwise still show its old state.
-      showGame(board, statusElement, game, playerColour);
+      showGame();
 
       if (gameStatus(game).kind === 'ongoing') {
         await playBotMove();
@@ -126,7 +185,14 @@ const { orientation = 'white' } = Astro.props;
 
     /** Asks the engine for the Bot's reply and plays it. */
     async function playBotMove(): Promise<void> {
-      const reply = await selectMove(currentFen(game));
+      const askedAbout = game;
+      const reply = await selectMove(currentFen(askedAbout));
+
+      // While the engine was choosing, the visitor may have resigned or
+      // started a new game. The reply answers a game that is gone.
+      if (game !== askedAbout) {
+        return;
+      }
 
       const next = playMove(game, reply);
       if (next === null) {
@@ -134,48 +200,82 @@ const { orientation = 'white' } = Astro.props;
       }
 
       game = next;
-      showGame(board, statusElement, game, playerColour);
+      showGame();
+    }
+
+    /**
+     * Draws the game on the board, states whose turn it is or how it ended,
+     * and enables only the controls that make sense right now. Only the
+     * visitor's pieces can be moved, and only on the visitor's turn.
+     */
+    function showGame(): void {
+      const status = gameStatus(game);
+      const isOver = status.kind !== 'ongoing';
+      const isPlayersTurn = sideToMove(game) === playerColour;
+      const isBotThinking = hasStarted && !isOver && !isPlayersTurn;
+
+      let lastMove: Key[] | undefined = undefined;
+      if (game.lastMove !== undefined) {
+        lastMove = [game.lastMove.from, game.lastMove.to];
+      }
+
+      let movableColour: Colour | undefined = undefined;
+      if (hasStarted && !isOver && isPlayersTurn) {
+        movableColour = playerColour;
+      }
+
+      board.set({
+        fen: currentFen(game),
+        turnColor: sideToMove(game),
+        lastMove: lastMove,
+        check: isInCheck(game),
+        movable: {
+          color: movableColour,
+          dests: legalDestinations(game),
+        },
+      });
+
+      setupElement.hidden = hasStarted;
+      controlsElement.hidden = !hasStarted;
+
+      if (hasStarted) {
+        statusElement.textContent = describeTurn(game, playerColour);
+      } else {
+        statusElement.textContent = 'Choose a side to start.';
+      }
+
+      // Taking back waits for the Bot's reply, so the reply is taken back with
+      // the move it answers. A resignation is final.
+      const hasMoveToTakeBack = takeBack(game, playerColour) !== null;
+      const isResigned = status.kind === 'resignation';
+      takeBackButton.disabled = isBotThinking || isResigned || !hasMoveToTakeBack;
+      resignButton.disabled = isOver;
+
+      showMoveList(moveListElement, moveList(game));
     }
   }
 
-  /**
-   * Draws the game on the board and states whose turn it is or how it ended.
-   * Only the visitor's pieces can be moved, and only on the visitor's turn.
-   */
-  function showGame(board: Api, statusElement: HTMLElement, game: Game, playerColour: Colour): void {
-    const status = gameStatus(game);
-    const result = describeResult(status);
-    const isOver = result !== null;
-    const isPlayersTurn = sideToMove(game) === playerColour;
-
-    let lastMove: Key[] | undefined = undefined;
-    if (game.lastMove !== undefined) {
-      lastMove = [game.lastMove.from, game.lastMove.to];
+  /** Writes the moves so far as numbered rows and keeps the latest one in view. */
+  function showMoveList(listElement: HTMLOListElement, rows: MoveListRow[]): void {
+    const items: HTMLLIElement[] = [];
+    for (const row of rows) {
+      const item = document.createElement('li');
+      item.append(
+        moveListCell('move-number', `${row.moveNumber}.`),
+        moveListCell('move', row.white ?? '…'),
+        moveListCell('move', row.black ?? ''),
+      );
+      items.push(item);
     }
+    listElement.replaceChildren(...items);
+    listElement.scrollTop = listElement.scrollHeight;
+  }
 
-    let movableColour: Colour | undefined = undefined;
-    if (!isOver && isPlayersTurn) {
-      movableColour = playerColour;
-    }
-
-    board.set({
-      fen: currentFen(game),
-      turnColor: sideToMove(game),
-      lastMove: lastMove,
-      check: isInCheck(game),
-      movable: {
-        color: movableColour,
-        dests: legalDestinations(game),
-      },
-    });
-
-    if (isOver) {
-      statusElement.textContent = result;
-    } else if (isPlayersTurn) {
-      statusElement.textContent = 'Your move.';
-    } else {
-      statusElement.textContent = 'The Bot is thinking…';
-    }
+  function moveListCell(className: string, text: string): HTMLSpanElement {
+    const cell = document.createElement('span');
+    cell.className = className;
+    cell.textContent = text;
+    return cell;
   }
 
   /** Opens the promotion dialog and resolves with the chosen piece, or null if it was dismissed. */
@@ -240,6 +340,65 @@ const { orientation = 'white' } = Astro.props;
     font-weight: 600;
   }
 
+  .setup p {
+    margin: 0 0 0.5rem;
+    text-align: center;
+  }
+
+  .buttons {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .buttons[hidden] {
+    display: none;
+  }
+
+  .buttons button,
+  .promotion-choices button {
+    font: inherit;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid currentColor;
+    border-radius: 0.375rem;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  .buttons button:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  /* Three columns, number then White then Black, like a scoresheet. The list
+     scrolls on its own so a long game does not push the page down. Its rows
+     are created by the script, which Astro's scoping cannot see, hence
+     :global for everything inside the list. */
+  .move-list {
+    list-style: none;
+    margin: 1rem 0 0;
+    padding: 0;
+    max-height: 12rem;
+    overflow-y: auto;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .move-list :global(li) {
+    display: grid;
+    grid-template-columns: 3rem 1fr 1fr;
+    padding: 0.15rem 0.5rem;
+  }
+
+  .move-list :global(li:nth-child(odd)) {
+    background: rgb(127 127 127 / 0.12);
+  }
+
+  .move-list :global(.move-number) {
+    opacity: 0.6;
+  }
+
   .promotion {
     border: none;
     border-radius: 0.5rem;
@@ -261,15 +420,5 @@ const { orientation = 'white' } = Astro.props;
     display: grid;
     grid-template-columns: repeat(2, minmax(6rem, 1fr));
     gap: 0.5rem;
-  }
-
-  .promotion-choices button {
-    font: inherit;
-    padding: 0.6rem 0.75rem;
-    border: 1px solid currentColor;
-    border-radius: 0.375rem;
-    background: transparent;
-    color: inherit;
-    cursor: pointer;
   }
 </style>
