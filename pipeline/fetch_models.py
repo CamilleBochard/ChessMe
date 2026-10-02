@@ -23,14 +23,22 @@ def fetch(candidates: list[Candidate], weights_dir: Path) -> None:
     """
     weights_dir.mkdir(parents=True, exist_ok=True)
     for candidate in candidates:
+        destination = weights_dir / candidate.file_name
+        if destination.exists() and _sha256(destination.read_bytes()) == candidate.sha256:
+            continue
+
         with urllib.request.urlopen(candidate.url) as response:
             content = response.read()
 
-        actual_sha256 = hashlib.sha256(content).hexdigest()
+        actual_sha256 = _sha256(content)
         if actual_sha256 != candidate.sha256:
             raise ValueError(
                 f"{candidate.name}: downloaded file has sha256 {actual_sha256}, "
                 f"the manifest expects {candidate.sha256}"
             )
 
-        (weights_dir / candidate.file_name).write_bytes(content)
+        destination.write_bytes(content)
+
+
+def _sha256(content: bytes) -> str:
+    return hashlib.sha256(content).hexdigest()

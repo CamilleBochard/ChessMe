@@ -32,3 +32,14 @@ def test_refuses_a_download_whose_hash_differs(tmp_path):
         fetch([candidate], tmp_path / "weights")
 
     assert not (tmp_path / "weights" / "maia-1300.pb.gz").exists()
+
+
+def test_keeps_a_file_already_fetched_without_downloading_it_again(tmp_path):
+    url, sha256 = published_file(tmp_path / "published", "maia-1300.pb.gz", b"weights")
+    candidate = Candidate(name="maia1-1300", url=url, sha256=sha256, file_name="maia-1300.pb.gz")
+    fetch([candidate], tmp_path / "weights")
+    (tmp_path / "published" / "maia-1300.pb.gz").unlink()
+
+    fetch([candidate], tmp_path / "weights")
+
+    assert (tmp_path / "weights" / "maia-1300.pb.gz").read_bytes() == b"weights"
