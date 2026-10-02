@@ -79,3 +79,11 @@ def test_holds_back_whole_games_so_none_straddles_the_split():
         "lichess:abcd1234",
         "lichess:long0001",
     }
+
+
+def test_makes_the_same_split_on_every_run_whatever_the_file_order():
+    first = build_dataset([CHESSCOM, LICHESS], player="punkycam", test_fraction=0.5)
+    second = build_dataset([LICHESS, CHESSCOM], player="punkycam", test_fraction=0.5)
+
+    assert game_ids(first.test) == game_ids(second.test)
+    assert game_ids(first.train) == game_ids(second.train)
