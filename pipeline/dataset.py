@@ -93,9 +93,8 @@ def _played_on(game: chess.pgn.Game) -> date:
 
 
 def _player_positions(game: chess.pgn.Game, player: str) -> list[Position]:
-    player_is_white = game.headers["White"].lower() == player.lower()
-    player_colour = chess.WHITE if player_is_white else chess.BLACK
     game_id = _game_id(game)
+    player_colour = _player_colour(game, player, game_id)
     source = _source(game)
 
     positions = []
@@ -115,6 +114,16 @@ def _player_positions(game: chess.pgn.Game, player: str) -> list[Position]:
             positions.append(position)
         board.push(move)
     return positions
+
+
+def _player_colour(game: chess.pgn.Game, player: str, game_id: str) -> chess.Color:
+    if game.headers["White"].lower() == player.lower():
+        return chess.WHITE
+    if game.headers["Black"].lower() == player.lower():
+        return chess.BLACK
+    # Recording the opponent's moves as the player's would corrupt every
+    # measurement silently, so a game that is not the player's stops the build.
+    raise ValueError(f"{player} played neither side of {game_id}")
 
 
 def _game_id(game: chess.pgn.Game) -> str:

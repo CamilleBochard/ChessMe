@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from pipeline.dataset import build_dataset
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -93,3 +95,16 @@ def test_counts_a_game_found_in_two_exports_once():
     dataset = build_dataset([CHESSCOM, CHESSCOM], player="punkycam", test_fraction=0)
 
     assert moves_of(dataset.train, "chesscom:1001") == ["e2e4", "g1f3", "f1b5"]
+
+
+def test_refuses_a_game_the_player_did_not_play(tmp_path):
+    spectated = tmp_path / "spectated.pgn"
+    spectated.write_text(
+        '[Site "Chess.com"]\n[White "Someone"]\n[Black "SomeoneElse"]\n'
+        '[UTCDate "2025.07.01"]\n[TimeControl "600"]\n'
+        '[Link "https://www.chess.com/game/live/2001"]\n\n1. e4 e5 *\n',
+        encoding="utf-8",
+    )
+
+    with pytest.raises(ValueError, match="chesscom:2001"):
+        build_dataset([spectated], player="punkycam", test_fraction=0)
