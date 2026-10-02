@@ -32,3 +32,14 @@ def test_writes_each_position_as_one_json_line(tmp_path):
         "fen": "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1",
         "move": "d7d5",
     } in train
+
+
+def test_leaves_the_raw_exports_untouched(tmp_path):
+    raw_dir = tmp_path / "raw"
+    copy_fixtures_to(raw_dir)
+    before = {path.name: path.read_bytes() for path in raw_dir.iterdir()}
+
+    build(raw_dir, tmp_path / "dataset", test_fraction=0.5)
+
+    after = {path.name: path.read_bytes() for path in raw_dir.iterdir()}
+    assert after == before
