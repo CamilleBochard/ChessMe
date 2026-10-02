@@ -12,3 +12,31 @@
 
 1. e4 {[%clk 0:09:59]} 1... e5 {[%clk 0:09:58]} 2. Nf3 {[%clk 0:09:57]} 2... Nc6 {[%clk 0:09:56]} 3. Bb5 {[%clk 0:09:55]} 3... a6 {[%clk 0:09:54]} 1-0
 
+[Event "Live Chess"]
+[Site "Chess.com"]
+[Date "2025.07.01"]
+[Round "-"]
+[White "Opponent2"]
+[Black "punkycam"]
+[Result "0-1"]
+[UTCDate "2025.07.01"]
+[UTCTime "11:00:00"]
+[TimeControl "180"]
+[Link "https://www.chess.com/game/live/1002"]
+
+1. d4 {[%clk 0:02:59]} 1... d5 {[%clk 0:02:58]} 0-1
+
+[Event "Let's Play!"]
+[Site "Chess.com"]
+[Date "2025.07.02"]
+[Round "-"]
+[White "punkycam"]
+[Black "Opponent3"]
+[Result "1-0"]
+[UTCDate "2025.07.02"]
+[UTCTime "12:00:00"]
+[TimeControl "1/259200"]
+[Link "https://www.chess.com/game/daily/1003"]
+
+1. c4 e5 1-0
+

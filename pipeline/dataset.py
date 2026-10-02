@@ -5,6 +5,9 @@ from pathlib import Path
 
 import chess.pgn
 
+# Chess.com writes a 10-minute game as "600", Lichess as "600+0".
+TEN_MINUTE_TIME_CONTROLS = {"600", "600+0"}
+
 
 @dataclass(frozen=True)
 class Position:
@@ -23,8 +26,14 @@ def build_dataset(pgn_paths: list[Path], player: str, test_fraction: float) -> D
     for path in pgn_paths:
         with open(path, encoding="utf-8") as pgn_file:
             while (game := chess.pgn.read_game(pgn_file)) is not None:
+                if not _is_ten_minutes(game):
+                    continue
                 positions.extend(_player_positions(game, player))
     return Dataset(train=positions, test=[])
+
+
+def _is_ten_minutes(game: chess.pgn.Game) -> bool:
+    return game.headers.get("TimeControl") in TEN_MINUTE_TIME_CONTROLS
 
 
 def _player_positions(game: chess.pgn.Game, player: str) -> list[Position]:
