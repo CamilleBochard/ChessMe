@@ -35,7 +35,7 @@ export async function loadBaseModel(onnxFile: Uint8Array): Promise<BaseModel> {
       const scores = outputs[MAIA1_POLICY_NAME].data as Float32Array;
 
       const candidates = legalMoves(game);
-      const legalScores = candidates.map((move) => scores[maia1PolicyIndex(game, move)!]);
+      const legalScores = candidates.map((move) => scores[maia1PolicyIndex(game, move)]);
       const probabilities = softmax(legalScores);
 
       const policy = candidates.map((move, index) => ({ move: move, probability: probabilities[index] }));

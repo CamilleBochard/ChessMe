@@ -161,6 +161,19 @@ describe('selectMove over many positions', () => {
     expect(promotionsChosen).toBeGreaterThan(0);
     expect(castlingsChosen).toBeGreaterThan(0);
   });
+
+  it('never returns an illegal move when it consults a Base Model', async () => {
+    const baseModel = await loadBaseModel(await readFile(FIXED_PREFERENCES_MODEL));
+    const positions = randomPositions(2000, seededRandom(2027));
+
+    for (const game of positions) {
+      const fen = currentFen(game);
+      const move = await selectMove(fen, { baseModel });
+
+      const accepted = playMove(game, move);
+      expect(accepted, `${move.from}-${move.to} in ${fen}`).not.toBeNull();
+    }
+  });
 });
 
 /** True when the move is a king stepping two squares sideways, which is castling. */

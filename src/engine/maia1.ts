@@ -26,12 +26,17 @@ export function encodeMaia1(game: Game): Float32Array {
 }
 
 /**
- * Where the network scores this move in its output. Returns undefined for a
- * move the network has no entry for, which no legal move should be.
+ * Where the network scores this move in its output. Every legal move has an
+ * entry, so a missing one means the move was named wrongly and is thrown
+ * rather than scored as nothing.
  */
-export function maia1PolicyIndex(game: Game, move: MoveRequest): number | undefined {
+export function maia1PolicyIndex(game: Game, move: MoveRequest): number {
   const name = networkMoveName(game, move);
-  return POLICY_INDEX_BY_MOVE.get(name);
+  const index = POLICY_INDEX_BY_MOVE.get(name);
+  if (index === undefined) {
+    throw new Error(`Maia-1 has no policy entry for ${name}`);
+  }
+  return index;
 }
 
 /**
