@@ -11,12 +11,19 @@ import { loadBaseModel } from './base-model';
 import { selectMove } from './move-selection';
 
 /**
- * A stand-in Base Model written by pipeline/fixture_models.py. Whatever the
- * position, it ranks the same moves highest, best first, named from the side
- * to move's point of view: a1a8, a7a8 promoting to a rook, e1h1 (castling
- * kingside, written as the king taking its rook) and e2e4.
+ * Stand-in Base Models written by pipeline/fixture_models.py, one shaped like
+ * each family the engine reads. Whatever the position, both rank the same moves
+ * highest, best first, seen from the side to move: a1a8, a7a8 promoting to a
+ * rook, castling kingside, and e2e4.
  */
-const FIXED_PREFERENCES_MODEL = new URL('./fixtures/maia1-fixed-preferences.onnx', import.meta.url);
+const FIXED_PREFERENCE_MODELS = [
+  { family: 'Maia-1', file: new URL('./fixtures/maia1-fixed-preferences.onnx', import.meta.url), options: {} },
+  {
+    family: 'Maia-3',
+    file: new URL('./fixtures/maia3-fixed-preferences.onnx', import.meta.url),
+    options: { rating: 1500 },
+  },
+];
 
 /**
  * A seeded random number generator (mulberry32), so a failure seen once can be
@@ -88,11 +95,11 @@ describe('selectMove', () => {
   });
 });
 
-describe('selectMove with a Base Model', () => {
+describe.each(FIXED_PREFERENCE_MODELS)('selectMove with a $family Base Model', ({ file, options }) => {
   it('plays the legal move the Base Model ranks highest', async () => {
-    const baseModel = await loadBaseModel(await readFile(FIXED_PREFERENCES_MODEL));
-    // In the starting position a1a8, a7a8 and e1h1 are all impossible, so the
-    // model's first legal preference is e2e4.
+    const baseModel = await loadBaseModel(await readFile(file), options);
+    // In the starting position a1a8, a7a8 and castling are all impossible, so
+    // the model's first legal preference is e2e4.
     const startingPosition = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
     const move = await selectMove(startingPosition, { baseModel });
@@ -101,7 +108,7 @@ describe('selectMove with a Base Model', () => {
   });
 
   it('reads the Base Model\'s moves from Black\'s side of the board when Black is to move', async () => {
-    const baseModel = await loadBaseModel(await readFile(FIXED_PREFERENCES_MODEL));
+    const baseModel = await loadBaseModel(await readFile(file), options);
     // The network sees every position from the side to move, so for Black its
     // e2e4 is the pawn on e7 advancing two squares.
     const afterKingsPawn = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1';
@@ -111,11 +118,10 @@ describe('selectMove with a Base Model', () => {
     expect(move).toEqual({ from: 'e7', to: 'e5' });
   });
 
-  it('castles when the Base Model ranks the king taking its own rook highest', async () => {
-    const baseModel = await loadBaseModel(await readFile(FIXED_PREFERENCES_MODEL));
-    // The network names castling kingside e1h1. White's rook on a1 is shut in
-    // by its own pawn and no white pawn stands on a7, so castling is the first
-    // legal preference.
+  it('castles when the Base Model ranks castling highest', async () => {
+    const baseModel = await loadBaseModel(await readFile(file), options);
+    // White's rook on a1 is shut in by its own pawn and no white pawn stands on
+    // a7, so castling is the first legal preference.
     const whiteMayCastleKingside = 'r3k2r/pppqbppp/2np1n2/4p3/2B1P3/2NP1N2/PPP2PPP/R2QK2R w Kkq - 0 8';
 
     const move = await selectMove(whiteMayCastleKingside, { baseModel });
@@ -124,7 +130,7 @@ describe('selectMove with a Base Model', () => {
   });
 
   it('promotes to the piece the Base Model ranks highest', async () => {
-    const baseModel = await loadBaseModel(await readFile(FIXED_PREFERENCES_MODEL));
+    const baseModel = await loadBaseModel(await readFile(file), options);
     // Nothing stands on a1, so the model's first legal preference is its
     // second: the pawn on a7 promoting to a rook.
     const pawnAboutToPromote = '8/P7/8/8/8/8/k6K/8 w - - 0 1';
@@ -161,9 +167,11 @@ describe('selectMove over many positions', () => {
     expect(promotionsChosen).toBeGreaterThan(0);
     expect(castlingsChosen).toBeGreaterThan(0);
   });
+});
 
-  it('never returns an illegal move when it consults a Base Model', async () => {
-    const baseModel = await loadBaseModel(await readFile(FIXED_PREFERENCES_MODEL));
+describe.each(FIXED_PREFERENCE_MODELS)('selectMove with a $family Base Model over many positions', ({ file, options }) => {
+  it('never returns an illegal move', async () => {
+    const baseModel = await loadBaseModel(await readFile(file), options);
     const positions = randomPositions(2000, seededRandom(2027));
 
     for (const game of positions) {
