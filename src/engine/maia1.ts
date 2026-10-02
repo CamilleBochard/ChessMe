@@ -50,8 +50,17 @@ function networkMoveName(game: Game, move: MoveRequest): string {
     from = mirrorRank(from);
     to = mirrorRank(to);
   }
-  return from + to;
+
+  // A promotion to a knight has no entry of its own in lc0's list: it is
+  // scored under the plain move's name.
+  let promotionSuffix = '';
+  if (move.promotion !== undefined && move.promotion !== 'knight') {
+    promotionSuffix = PROMOTION_SUFFIXES[move.promotion];
+  }
+  return from + to + promotionSuffix;
 }
+
+const PROMOTION_SUFFIXES = { queen: 'q', rook: 'r', bishop: 'b' };
 
 /** True when the move is a king stepping two squares sideways, which is castling. */
 function isCastling(game: Game, move: MoveRequest): boolean {

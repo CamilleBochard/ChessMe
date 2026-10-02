@@ -122,6 +122,17 @@ describe('selectMove with a Base Model', () => {
 
     expect(move).toEqual({ from: 'e1', to: 'g1' });
   });
+
+  it('promotes to the piece the Base Model ranks highest', async () => {
+    const baseModel = await loadBaseModel(await readFile(FIXED_PREFERENCES_MODEL));
+    // Nothing stands on a1, so the model's first legal preference is its
+    // second: the pawn on a7 promoting to a rook.
+    const pawnAboutToPromote = '8/P7/8/8/8/8/k6K/8 w - - 0 1';
+
+    const move = await selectMove(pawnAboutToPromote, { baseModel });
+
+    expect(move).toEqual({ from: 'a7', to: 'a8', promotion: 'rook' });
+  });
 });
 
 describe('selectMove over many positions', () => {
