@@ -87,3 +87,9 @@ def test_makes_the_same_split_on_every_run_whatever_the_file_order():
 
     assert game_ids(first.test) == game_ids(second.test)
     assert game_ids(first.train) == game_ids(second.train)
+
+
+def test_counts_a_game_found_in_two_exports_once():
+    dataset = build_dataset([CHESSCOM, CHESSCOM], player="punkycam", test_fraction=0)
+
+    assert moves_of(dataset.train, "chesscom:1001") == ["e2e4", "g1f3", "f1b5"]

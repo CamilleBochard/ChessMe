@@ -39,6 +39,8 @@ def build_dataset(pgn_paths: list[Path], player: str, test_fraction: float) -> D
     """
     train = []
     test = []
+    # New games arrive as further exports, which may overlap the earlier ones.
+    seen_game_ids = set()
     for path in pgn_paths:
         with open(path, encoding="utf-8") as pgn_file:
             while (game := chess.pgn.read_game(pgn_file)) is not None:
@@ -46,8 +48,13 @@ def build_dataset(pgn_paths: list[Path], player: str, test_fraction: float) -> D
                     continue
                 if _played_on(game) < FIRST_DAY_KEPT:
                     continue
+                game_id = _game_id(game)
+                if game_id in seen_game_ids:
+                    continue
+                seen_game_ids.add(game_id)
+
                 positions = _player_positions(game, player)
-                if _is_held_back(_game_id(game), test_fraction):
+                if _is_held_back(game_id, test_fraction):
                     test.extend(positions)
                 else:
                     train.extend(positions)
