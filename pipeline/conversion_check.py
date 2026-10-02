@@ -1,6 +1,9 @@
 """Compares a converted model's answer for a position with its reference's."""
 
 from dataclasses import dataclass
+from pathlib import Path
+
+POSITIONS_PATH = Path(__file__).resolve().parent / "verification_positions.txt"
 
 
 @dataclass(frozen=True)
@@ -32,3 +35,13 @@ def compare(reference: Answer, converted: Answer) -> Comparison:
         same_best_move=reference.best_move == converted.best_move,
         largest_policy_difference=largest_difference,
     )
+
+
+def read_positions(path: Path) -> list[str]:
+    fens = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line == "" or line.startswith("#"):
+            continue
+        fen = line.split(" ; ")[0]
+        fens.append(fen)
+    return fens

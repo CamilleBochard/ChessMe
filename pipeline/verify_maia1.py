@@ -15,11 +15,9 @@ import re
 import subprocess
 from pathlib import Path
 
-from pipeline.conversion_check import Answer, compare
+from pipeline.conversion_check import POSITIONS_PATH, Answer, compare, read_positions
 from pipeline.convert_maia1 import LC0, VERIFY_DIR
 from pipeline.fetch_models import MANIFEST_PATH, WEIGHTS_DIR, Candidate, read_manifest
-
-POSITIONS_PATH = Path(__file__).resolve().parent / "verification_positions.txt"
 
 # One line per legal move, e.g. "info string b1c3  (36  ) N: 0 (+ 0) (P: 22.47%) ...".
 # The summary line for the position itself is named "node" and is not a move.
@@ -86,16 +84,6 @@ class Lc0:
             lines.append(line)
             if line.startswith(prefix):
                 return lines
-
-
-def read_positions(path: Path) -> list[str]:
-    fens = []
-    for line in path.read_text(encoding="utf-8").splitlines():
-        if line == "" or line.startswith("#"):
-            continue
-        fen = line.split(" ; ")[0]
-        fens.append(fen)
-    return fens
 
 
 def verify(candidate: Candidate, fens: list[str]) -> None:
