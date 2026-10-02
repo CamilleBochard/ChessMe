@@ -1,9 +1,22 @@
-"""Downloads the weights of every candidate Base Model listed in the manifest."""
+"""Downloads the weights of every candidate Base Model listed in the manifest.
+
+Run from the repository root:
+
+    python -m pipeline.fetch_models
+
+The manifest, base_model_candidates.json, pins each file by URL and sha256.
+The weights land in models/weights, which is kept out of the repository.
+"""
 
 import hashlib
+import json
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
+
+REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
+MANIFEST_PATH = Path(__file__).resolve().parent / "base_model_candidates.json"
+WEIGHTS_DIR = REPOSITORY_ROOT / "models" / "weights"
 
 
 @dataclass(frozen=True)
@@ -42,3 +55,24 @@ def fetch(candidates: list[Candidate], weights_dir: Path) -> None:
 
 def _sha256(content: bytes) -> str:
     return hashlib.sha256(content).hexdigest()
+
+
+def read_manifest(path: Path) -> list[Candidate]:
+    entries = json.loads(path.read_text(encoding="utf-8"))
+    candidates = []
+    for entry in entries:
+        candidate = Candidate(
+            name=entry["name"],
+            url=entry["url"],
+            sha256=entry["sha256"],
+            file_name=entry["file_name"],
+        )
+        candidates.append(candidate)
+    return candidates
+
+
+if __name__ == "__main__":
+    manifest = read_manifest(MANIFEST_PATH)
+    fetch(manifest, WEIGHTS_DIR)
+    for candidate in manifest:
+        print(f"{candidate.name:>12}: {WEIGHTS_DIR / candidate.file_name}")
