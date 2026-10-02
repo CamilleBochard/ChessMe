@@ -9,18 +9,22 @@ CHESSCOM = FIXTURES / "chesscom.pgn"
 LICHESS = FIXTURES / "lichess.pgn"
 
 
+def positions_of(positions, game_id):
+    return [position for position in positions if position.game_id == game_id]
+
+
 def moves_of(positions, game_id):
-    return [position.move for position in positions if position.game_id == game_id]
+    return [position.move for position in positions_of(positions, game_id)]
+
+
+def game_ids(positions):
+    return {position.game_id for position in positions}
 
 
 def test_records_each_move_the_player_made_in_a_ten_minute_game():
     dataset = build_dataset([CHESSCOM], player="punkycam", test_fraction=0)
 
     assert moves_of(dataset.train, "chesscom:1001") == ["e2e4", "g1f3", "f1b5"]
-
-
-def game_ids(positions):
-    return {position.game_id for position in positions}
 
 
 def test_leaves_out_games_that_are_not_ten_minutes():
@@ -47,14 +51,15 @@ def test_records_the_phase_of_each_position_by_ply():
     dataset = build_dataset([LICHESS], player="punkycam", test_fraction=0)
 
     # Camille is White, so he moves on the odd plies 1 to 33.
-    phases = [p.phase for p in dataset.train if p.game_id == "lichess:long0001"]
+    game = positions_of(dataset.train, "lichess:long0001")
+    phases = [position.phase for position in game]
     assert phases == ["opening"] * 5 + ["middlegame"] * 10 + ["endgame"] * 2
 
 
 def test_records_which_site_each_position_comes_from():
     dataset = build_dataset([CHESSCOM, LICHESS], player="punkycam", test_fraction=0)
 
-    sources = {p.game_id: p.source for p in dataset.train}
+    sources = {position.game_id: position.source for position in dataset.train}
     assert sources["chesscom:1001"] == "chesscom"
     assert sources["lichess:abcd1234"] == "lichess"
 
@@ -62,7 +67,7 @@ def test_records_which_site_each_position_comes_from():
 def test_records_the_position_camille_faced_before_each_move():
     dataset = build_dataset([LICHESS], player="punkycam", test_fraction=0)
 
-    first = next(p for p in dataset.train if p.game_id == "lichess:abcd1234")
+    first = positions_of(dataset.train, "lichess:abcd1234")[0]
     assert first.fen == "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1"
 
 

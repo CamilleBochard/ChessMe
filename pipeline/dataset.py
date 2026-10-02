@@ -55,7 +55,7 @@ def build_dataset(pgn_paths: list[Path], player: str, test_fraction: float) -> D
                     continue
                 seen_game_ids.add(game_id)
 
-                positions = _player_positions(game, player)
+                positions = _player_positions(game, game_id, player)
                 if _is_held_back(game_id, test_fraction):
                     test.extend(positions)
                 else:
@@ -71,8 +71,8 @@ def _is_held_back(game_id: str, test_fraction: float) -> bool:
     """
     digest = hashlib.sha256(game_id.encode("utf-8")).digest()
     # The first 8 bytes read as a number spread evenly over [0, 1).
-    position_in_unit_interval = int.from_bytes(digest[:8], "big") / 2**64
-    return position_in_unit_interval < test_fraction
+    hash_as_fraction = int.from_bytes(digest[:8], "big") / 2**64
+    return hash_as_fraction < test_fraction
 
 
 def _is_standard_chess(game: chess.pgn.Game) -> bool:
@@ -100,8 +100,7 @@ def _played_on(game: chess.pgn.Game) -> date:
     return datetime.strptime(game.headers["UTCDate"], "%Y.%m.%d").date()
 
 
-def _player_positions(game: chess.pgn.Game, player: str) -> list[Position]:
-    game_id = _game_id(game)
+def _player_positions(game: chess.pgn.Game, game_id: str, player: str) -> list[Position]:
     player_colour = _player_colour(game, player, game_id)
     source = _source(game)
 

@@ -36,7 +36,9 @@ def build(raw_dir: Path, dataset_dir: Path, test_fraction: float) -> Dataset:
 def _write_json_lines(positions: list[Position], path: Path) -> None:
     with open(path, "w", encoding="utf-8") as output:
         for position in positions:
-            output.write(json.dumps(asdict(position)) + "\n")
+            line = json.dumps(asdict(position))
+            output.write(line)
+            output.write("\n")
 
 
 def _print_summary(dataset: Dataset) -> None:
