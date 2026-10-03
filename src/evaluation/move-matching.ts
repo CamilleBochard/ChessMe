@@ -8,6 +8,8 @@ import type { MoveRequest } from '../game/game';
 
 /** One of Camille's positions, as the Python pipeline writes it to the Test Set. */
 export interface TestPosition {
+  /** The game the position comes from, such as lichess:zlKruDGM. */
+  game: string;
   /** The position Camille faced, before his move. */
   fen: string;
   /** The ply of his move: White's first move is ply 1. */
@@ -25,6 +27,17 @@ export type Phase = 'opening' | 'middlegame' | 'endgame';
 export interface MoveMatchingScore {
   matched: number;
   positions: number;
+  /** How many games the positions come from. */
+  games: number;
+  /**
+   * The standard error of the share matched, as a fraction like the share
+   * itself. Positions from one game are not independent (one opening, one
+   * plan, one opponent), so each game counts as a single sample: the estimate
+   * is the cluster-robust one, with games as the clusters. Counting positions
+   * as independent would understate the uncertainty. NaN when the positions
+   * come from a single game, whose spread cannot be measured.
+   */
+  standardError: number;
 }
 
 export interface MoveMatchingReport {
@@ -56,39 +69,97 @@ export function readTestSet(jsonLines: string): TestPosition[] {
       continue;
     }
     const record = JSON.parse(line);
-    positions.push({ fen: record.fen, ply: record.ply, phase: record.phase, move: record.move });
+    positions.push({ game: record.game_id, fen: record.fen, ply: record.ply, phase: record.phase, move: record.move });
   }
   return positions;
 }
 
+/** Whether the engine played Camille's move in one position. */
+interface Outcome {
+  position: TestPosition;
+  isMatch: boolean;
+}
+
 /** Asks the engine for its move in every position and counts the ones that match Camille's. */
 export async function measureMoveMatching(testSet: TestPosition[], chooseMove: ChooseMove): Promise<MoveMatchingReport> {
-  const overall: MoveMatchingScore = { matched: 0, positions: 0 };
-  const afterPly10: MoveMatchingScore = { matched: 0, positions: 0 };
-  const byPhase: Record<Phase, MoveMatchingScore> = {
-    opening: { matched: 0, positions: 0 },
-    middlegame: { matched: 0, positions: 0 },
-    endgame: { matched: 0, positions: 0 },
-  };
-
+  const outcomes: Outcome[] = [];
   for (const position of testSet) {
     const engineMove = await chooseMove(position.fen);
     const isMatch = uciName(engineMove) === position.move;
-
-    addToScore(overall, isMatch);
-    if (position.ply > LAST_OPENING_PLY) {
-      addToScore(afterPly10, isMatch);
-    }
-    addToScore(byPhase[position.phase], isMatch);
+    outcomes.push({ position: position, isMatch: isMatch });
   }
-  return { overall: overall, afterPly10: afterPly10, byPhase: byPhase };
+
+  const afterOpening = outcomes.filter((outcome) => outcome.position.ply > LAST_OPENING_PLY);
+  return {
+    overall: score(outcomes),
+    afterPly10: score(afterOpening),
+    byPhase: {
+      opening: score(outcomes.filter((outcome) => outcome.position.phase === 'opening')),
+      middlegame: score(outcomes.filter((outcome) => outcome.position.phase === 'middlegame')),
+      endgame: score(outcomes.filter((outcome) => outcome.position.phase === 'endgame')),
+    },
+  };
 }
 
-function addToScore(score: MoveMatchingScore, isMatch: boolean): void {
-  score.positions = score.positions + 1;
-  if (isMatch) {
-    score.matched = score.matched + 1;
+/** Positions and matches within one game. */
+interface GameTally {
+  matched: number;
+  positions: number;
+}
+
+function score(outcomes: Outcome[]): MoveMatchingScore {
+  const tallies = new Map<string, GameTally>();
+  for (const outcome of outcomes) {
+    let tally = tallies.get(outcome.position.game);
+    if (tally === undefined) {
+      tally = { matched: 0, positions: 0 };
+      tallies.set(outcome.position.game, tally);
+    }
+    tally.positions = tally.positions + 1;
+    if (outcome.isMatch) {
+      tally.matched = tally.matched + 1;
+    }
   }
+
+  let matched = 0;
+  let positions = 0;
+  for (const tally of tallies.values()) {
+    matched = matched + tally.matched;
+    positions = positions + tally.positions;
+  }
+
+  return {
+    matched: matched,
+    positions: positions,
+    games: tallies.size,
+    standardError: clusteredStandardError([...tallies.values()], matched / positions),
+  };
+}
+
+/**
+ * The cluster-robust standard error of a share, with games as clusters. Each
+ * game contributes how far its matches stray from what the overall share
+ * predicts for its number of positions; the spread of those residuals across
+ * games, scaled by G / (G - 1) to correct for estimating the share from the
+ * same games, gives the variance.
+ */
+function clusteredStandardError(games: GameTally[], share: number): number {
+  const gameCount = games.length;
+  if (gameCount < 2) {
+    return Number.NaN;
+  }
+
+  let positions = 0;
+  let sumOfSquaredResiduals = 0;
+  for (const game of games) {
+    const residual = game.matched - share * game.positions;
+    sumOfSquaredResiduals = sumOfSquaredResiduals + residual * residual;
+    positions = positions + game.positions;
+  }
+
+  const smallSampleCorrection = gameCount / (gameCount - 1);
+  const variance = (smallSampleCorrection * sumOfSquaredResiduals) / (positions * positions);
+  return Math.sqrt(variance);
 }
 
 /** The move in UCI form, the form the Test Set records Camille's moves in. */

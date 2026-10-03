@@ -40,7 +40,7 @@ describe('measureMoveMatching', () => {
 
     const report = await measureMoveMatching(testSet, answerFromTable);
 
-    expect(report.overall).toEqual({ matched: 5, positions: 7 });
+    expect(report.overall).toMatchObject({ matched: 5, positions: 7 });
   });
 
   it('scores the positions after ply 10 on their own', async () => {
@@ -49,7 +49,7 @@ describe('measureMoveMatching', () => {
     const report = await measureMoveMatching(testSet, answerFromTable);
 
     // Plies 11, 30 and 81; the engine agrees at 30 and 81. Ply 10 is left out.
-    expect(report.afterPly10).toEqual({ matched: 2, positions: 3 });
+    expect(report.afterPly10).toMatchObject({ matched: 2, positions: 3 });
   });
 
   it('scores each Phase on its own', async () => {
@@ -59,8 +59,20 @@ describe('measureMoveMatching', () => {
 
     // Opening: plies 1, 3, 9 and 10, all but ply 3 agree. Middlegame: plies 11
     // and 30, only ply 30 agrees. Endgame: ply 81, which agrees.
-    expect(report.byPhase.opening).toEqual({ matched: 3, positions: 4 });
-    expect(report.byPhase.middlegame).toEqual({ matched: 1, positions: 2 });
-    expect(report.byPhase.endgame).toEqual({ matched: 1, positions: 1 });
+    expect(report.byPhase.opening).toMatchObject({ matched: 3, positions: 4 });
+    expect(report.byPhase.middlegame).toMatchObject({ matched: 1, positions: 2 });
+    expect(report.byPhase.endgame).toMatchObject({ matched: 1, positions: 1 });
+  });
+
+  it('estimates the standard error by treating each game as one sample', async () => {
+    const testSet = readTestSet(await readFile(FIXTURE_TEST_SET, 'utf-8'));
+
+    const report = await measureMoveMatching(testSet, answerFromTable);
+
+    // Worked by hand. The share is 5/7. Each game's matches less 5/7 of its
+    // positions: game 1 has 2 of 3, giving -1/7; game 2 has 2 of 3, -1/7; game
+    // 3 has 1 of 1, 2/7. Their squares sum to 6/49. With three games the
+    // variance is 3/2 * (6/49) / 7^2 = 9/2401, so the standard error is 3/49.
+    expect(report.overall.standardError).toBeCloseTo(3 / 49, 10);
   });
 });
