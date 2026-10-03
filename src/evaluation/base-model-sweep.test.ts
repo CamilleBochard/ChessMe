@@ -41,4 +41,17 @@ describe('chooseBaseModel', () => {
     expect(decision.chosen.name).toBe('maia1-1300');
     expect(decision.tied).toEqual([]);
   });
+
+  it('prefers the smaller download among candidates within half a point of the best', () => {
+    const results = [
+      candidate('maia1-1300', 'maia1', 486, 2.3),
+      candidate('maia3-5m at 1300', 'maia3', 490, 19.2),
+    ];
+
+    const decision = chooseBaseModel(results);
+
+    expect(decision.best.name).toBe('maia3-5m at 1300');
+    expect(decision.tied.map((result) => result.name)).toEqual(['maia1-1300']);
+    expect(decision.chosen.name).toBe('maia1-1300');
+  });
 });

@@ -28,10 +28,19 @@ export interface BaseModelDecision {
   chosen: CandidateResult;
 }
 
+/** Candidates closer than this to the best, in share of positions, are reported as tied. */
+const HALF_A_POINT = 0.005;
+/** Allows for rounding when a gap is exactly half a point. */
+const ROUNDING_ALLOWANCE = 1e-9;
+
 /**
  * Picks the candidate that matches most of Camille's moves after ply 10.
  * The opening is left out because the Opening Book answers there, and because
  * it is the figure published Maia results report.
+ *
+ * Candidates within half a point of the best are treated as equally good:
+ * a gap that small does not justify a larger download, so the one a visitor
+ * downloads fastest is chosen among them.
  */
 export function chooseBaseModel(results: CandidateResult[]): BaseModelDecision {
   let best = results[0];
@@ -40,7 +49,25 @@ export function chooseBaseModel(results: CandidateResult[]): BaseModelDecision {
       best = result;
     }
   }
-  return { best: best, tied: [], chosen: best };
+
+  const tied: CandidateResult[] = [];
+  for (const result of results) {
+    if (result === best) {
+      continue;
+    }
+    const gap = shareAfterPly10(best) - shareAfterPly10(result);
+    if (gap <= HALF_A_POINT + ROUNDING_ALLOWANCE) {
+      tied.push(result);
+    }
+  }
+
+  let chosen = best;
+  for (const result of tied) {
+    if (result.downloadBytes < chosen.downloadBytes) {
+      chosen = result;
+    }
+  }
+  return { best: best, tied: tied, chosen: chosen };
 }
 
 function shareAfterPly10(result: CandidateResult): number {
