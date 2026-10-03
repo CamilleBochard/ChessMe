@@ -92,7 +92,7 @@ Test Set: 7,092 positions from 230 games, 5,942 of them after ply 10.
 | maia1-1500 | 47.77% (3,388) | 47.31% (2,811) | 89 s |
 | maia3-5m at 1500 | 49.82% (3,533) | 48.96% (2,909) | 429 s |
 
-These are the first two measurements, not yet the Baseline: which Base Model
-the Baseline uses is decided by the sweep across every candidate, with error
-estimates and a breakdown by Phase. Until then, 1500 is a placeholder rating
-for both families.
+These are the first two measurements, not yet the Baseline, at a
+placeholder rating of 1500. The sweep across every candidate, with error
+estimates and a breakdown by Phase, chose the Base Model: see
+[Choosing the Base Model](base-model-sweep.md).
