@@ -54,4 +54,28 @@ describe('chooseBaseModel', () => {
     expect(decision.tied.map((result) => result.name)).toEqual(['maia1-1300']);
     expect(decision.chosen.name).toBe('maia1-1300');
   });
+
+  it('keeps the better score between tied members of one family, whose sizes differ only by chance', () => {
+    const results = [
+      candidate('maia1-1200', 'maia1', 487, 2.28),
+      candidate('maia1-1300', 'maia1', 490, 2.3),
+    ];
+
+    const decision = chooseBaseModel(results);
+
+    expect(decision.tied.map((result) => result.name)).toEqual(['maia1-1200']);
+    expect(decision.chosen.name).toBe('maia1-1300');
+  });
+
+  it('takes the best scorer of the smaller family when several of its members are tied', () => {
+    const results = [
+      candidate('maia1-1200', 'maia1', 486, 2.28),
+      candidate('maia1-1300', 'maia1', 488, 2.3),
+      candidate('maia3-5m at 1300', 'maia3', 490, 19.2),
+    ];
+
+    const decision = chooseBaseModel(results);
+
+    expect(decision.chosen.name).toBe('maia1-1300');
+  });
 });

@@ -61,9 +61,22 @@ export function chooseBaseModel(results: CandidateResult[]): BaseModelDecision {
     }
   }
 
-  let chosen = best;
-  for (const result of tied) {
-    if (result.downloadBytes < chosen.downloadBytes) {
+  // Size and licence belong to a family: members share one architecture and
+  // one licence, and their downloads differ only by how well each set of
+  // weights happens to compress. So the size picks a family, and the score
+  // picks among its members.
+  const contenders = [best, ...tied];
+  let smallest = best;
+  for (const result of contenders) {
+    if (result.downloadBytes < smallest.downloadBytes) {
+      smallest = result;
+    }
+  }
+
+  let chosen = smallest;
+  for (const result of contenders) {
+    const isSameFamily = result.family === smallest.family;
+    if (isSameFamily && shareAfterPly10(result) > shareAfterPly10(chosen)) {
       chosen = result;
     }
   }
