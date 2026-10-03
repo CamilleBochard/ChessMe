@@ -214,4 +214,5 @@ all-zero input. All ten files load and run:
 | maia3-5m | `tokens` float32 [batch, 64, 97], `self_elo` int64 [batch], `oppo_elo` int64 [batch] | `policy` [batch, 4352], `value` [batch, 3], `ponder` [batch] |
 
 This proves the files load and run, not that the WebAssembly build computes
-the same numbers; that is checked once the engine feeds them real positions.
+the same numbers. That was checked once the engine fed them real positions:
+see [Measuring Move-Matching](move-matching.md).
