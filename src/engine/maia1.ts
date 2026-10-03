@@ -22,6 +22,8 @@ export const MAIA1_INPUT_SHAPE = [PLANE_COUNT, 8, 8];
 /** Eight positions of history, the current one first, each 13 planes deep. */
 const HISTORY_LENGTH = 8;
 const PLANES_PER_POSITION = 13;
+/** Within a position's planes, the mover's six piece types come first, then the opponent's. */
+const THEIR_FIRST_PIECE_PLANE = 6;
 const ROLES_IN_PLANE_ORDER: readonly Role[] = ['pawn', 'knight', 'bishop', 'rook', 'queen', 'king'];
 
 /** The planes after the history, each filled with a single value. */
@@ -65,7 +67,7 @@ export function encodeMaia1(game: Game): Float32Array {
         setSquare(planes, firstPlane + roleIndex, fromMoversSide(square, us));
       }
       for (const square of position.board.pieces(them, role)) {
-        setSquare(planes, firstPlane + 6 + roleIndex, fromMoversSide(square, us));
+        setSquare(planes, firstPlane + THEIR_FIRST_PIECE_PLANE + roleIndex, fromMoversSide(square, us));
       }
     }
     // Plane 12 of each slot marks a repeated position. A copy made to fill
@@ -77,7 +79,7 @@ export function encodeMaia1(game: Game): Float32Array {
     const isEarlierPosition = slot > 0;
     if (isEarlierPosition && position.epSquare !== undefined) {
       const pushedPawnFile = squareFile(position.epSquare);
-      const theirPawnPlane = firstPlane + 6;
+      const theirPawnPlane = firstPlane + THEIR_FIRST_PIECE_PLANE;
       // From the mover's side, their pawn has just arrived on the fifth rank
       // from the seventh.
       clearSquare(planes, theirPawnPlane, 4 * 8 + pushedPawnFile);

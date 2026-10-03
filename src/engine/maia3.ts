@@ -5,7 +5,7 @@
 // reference implementation (maia3/dataset.py and maia3/utils.py).
 // Free of anything DOM so that it runs unchanged under Node.
 
-import type { Role } from 'chessops/types';
+import type { Color, Role, Square } from 'chessops/types';
 import type { Game, MoveRequest } from '../game/game';
 
 /** The tensor names given to the converted Maia-3 network. */
@@ -17,6 +17,8 @@ export const MAIA3_POLICY_NAME = 'policy';
 const SQUARE_COUNT = 64;
 const HISTORY_LENGTH = 8;
 const FEATURES_PER_POSITION = 12;
+/** Within a position's features, the mover's six piece types come first, then the opponent's. */
+const THEIR_FIRST_PIECE_FEATURE = 6;
 /** Twelve piece features for each of eight positions, then the clock feature. */
 const FEATURES_PER_SQUARE = HISTORY_LENGTH * FEATURES_PER_POSITION + 1;
 
@@ -44,21 +46,18 @@ export function encodeMaia3(game: Game): Float32Array {
   const tokens = new Float32Array(SQUARE_COUNT * FEATURES_PER_SQUARE);
   const position = game.position;
   const us = position.turn;
-  let them: typeof us = 'white';
-  if (us === 'white') {
-    them = 'black';
-  }
+  const them = opposite(us);
 
   for (let slot = 0; slot < HISTORY_LENGTH; slot++) {
     const firstFeature = slot * FEATURES_PER_POSITION;
     for (const [roleIndex, role] of ROLES_IN_FEATURE_ORDER.entries()) {
       for (const square of position.board.pieces(us, role)) {
-        const token = fromMoversSide(square, us === 'black');
+        const token = fromMoversSide(square, us);
         tokens[token * FEATURES_PER_SQUARE + firstFeature + roleIndex] = 1;
       }
       for (const square of position.board.pieces(them, role)) {
-        const token = fromMoversSide(square, us === 'black');
-        tokens[token * FEATURES_PER_SQUARE + firstFeature + 6 + roleIndex] = 1;
+        const token = fromMoversSide(square, us);
+        tokens[token * FEATURES_PER_SQUARE + firstFeature + THEIR_FIRST_PIECE_FEATURE + roleIndex] = 1;
       }
     }
   }
@@ -97,9 +96,16 @@ function networkMoveName(game: Game, move: MoveRequest): string {
 
 const PROMOTION_SUFFIXES = { queen: 'q', rook: 'r', bishop: 'b', knight: 'n' };
 
+function opposite(colour: Color): Color {
+  if (colour === 'white') {
+    return 'black';
+  }
+  return 'white';
+}
+
 /** The square index as the side to move sees it: unchanged for White, mirrored top to bottom for Black. */
-function fromMoversSide(square: number, mirror: boolean): number {
-  if (mirror) {
+function fromMoversSide(square: Square, mover: Color): Square {
+  if (mover === 'black') {
     return square ^ 56;
   }
   return square;
