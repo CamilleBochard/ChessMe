@@ -11,7 +11,8 @@
     "typecheck": "astro check && tsc -p tsconfig.engine.json",
     "test": "vitest run",
     "check-models": "node --experimental-strip-types --no-warnings scripts/check-models.ts",
-    "move-matching": "tsx scripts/move-matching.ts"
+    "move-matching": "tsx scripts/move-matching.ts",
+    "base-model-sweep": "tsx scripts/base-model-sweep.ts"
   },
   "dependencies": {
     "@lichess-org/chessground": "^10.1.1",
