@@ -51,4 +51,16 @@ describe('measureMoveMatching', () => {
     // Plies 11, 30 and 81; the engine agrees at 30 and 81. Ply 10 is left out.
     expect(report.afterPly10).toEqual({ matched: 2, positions: 3 });
   });
+
+  it('scores each Phase on its own', async () => {
+    const testSet = readTestSet(await readFile(FIXTURE_TEST_SET, 'utf-8'));
+
+    const report = await measureMoveMatching(testSet, answerFromTable);
+
+    // Opening: plies 1, 3, 9 and 10, all but ply 3 agree. Middlegame: plies 11
+    // and 30, only ply 30 agrees. Endgame: ply 81, which agrees.
+    expect(report.byPhase.opening).toEqual({ matched: 3, positions: 4 });
+    expect(report.byPhase.middlegame).toEqual({ matched: 1, positions: 2 });
+    expect(report.byPhase.endgame).toEqual({ matched: 1, positions: 1 });
+  });
 });

@@ -12,9 +12,14 @@ export interface TestPosition {
   fen: string;
   /** The ply of his move: White's first move is ply 1. */
   ply: number;
+  /** The Phase of his move, as the pipeline assigned it from the ply. */
+  phase: Phase;
   /** The move he played, in UCI form such as e2e4, e1g1 or e7e8q. */
   move: string;
 }
+
+/** Opening is plies 1-10, middlegame 11-30, endgame 31 on. */
+export type Phase = 'opening' | 'middlegame' | 'endgame';
 
 /** How many positions were scored and in how many the engine played Camille's move. */
 export interface MoveMatchingScore {
@@ -30,6 +35,11 @@ export interface MoveMatchingReport {
    * the score to compare with them.
    */
   afterPly10: MoveMatchingScore;
+  /**
+   * One score per Phase. A single figure hides how much easier the opening is
+   * to predict than what follows.
+   */
+  byPhase: Record<Phase, MoveMatchingScore>;
 }
 
 /** The last ply left out of the score compared with published Maia figures. */
@@ -46,7 +56,7 @@ export function readTestSet(jsonLines: string): TestPosition[] {
       continue;
     }
     const record = JSON.parse(line);
-    positions.push({ fen: record.fen, ply: record.ply, move: record.move });
+    positions.push({ fen: record.fen, ply: record.ply, phase: record.phase, move: record.move });
   }
   return positions;
 }
@@ -55,6 +65,11 @@ export function readTestSet(jsonLines: string): TestPosition[] {
 export async function measureMoveMatching(testSet: TestPosition[], chooseMove: ChooseMove): Promise<MoveMatchingReport> {
   const overall: MoveMatchingScore = { matched: 0, positions: 0 };
   const afterPly10: MoveMatchingScore = { matched: 0, positions: 0 };
+  const byPhase: Record<Phase, MoveMatchingScore> = {
+    opening: { matched: 0, positions: 0 },
+    middlegame: { matched: 0, positions: 0 },
+    endgame: { matched: 0, positions: 0 },
+  };
 
   for (const position of testSet) {
     const engineMove = await chooseMove(position.fen);
@@ -64,8 +79,9 @@ export async function measureMoveMatching(testSet: TestPosition[], chooseMove: C
     if (position.ply > LAST_OPENING_PLY) {
       addToScore(afterPly10, isMatch);
     }
+    addToScore(byPhase[position.phase], isMatch);
   }
-  return { overall: overall, afterPly10: afterPly10 };
+  return { overall: overall, afterPly10: afterPly10, byPhase: byPhase };
 }
 
 function addToScore(score: MoveMatchingScore, isMatch: boolean): void {
