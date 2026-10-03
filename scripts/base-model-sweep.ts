@@ -34,7 +34,7 @@ import {
 const CANDIDATES_FILE = 'pipeline/base_model_candidates.json';
 const ONNX_DIR = 'models/onnx';
 const DATASET_FILES = ['data/dataset/train.jsonl', 'data/dataset/test.jsonl'];
-const MAIA3_RATINGS = [1100, 1300, 1500, 1700, 1900];
+const MAIA3_RATINGS = [700, 900, 1100, 1300, 1500, 1700, 1900];
 /** Camille's Lichess rating, the scale Maia is trained on, when the sweep was planned. */
 const LICHESS_RATING = 1331;
 const MEGABYTE = 1_000_000;
