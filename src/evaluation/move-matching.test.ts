@@ -21,9 +21,9 @@ const ANSWERS: Record<string, MoveRequest> = {
   // Ply 9, Camille castled, e1g1: agrees.
   'r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/3P1N2/PPP2PPP/RNBQK2R w KQkq - 1 5': { from: 'e1', to: 'g1' },
   // Ply 10, Camille played e5d4: agrees.
-  'r1bqkbnr/pppp1ppp/2n5/4p3/3PP3/5N2/PPP2PPP/RNBQKB1R b KQkq - 0 3': { from: 'e5', to: 'd4' },
+  'r1bqkbnr/pppp1ppp/2n5/4p3/3PP3/5N2/PPP2PPP/RNBQKB1R b KQkq - 0 5': { from: 'e5', to: 'd4' },
   // Ply 11, Camille played d4c6: differs.
-  'r1bqkbnr/pppp1ppp/2n5/8/3NP3/8/PPP2PPP/RNBQKB1R w KQkq - 0 5': { from: 'f1', to: 'c4' },
+  'r1bqkbnr/pppp1ppp/2n5/8/3NP3/8/PPP2PPP/RNBQKB1R w KQkq - 0 6': { from: 'f1', to: 'c4' },
   // Ply 30, Camille played a8d8: agrees.
   'r4rk1/ppp2ppp/2n5/3q4/3P4/2P2N2/P4PPP/R2Q1RK1 b - - 0 15': { from: 'a8', to: 'd8' },
   // Ply 81, Camille promoted to a queen, e7e8q: agrees.
