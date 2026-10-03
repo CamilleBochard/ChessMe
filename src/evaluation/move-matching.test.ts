@@ -5,7 +5,7 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 import type { MoveRequest } from '../game/game';
-import { measureMoveMatching, readTestSet } from './move-matching';
+import { measureMoveMatching, readPositions } from './move-matching';
 
 const FIXTURE_TEST_SET = new URL('./fixtures/test-set.jsonl', import.meta.url);
 
@@ -36,7 +36,7 @@ async function answerFromTable(fen: string): Promise<MoveRequest> {
 
 describe('measureMoveMatching', () => {
   it('counts the positions where the engine plays the move Camille played', async () => {
-    const testSet = readTestSet(await readFile(FIXTURE_TEST_SET, 'utf-8'));
+    const testSet = readPositions(await readFile(FIXTURE_TEST_SET, 'utf-8'));
 
     const report = await measureMoveMatching(testSet, answerFromTable);
 
@@ -44,7 +44,7 @@ describe('measureMoveMatching', () => {
   });
 
   it('scores the positions after ply 10 on their own', async () => {
-    const testSet = readTestSet(await readFile(FIXTURE_TEST_SET, 'utf-8'));
+    const testSet = readPositions(await readFile(FIXTURE_TEST_SET, 'utf-8'));
 
     const report = await measureMoveMatching(testSet, answerFromTable);
 
@@ -53,7 +53,7 @@ describe('measureMoveMatching', () => {
   });
 
   it('scores each Phase on its own', async () => {
-    const testSet = readTestSet(await readFile(FIXTURE_TEST_SET, 'utf-8'));
+    const testSet = readPositions(await readFile(FIXTURE_TEST_SET, 'utf-8'));
 
     const report = await measureMoveMatching(testSet, answerFromTable);
 
@@ -65,7 +65,7 @@ describe('measureMoveMatching', () => {
   });
 
   it('estimates the standard error by treating each game as one sample', async () => {
-    const testSet = readTestSet(await readFile(FIXTURE_TEST_SET, 'utf-8'));
+    const testSet = readPositions(await readFile(FIXTURE_TEST_SET, 'utf-8'));
 
     const report = await measureMoveMatching(testSet, answerFromTable);
 

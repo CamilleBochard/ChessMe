@@ -6,7 +6,8 @@
 // Test Set: the candidates are pretrained on other players' games, so none of
 // Camille's games can have shaped them, and the larger sample narrows every
 // estimate. The tables go to standard output as Markdown; progress goes to
-// standard error.
+// standard error. --positions <file> replaces the dataset with other JSON
+// Lines files, for a quick run on a few positions.
 //
 // Candidates are read from pipeline/base_model_candidates.json and their
 // converted files from models/onnx. Maia-3 takes its rating as an input, so
@@ -19,8 +20,16 @@ import { parseArgs } from 'node:util';
 import { brotliCompressSync, constants as zlibConstants } from 'node:zlib';
 import { loadBaseModel } from '../src/engine/base-model';
 import { selectMove } from '../src/engine/move-selection';
-import { chooseBaseModel, type CandidateResult } from '../src/evaluation/base-model-sweep';
-import { measureMoveMatching, readTestSet, type MoveMatchingScore, type TestPosition } from '../src/evaluation/move-matching';
+import { chooseBaseModel, type BaseModelDecision, type CandidateResult } from '../src/evaluation/base-model-sweep';
+import {
+  measureMoveMatching,
+  PHASES,
+  readPositions,
+  share,
+  type MoveMatchingScore,
+  type Phase,
+  type PlayedPosition,
+} from '../src/evaluation/move-matching';
 
 const CANDIDATES_FILE = 'pipeline/base_model_candidates.json';
 const ONNX_DIR = 'models/onnx';
@@ -29,6 +38,12 @@ const MAIA3_RATINGS = [1100, 1300, 1500, 1700, 1900];
 /** Camille's Lichess rating, the scale Maia is trained on, when the sweep was planned. */
 const LICHESS_RATING = 1331;
 const MEGABYTE = 1_000_000;
+
+const PHASE_LABELS: Record<Phase, string> = {
+  opening: 'Opening (1-10)',
+  middlegame: 'Middlegame (11-30)',
+  endgame: 'Endgame (31+)',
+};
 
 interface CandidateEntry {
   name: string;
@@ -51,9 +66,9 @@ const datasetFiles = flags.positions ?? DATASET_FILES;
 const entries: CandidateEntry[] = JSON.parse(await readFile(CANDIDATES_FILE, 'utf-8'));
 const runs = candidateRuns(entries);
 
-let positions: TestPosition[] = [];
+let positions: PlayedPosition[] = [];
 for (const path of datasetFiles) {
-  const filePositions = readTestSet(await readFile(path, 'utf-8'));
+  const filePositions = readPositions(await readFile(path, 'utf-8'));
   positions = positions.concat(filePositions);
 }
 progress(`${positions.length} positions from ${datasetFiles.join(', ')}; ${runs.length} candidates`);
@@ -62,8 +77,11 @@ const downloadSizes = new Map<string, number>();
 const results: CandidateResult[] = [];
 for (const run of runs) {
   const onnxFile = await readFile(`${ONNX_DIR}/${run.entry.name}.onnx`);
-  if (!downloadSizes.has(run.entry.name)) {
-    downloadSizes.set(run.entry.name, brotliSize(onnxFile));
+  // Maia-3 runs at several ratings from one file, which is compressed once.
+  let downloadBytes = downloadSizes.get(run.entry.name);
+  if (downloadBytes === undefined) {
+    downloadBytes = brotliSize(onnxFile);
+    downloadSizes.set(run.entry.name, downloadBytes);
   }
 
   const startedAt = performance.now();
@@ -77,7 +95,7 @@ for (const run of runs) {
     family: run.entry.family,
     rating: run.rating,
     licence: run.entry.licence,
-    downloadBytes: downloadSizes.get(run.entry.name) as number,
+    downloadBytes: downloadBytes,
     report: report,
   });
 }
@@ -121,34 +139,32 @@ function progress(message: string): void {
 }
 
 function percent(score: MoveMatchingScore): string {
-  const share = (100 * score.matched) / score.positions;
-  return `${share.toFixed(2)}%`;
+  const percentMatched = 100 * share(score);
+  return `${percentMatched.toFixed(2)}%`;
 }
 
 /** The share matched with one standard error, both in percent. */
 function withError(score: MoveMatchingScore): string {
-  const share = (100 * score.matched) / score.positions;
+  const percentMatched = 100 * share(score);
   const error = 100 * score.standardError;
-  return `${share.toFixed(2)} ± ${error.toFixed(2)}`;
+  return `${percentMatched.toFixed(2)} ± ${error.toFixed(2)}`;
 }
 
 function resultsTable(candidateResults: CandidateResult[]): string {
   const lines = [
     'Move-Matching in percent, ± one standard error clustered by game.',
     '',
-    '| Candidate | Opening (1-10) | Middlegame (11-30) | Endgame (31+) | After ply 10 | All |',
+    `| Candidate | ${PHASES.map((phase) => PHASE_LABELS[phase]).join(' | ')} | After ply 10 | All |`,
     '|---|---|---|---|---|---|',
   ];
   for (const result of candidateResults) {
     const report = result.report;
-    const cells = [
-      result.name,
-      withError(report.byPhase.opening),
-      withError(report.byPhase.middlegame),
-      withError(report.byPhase.endgame),
-      withError(report.afterPly10),
-      withError(report.overall),
-    ];
+    const cells = [result.name];
+    for (const phase of PHASES) {
+      cells.push(withError(report.byPhase[phase]));
+    }
+    cells.push(withError(report.afterPly10));
+    cells.push(withError(report.overall));
     lines.push(`| ${cells.join(' | ')} |`);
   }
   return lines.join('\n');
@@ -157,13 +173,12 @@ function resultsTable(candidateResults: CandidateResult[]): string {
 /** The slices are the same for every candidate, so any one result describes them. */
 function slicesTable(result: CandidateResult): string {
   const report = result.report;
-  const slices: [string, MoveMatchingScore][] = [
-    ['Opening (1-10)', report.byPhase.opening],
-    ['Middlegame (11-30)', report.byPhase.middlegame],
-    ['Endgame (31+)', report.byPhase.endgame],
-    ['After ply 10', report.afterPly10],
-    ['All', report.overall],
-  ];
+  const slices: [string, MoveMatchingScore][] = [];
+  for (const phase of PHASES) {
+    slices.push([PHASE_LABELS[phase], report.byPhase[phase]]);
+  }
+  slices.push(['After ply 10', report.afterPly10]);
+  slices.push(['All', report.overall]);
   const lines = ['| Slice | Positions | Games |', '|---|---|---|'];
   for (const [name, score] of slices) {
     lines.push(`| ${name} | ${score.positions.toLocaleString('en')} | ${score.games.toLocaleString('en')} |`);
@@ -171,7 +186,7 @@ function slicesTable(result: CandidateResult): string {
   return lines.join('\n');
 }
 
-function decisionTable(decision: ReturnType<typeof chooseBaseModel>): string {
+function decisionTable(decision: BaseModelDecision): string {
   const best = decision.best;
   const chosen = decision.chosen;
 
@@ -192,6 +207,7 @@ function decisionTable(decision: ReturnType<typeof chooseBaseModel>): string {
     ['Maia-Equivalent Rating', `${best.rating}`],
     [`Distance from the Lichess rating (${LICHESS_RATING})`, signedDistance],
     ['Chosen as Base Model', `${chosen.name}, ${withError(chosen.report.afterPly10)}`],
+    ['Its rating', `${chosen.rating}`],
     ['Its download (brotli)', `${(chosen.downloadBytes / MEGABYTE).toFixed(2)} MB`],
     ['Its licence', chosen.licence],
   ];

@@ -3,13 +3,16 @@
 // between sites (see docs/adr/0001-base-model-chosen-by-measurement.md).
 // Free of anything DOM or Node; running the candidates is left to the caller.
 
-import type { MoveMatchingReport, MoveMatchingScore } from './move-matching';
+import { share, type MoveMatchingReport } from './move-matching';
 
 /** One candidate Base Model, as measured by the sweep. */
 export interface CandidateResult {
   /** Such as maia1-1300, or maia3-5m at 1500 for a model given its rating. */
   name: string;
-  /** The model family, such as maia1 or maia3. Members of a family share a licence and a size. */
+  /**
+   * The model family, such as maia1 or maia3. Members of a family share an
+   * architecture and a licence, so their downloads differ only slightly.
+   */
   family: string;
   /** The rating the candidate plays at, on the Lichess scale it was trained on. */
   rating: number;
@@ -43,6 +46,10 @@ const ROUNDING_ALLOWANCE = 1e-9;
  * downloads fastest is chosen among them.
  */
 export function chooseBaseModel(results: CandidateResult[]): BaseModelDecision {
+  if (results.length === 0) {
+    throw new Error('No candidate to choose from');
+  }
+
   let best = results[0];
   for (const result of results) {
     if (shareAfterPly10(result) > shareAfterPly10(best)) {
@@ -85,8 +92,4 @@ export function chooseBaseModel(results: CandidateResult[]): BaseModelDecision {
 
 function shareAfterPly10(result: CandidateResult): number {
   return share(result.report.afterPly10);
-}
-
-function share(score: MoveMatchingScore): number {
-  return score.matched / score.positions;
 }

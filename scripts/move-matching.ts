@@ -13,7 +13,7 @@ import { readFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
 import { loadBaseModel } from '../src/engine/base-model';
 import { selectMove } from '../src/engine/move-selection';
-import { measureMoveMatching, readTestSet, type MoveMatchingScore } from '../src/evaluation/move-matching';
+import { measureMoveMatching, readPositions, type MoveMatchingScore } from '../src/evaluation/move-matching';
 
 const DEFAULT_TEST_SET = 'data/dataset/test.jsonl';
 
@@ -38,7 +38,7 @@ if (flags.rating !== undefined) {
 }
 
 const baseModel = await loadBaseModel(await readFile(modelPath), { rating: rating });
-const testSet = readTestSet(await readFile(testSetPath, 'utf-8'));
+const testSet = readPositions(await readFile(testSetPath, 'utf-8'));
 
 const startedAt = performance.now();
 const report = await measureMoveMatching(testSet, (fen) => selectMove(fen, { baseModel }));

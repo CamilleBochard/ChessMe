@@ -1,4 +1,4 @@
-// The evaluation harness: replays Camille's Test Set positions through an
+// The evaluation harness: replays positions from Camille's games through an
 // engine and counts how often it plays the move he played. That share is
 // Move-Matching, the project's primary measure of Style.
 // Free of anything DOM or Node, so the same code could score the engine
@@ -6,8 +6,8 @@
 
 import type { MoveRequest } from '../game/game';
 
-/** One of Camille's positions, as the Python pipeline writes it to the Test Set. */
-export interface TestPosition {
+/** A position where Camille moved, as the Python pipeline writes it to the dataset. */
+export interface PlayedPosition {
   /** The game the position comes from, such as lichess:zlKruDGM. */
   game: string;
   /** The position Camille faced, before his move. */
@@ -22,6 +22,9 @@ export interface TestPosition {
 
 /** Opening is plies 1-10, middlegame 11-30, endgame 31 on. */
 export type Phase = 'opening' | 'middlegame' | 'endgame';
+
+/** The Phases in the order a game passes through them. */
+export const PHASES: readonly Phase[] = ['opening', 'middlegame', 'endgame'];
 
 /** How many positions were scored and in how many the engine played Camille's move. */
 export interface MoveMatchingScore {
@@ -61,9 +64,9 @@ const LAST_OPENING_PLY = 10;
 /** Whatever chooses a move for a position, usually the Move-Selection Engine. */
 export type ChooseMove = (fen: string) => Promise<MoveRequest>;
 
-/** Reads a Test Set in JSON Lines, one position per line. */
-export function readTestSet(jsonLines: string): TestPosition[] {
-  const positions: TestPosition[] = [];
+/** Reads positions in JSON Lines, one per line, as in the Test Set and the training file. */
+export function readPositions(jsonLines: string): PlayedPosition[] {
+  const positions: PlayedPosition[] = [];
   for (const line of jsonLines.split('\n')) {
     if (line.trim() === '') {
       continue;
@@ -74,31 +77,33 @@ export function readTestSet(jsonLines: string): TestPosition[] {
   return positions;
 }
 
+/** The fraction of positions in which the engine played Camille's move. */
+export function share(score: MoveMatchingScore): number {
+  return score.matched / score.positions;
+}
+
 /** Whether the engine played Camille's move in one position. */
 interface Outcome {
-  position: TestPosition;
+  position: PlayedPosition;
   isMatch: boolean;
 }
 
 /** Asks the engine for its move in every position and counts the ones that match Camille's. */
-export async function measureMoveMatching(testSet: TestPosition[], chooseMove: ChooseMove): Promise<MoveMatchingReport> {
+export async function measureMoveMatching(positions: PlayedPosition[], chooseMove: ChooseMove): Promise<MoveMatchingReport> {
   const outcomes: Outcome[] = [];
-  for (const position of testSet) {
+  for (const position of positions) {
     const engineMove = await chooseMove(position.fen);
     const isMatch = uciName(engineMove) === position.move;
     outcomes.push({ position: position, isMatch: isMatch });
   }
 
   const afterOpening = outcomes.filter((outcome) => outcome.position.ply > LAST_OPENING_PLY);
-  return {
-    overall: score(outcomes),
-    afterPly10: score(afterOpening),
-    byPhase: {
-      opening: score(outcomes.filter((outcome) => outcome.position.phase === 'opening')),
-      middlegame: score(outcomes.filter((outcome) => outcome.position.phase === 'middlegame')),
-      endgame: score(outcomes.filter((outcome) => outcome.position.phase === 'endgame')),
-    },
-  };
+  const byPhase = {} as Record<Phase, MoveMatchingScore>;
+  for (const phase of PHASES) {
+    const inPhase = outcomes.filter((outcome) => outcome.position.phase === phase);
+    byPhase[phase] = score(inPhase);
+  }
+  return { overall: score(outcomes), afterPly10: score(afterOpening), byPhase: byPhase };
 }
 
 /** Positions and matches within one game. */
@@ -128,11 +133,13 @@ function score(outcomes: Outcome[]): MoveMatchingScore {
     positions = positions + tally.positions;
   }
 
+  const gameTallies = [...tallies.values()];
+  const matchedShare = matched / positions;
   return {
     matched: matched,
     positions: positions,
-    games: tallies.size,
-    standardError: clusteredStandardError([...tallies.values()], matched / positions),
+    games: gameTallies.length,
+    standardError: clusteredStandardError(gameTallies, matchedShare),
   };
 }
 
@@ -162,7 +169,7 @@ function clusteredStandardError(games: GameTally[], share: number): number {
   return Math.sqrt(variance);
 }
 
-/** The move in UCI form, the form the Test Set records Camille's moves in. */
+/** The move in UCI form, the form the dataset records Camille's moves in. */
 function uciName(move: MoveRequest): string {
   let suffix = '';
   if (move.promotion !== undefined) {
