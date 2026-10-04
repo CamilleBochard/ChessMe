@@ -3,7 +3,10 @@
 // The rules live in src/game/ and the Bot's choice in src/engine/; this
 // component only translates between them and chessground, which draws the
 // board and handles dragging and clicking.
+import { readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import type { Colour } from '../board/starting-position';
+import { SERVED_MODEL_DIRECTORY, SERVED_MODEL_RATING } from '../engine/served-model';
 
 interface Props {
   /** The visitor's side, which also sits at the bottom of the board. */
@@ -11,11 +14,31 @@ interface Props {
 }
 
 const { orientation = 'white' } = Astro.props;
+
+// The model the page downloads, found where scripts/stage-model.ts put it. Its
+// size is read here, at build time, because the server sends it compressed and
+// the browser cannot tell from the response how large it is once unpacked.
+const modelFileName = readdirSync(SERVED_MODEL_DIRECTORY).find((name) => name.endsWith('.onnx'));
+if (modelFileName === undefined) {
+  throw new Error(`No Base Model in ${SERVED_MODEL_DIRECTORY}: run npm run stage-model`);
+}
+const modelBytes = statSync(join(SERVED_MODEL_DIRECTORY, modelFileName)).size;
+const modelPath = `/models/${modelFileName}`;
 ---
 
-<div class="board-frame" data-board-frame>
+<div
+  class="board-frame"
+  data-board-frame
+  data-model-path={modelPath}
+  data-model-bytes={modelBytes}
+  data-model-rating={SERVED_MODEL_RATING}
+>
   <div class="board" data-orientation={orientation}></div>
   <p class="status" data-status aria-live="polite"></p>
+  <div class="model-status" data-model-status hidden>
+    <progress data-model-progress></progress>
+    <p data-model-message></p>
+  </div>
 
   <dialog class="promotion" data-promotion aria-label="Choose a promotion piece">
     <form method="dialog">
@@ -49,7 +72,18 @@ const { orientation = 'white' } = Astro.props;
     type PromotionPiece,
   } from '../game/game';
   import { describeResult, gameStatus } from '../game/game-status';
-  import { selectMove } from '../engine/move-selection';
+  import { connectBot, type Bot } from '../engine/bot-client';
+  import type { BotStatus } from '../engine/bot-protocol';
+  import type { DownloadProgress } from '../engine/model-download';
+
+  /**
+   * Remembered once the model has reached the browser's cache, so that a
+   * returning visitor skips the entrance animation.
+   */
+  const MODEL_CACHED_KEY = 'chessme.model-cached';
+
+  /** How long the entrance animation runs, matching the CSS below. */
+  const ENTRANCE_MILLISECONDS = 1400;
 
   // Astro bundles this script once per page, however many times the component
   // is used, so it has to set up every board on the page rather than the first
@@ -59,14 +93,24 @@ const { orientation = 'white' } = Astro.props;
     setUpBoard(frame);
   }
 
-  /** Starts a new game on one board, with the visitor on the side facing them. */
+  /**
+   * Starts the Bot's worker, which begins downloading the model at once so the
+   * wait overlaps with the visitor arriving, and starts a new game on one
+   * board, with the visitor on the side facing them.
+   */
   function setUpBoard(frame: HTMLElement): void {
     const boardElement = frame.querySelector<HTMLElement>('.board')!;
     const statusElement = frame.querySelector<HTMLElement>('[data-status]')!;
     const promotionDialog = frame.querySelector<HTMLDialogElement>('[data-promotion]')!;
+    const modelStatus = frame.querySelector<HTMLElement>('[data-model-status]')!;
     const playerColour = (boardElement.dataset.orientation ?? 'white') as Colour;
 
     let game = newGame();
+    let botStatus: BotStatus = { kind: 'downloading', progress: { receivedBytes: 0, totalBytes: undefined } };
+
+    if (isFirstVisit()) {
+      playEntrance(frame);
+    }
 
     const board = Chessground(boardElement, {
       orientation: playerColour,
@@ -82,10 +126,23 @@ const { orientation = 'white' } = Astro.props;
         },
       },
     });
-    showGame(board, statusElement, game, playerColour);
+    redraw();
+
+    const bot = startBot(frame, (status) => {
+      botStatus = status;
+      if (status.kind === 'ready') {
+        rememberModelCached();
+      }
+      showModelStatus(modelStatus, status);
+      redraw();
+    });
 
     if (sideToMove(game) !== playerColour) {
       void playBotMove();
+    }
+
+    function redraw(): void {
+      showGame(board, statusElement, game, playerColour, botStatus);
     }
 
     async function onPlayerMove(from: Key, to: Key): Promise<void> {
@@ -100,7 +157,7 @@ const { orientation = 'white' } = Astro.props;
         const piece = await askPromotionPiece(promotionDialog);
         if (piece === null) {
           // The player closed the dialog: take the pawn back to its square.
-          showGame(board, statusElement, game, playerColour);
+          redraw();
           return;
         }
         move.promotion = piece;
@@ -109,7 +166,7 @@ const { orientation = 'white' } = Astro.props;
       const next = playMove(game, move);
       if (next === null) {
         // Refused: redraw the current game, which puts the piece back.
-        showGame(board, statusElement, game, playerColour);
+        redraw();
         return;
       }
 
@@ -117,16 +174,27 @@ const { orientation = 'white' } = Astro.props;
       // Redraw from the game even after a legal move: chessground moved only
       // the piece that was dragged, so a pawn taken en passant or a promoted
       // pawn would otherwise still show its old state.
-      showGame(board, statusElement, game, playerColour);
+      redraw();
 
       if (gameStatus(game).kind === 'ongoing') {
         await playBotMove();
       }
     }
 
-    /** Asks the engine for the Bot's reply and plays it. */
+    /**
+     * Asks the Bot for its reply and plays it. Before the model has arrived
+     * the request simply waits in the worker, so a visitor can make the first
+     * move during the download.
+     */
     async function playBotMove(): Promise<void> {
-      const reply = await selectMove(currentFen(game));
+      let reply: MoveRequest;
+      try {
+        reply = await bot.requestMove(currentFen(game));
+      } catch {
+        // The failure itself reaches the page as the Bot's status, which is
+        // what the visitor is shown.
+        return;
+      }
 
       const next = playMove(game, reply);
       if (next === null) {
@@ -134,19 +202,45 @@ const { orientation = 'white' } = Astro.props;
       }
 
       game = next;
-      showGame(board, statusElement, game, playerColour);
+      redraw();
     }
+  }
+
+  /** Starts the Bot in its own Web Worker, so its thinking never blocks the board. */
+  function startBot(frame: HTMLElement, onStatus: (status: BotStatus) => void): Bot {
+    const worker = new Worker(new URL('../engine/bot.worker.ts', import.meta.url), { type: 'module' });
+
+    // A worker that cannot even start, for instance on a browser without
+    // WebAssembly, reports nothing through the Bot's own messages.
+    worker.addEventListener('error', () => {
+      onStatus({ kind: 'failed', reason: 'the browser could not start it' });
+    });
+
+    // The worker resolves URLs against its own script, so it is given a full
+    // one rather than a path.
+    const modelUrl = new URL(frame.dataset.modelPath!, window.location.href);
+    return connectBot(
+      worker,
+      {
+        url: modelUrl.href,
+        fileBytes: Number(frame.dataset.modelBytes),
+        rating: Number(frame.dataset.modelRating),
+      },
+      { onStatus: onStatus },
+    );
   }
 
   /**
    * Draws the game on the board and states whose turn it is or how it ended.
-   * Only the visitor's pieces can be moved, and only on the visitor's turn.
+   * Only the visitor's pieces can be moved, only on the visitor's turn, and
+   * not at all once the Bot has failed to load, since the game cannot go on.
    */
-  function showGame(board: Api, statusElement: HTMLElement, game: Game, playerColour: Colour): void {
+  function showGame(board: Api, statusElement: HTMLElement, game: Game, playerColour: Colour, botStatus: BotStatus): void {
     const status = gameStatus(game);
     const result = describeResult(status);
     const isOver = result !== null;
     const isPlayersTurn = sideToMove(game) === playerColour;
+    const botFailed = botStatus.kind === 'failed';
 
     let lastMove: Key[] | undefined = undefined;
     if (game.lastMove !== undefined) {
@@ -154,7 +248,7 @@ const { orientation = 'white' } = Astro.props;
     }
 
     let movableColour: Colour | undefined = undefined;
-    if (!isOver && isPlayersTurn) {
+    if (!isOver && isPlayersTurn && !botFailed) {
       movableColour = playerColour;
     }
 
@@ -171,11 +265,87 @@ const { orientation = 'white' } = Astro.props;
 
     if (isOver) {
       statusElement.textContent = result;
+    } else if (botFailed) {
+      statusElement.textContent = 'The game cannot continue without the Bot.';
     } else if (isPlayersTurn) {
       statusElement.textContent = 'Your move.';
+    } else if (botStatus.kind === 'downloading') {
+      statusElement.textContent = 'The Bot will reply once its model has downloaded.';
     } else {
       statusElement.textContent = 'The Bot is thinking…';
     }
+  }
+
+  /** Shows the model's download, hides it once the Bot is ready, and explains a failure. */
+  function showModelStatus(container: HTMLElement, status: BotStatus): void {
+    const progressBar = container.querySelector<HTMLProgressElement>('[data-model-progress]')!;
+    const message = container.querySelector<HTMLElement>('[data-model-message]')!;
+
+    if (status.kind === 'ready') {
+      container.hidden = true;
+      return;
+    }
+
+    container.hidden = false;
+    if (status.kind === 'failed') {
+      progressBar.hidden = true;
+      container.classList.add('failed');
+      message.textContent = `The Bot could not be loaded: ${status.reason}. Reload the page to try again.`;
+      return;
+    }
+
+    const progress = status.progress;
+    if (progress.totalBytes === undefined) {
+      // Without a total the bar can only show that something is happening.
+      progressBar.removeAttribute('value');
+      message.textContent = `Downloading the Bot's model: ${megabytes(progress.receivedBytes)} MB`;
+    } else {
+      progressBar.max = progress.totalBytes;
+      progressBar.value = progress.receivedBytes;
+      message.textContent = `Downloading the Bot's model: ${describeShare(progress)}`;
+    }
+  }
+
+  function describeShare(progress: DownloadProgress): string {
+    return `${megabytes(progress.receivedBytes)} of ${megabytes(progress.totalBytes!)} MB`;
+  }
+
+  function megabytes(bytes: number): string {
+    return (bytes / 1_000_000).toFixed(1);
+  }
+
+  /**
+   * True until the model has once reached the browser's cache. Storage can be
+   * refused, in which case every visit counts as a first one: the animation
+   * plays again, which costs the visitor nothing.
+   */
+  function isFirstVisit(): boolean {
+    try {
+      return window.localStorage.getItem(MODEL_CACHED_KEY) === null;
+    } catch {
+      return true;
+    }
+  }
+
+  function rememberModelCached(): void {
+    try {
+      window.localStorage.setItem(MODEL_CACHED_KEY, 'yes');
+    } catch {
+      // Nothing to do: the next visit plays the entrance again.
+    }
+  }
+
+  /**
+   * Plays the entrance: the board appears, then the pieces settle onto their
+   * squares. The class is removed afterwards, because chessground creates new
+   * piece elements during play and they must not replay it. The board accepts
+   * moves throughout, so the animation never delays play.
+   */
+  function playEntrance(frame: HTMLElement): void {
+    frame.classList.add('entering');
+    window.setTimeout(() => {
+      frame.classList.remove('entering');
+    }, ENTRANCE_MILLISECONDS);
   }
 
   /** Opens the promotion dialog and resolves with the chosen piece, or null if it was dismissed. */
@@ -216,6 +386,40 @@ const { orientation = 'white' } = Astro.props;
   .board-frame .cg-wrap coords.ranks {
     top: 0;
   }
+
+  /* The first-visit entrance: the board fades in, then the white pieces and
+     the black ones drop onto their squares. Pieces are placed by chessground
+     through their transform, so the drop uses the separate translate property,
+     which adds to it. The board only fades: scaling it would skew the bounds
+     chessground measures once for dragging. Under 1.4 s in all, the time the
+     page script keeps the class on. */
+  @media (prefers-reduced-motion: no-preference) {
+    .board-frame.entering .cg-wrap {
+      animation: board-appear 450ms ease-out both;
+    }
+
+    .board-frame.entering piece {
+      animation: piece-settle 550ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+      animation-delay: 350ms;
+    }
+
+    .board-frame.entering piece.black {
+      animation-delay: 550ms;
+    }
+  }
+
+  @keyframes board-appear {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes piece-settle {
+    from {
+      opacity: 0;
+      translate: 0 -35%;
+    }
+  }
 </style>
 
 <style>
@@ -237,6 +441,25 @@ const { orientation = 'white' } = Astro.props;
     margin: 0.75rem 0 0;
     min-height: 1.5em;
     text-align: center;
+    font-weight: 600;
+  }
+
+  .model-status {
+    margin: 0.5rem auto 0;
+    max-width: 24rem;
+    text-align: center;
+  }
+
+  .model-status progress {
+    width: 100%;
+  }
+
+  .model-status p {
+    margin: 0.25rem 0 0;
+    font-size: 0.875rem;
+  }
+
+  .model-status.failed p {
     font-weight: 600;
   }
 
