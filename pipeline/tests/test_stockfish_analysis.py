@@ -1,9 +1,12 @@
 import threading
+from pathlib import Path
 
+import pytest
 from chess.engine import Cp, Mate
 
+from pipeline.blunder_profile import centipawn_loss
 from pipeline.dataset import Position
-from pipeline.stockfish_analysis import Analysis, analyse_positions
+from pipeline.stockfish_analysis import Analysis, StockfishAnalyser, analyse_positions
 
 START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 AFTER_E4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"
@@ -156,3 +159,29 @@ def test_several_analysers_share_the_positions_between_them(tmp_path):
     every_move_asked = analysers[0].asked + analysers[1].asked
     assert sorted(every_move_asked) == sorted((position.fen, position.move) for position in positions)
     assert len(analyses) == 4
+
+
+STOCKFISH_PATH = Path(__file__).resolve().parents[2] / "tools" / "stockfish" / "stockfish"
+needs_stockfish = pytest.mark.skipif(
+    not STOCKFISH_PATH.exists(), reason="Stockfish is not installed; run scripts/fetch_stockfish.sh"
+)
+
+# Black to move; the knight on c3 can take the undefended White queen on d5.
+BLACK_CAN_WIN_THE_QUEEN = "4k3/8/8/3Q4/8/2n5/8/4K3 b - - 0 1"
+
+
+@needs_stockfish
+def test_stockfish_scores_a_move_that_leaves_the_queen_untaken_as_losing_heavily_for_black():
+    with StockfishAnalyser(STOCKFISH_PATH, depth=10) as analyser:
+        analysis = analyser.analyse(BLACK_CAN_WIN_THE_QUEEN, "e8e7")
+
+    assert analysis.best_move == "c3d5"
+    assert centipawn_loss(best=analysis.best, played=analysis.played) > 500
+
+
+@needs_stockfish
+def test_stockfish_finds_no_loss_in_the_best_move():
+    with StockfishAnalyser(STOCKFISH_PATH, depth=10) as analyser:
+        analysis = analyser.analyse(BLACK_CAN_WIN_THE_QUEEN, "c3d5")
+
+    assert centipawn_loss(best=analysis.best, played=analysis.played) == 0

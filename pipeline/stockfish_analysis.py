@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
+import chess
+import chess.engine
 from chess.engine import Cp, Mate, Score
 
 from pipeline.dataset import Position
@@ -31,6 +33,49 @@ class Analyser(Protocol):
     depth: int
 
     def analyse(self, fen: str, move: str) -> Analysis: ...
+
+
+class StockfishAnalyser:
+    """Runs one Stockfish process at a fixed depth on a single thread.
+
+    A single thread and a cleared hash table before each position make an
+    analysis depend on the position and depth alone, so a re-run gives the
+    same scores.
+    """
+
+    def __init__(self, binary_path: Path, depth: int):
+        self.depth = depth
+        self._stockfish = chess.engine.SimpleEngine.popen_uci(str(binary_path))
+        self._stockfish.configure({"Threads": 1})
+        self.engine = self._stockfish.id["name"]
+
+    def analyse(self, fen: str, move: str) -> Analysis:
+        board = chess.Board(fen)
+        played_move = chess.Move.from_uci(move)
+        limit = chess.engine.Limit(depth=self.depth)
+        # A new game key makes python-chess send ucinewgame, which clears the
+        # hash; the two searches below share the key, so the second can reuse
+        # what the first found.
+        this_position = object()
+
+        best_search = self._stockfish.analyse(board, limit, game=this_position)
+        best_move = best_search["pv"][0]
+        best_score = best_search["score"].pov(board.turn)
+        if best_move == played_move:
+            return Analysis(best_move=best_move.uci(), best=best_score, played=best_score)
+
+        played_search = self._stockfish.analyse(board, limit, game=this_position, root_moves=[played_move])
+        played_score = played_search["score"].pov(board.turn)
+        return Analysis(best_move=best_move.uci(), best=best_score, played=played_score)
+
+    def close(self) -> None:
+        self._stockfish.quit()
+
+    def __enter__(self) -> "StockfishAnalyser":
+        return self
+
+    def __exit__(self, *exception_details) -> None:
+        self.close()
 
 
 def analyse_positions(
