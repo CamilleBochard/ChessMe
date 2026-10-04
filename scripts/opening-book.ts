@@ -50,9 +50,7 @@ if (flags.rating !== undefined) {
 }
 
 const baseModel = await loadBaseModel(await readFile(modelPath), { rating: rating });
-const bookText = await readFile(flags.book, 'utf-8');
-const openingBook = readOpeningBook(bookText);
-const minOccurrences = JSON.parse(bookText).min_occurrences as number;
+const openingBook = readOpeningBook(await readFile(flags.book, 'utf-8'));
 const testSet = readPositions(await readFile(testSetPath, 'utf-8'));
 
 const coverage = measureBookCoverage(testSet, openingBook);
@@ -74,7 +72,7 @@ if (rating !== undefined) {
   modelLine = `${modelLine} at ${rating}`;
 }
 console.log(modelLine);
-console.log(`Book: ${flags.book}, positions reached at least ${minOccurrences} times`);
+console.log(`Book: ${flags.book}, positions reached at least ${openingBook.minOccurrences} times`);
 console.log(`Test Set: ${testSetPath}, ${testSet.length} positions`);
 console.log('');
 console.log(coverageTable(coverage));
@@ -100,8 +98,11 @@ function coverageTable(coverageByPhase: Record<Phase, BookCoverage>): string {
   const rows = ['| Phase | Answered by the book | Positions | Share |', '|---|---|---|---|'];
   for (const phase of PHASES) {
     const tally = coverageByPhase[phase];
-    const percentAnswered = (100 * tally.answered) / tally.positions;
-    rows.push(`| ${PHASE_LABELS[phase]} | ${tally.answered} | ${tally.positions} | ${percentAnswered.toFixed(1)}% |`);
+    let percentAnswered = '-';
+    if (tally.positions > 0) {
+      percentAnswered = `${((100 * tally.answered) / tally.positions).toFixed(1)}%`;
+    }
+    rows.push(`| ${PHASE_LABELS[phase]} | ${tally.answered} | ${tally.positions} | ${percentAnswered} |`);
   }
   return rows.join('\n');
 }

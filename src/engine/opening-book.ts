@@ -7,6 +7,8 @@
 import { legalMoves, positionKey, uciName, type Game, type MoveRequest } from '../game/game';
 
 export interface OpeningBook {
+  /** How many times a position had to be reached to enter the book. */
+  minOccurrences: number;
   /** The move Camille played in this position, or undefined when the book does not hold it. */
   move(game: Game): MoveRequest | undefined;
 }
@@ -24,6 +26,7 @@ export function readOpeningBook(json: string): OpeningBook {
   const movesByPosition = new Map(Object.entries(file.positions));
 
   return {
+    minOccurrences: file.min_occurrences,
     move: (game) => {
       const bookMove = movesByPosition.get(positionKey(game));
       if (bookMove === undefined) {
