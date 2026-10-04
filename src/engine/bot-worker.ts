@@ -1,6 +1,6 @@
 // The Bot's side of the Web Worker: it fetches the Base Model, loads it, and
 // answers the page's requests for a move. Running here rather than on the page
-// keeps the board responsive while the model thinks.
+// keeps the board responsive while the Bot thinks.
 // Free of anything DOM, so the tests can run it under Node.
 
 import type { BaseModel } from './base-model';

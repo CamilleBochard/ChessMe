@@ -22,11 +22,18 @@ const MODEL = { url: 'https://chessme.example/models/model.onnx', fileBytes: und
 
 const openChannels: MessageChannel[] = [];
 
-/** A message channel whose ends are closed after the test, so Node can exit. */
-function openChannel(): MessageChannel {
+/**
+ * The two ends of a message channel, the worker's and the page's, closed after
+ * the test so Node can exit. Node's MessagePort has the shape the Bot needs,
+ * though its type is not declared as such.
+ */
+function openChannel(): { workerEnd: BotPort; pageEnd: BotPort } {
   const channel = new MessageChannel();
   openChannels.push(channel);
-  return channel;
+  return {
+    workerEnd: channel.port1 as unknown as BotPort,
+    pageEnd: channel.port2 as unknown as BotPort,
+  };
 }
 
 afterEach(() => {
@@ -40,10 +47,10 @@ afterEach(() => {
 describe('the Bot', () => {
   it("plays the Base Model's move once the model has downloaded", async () => {
     const channel = openChannel();
-    serveBot(channel.port1 as unknown as BotPort, {
+    serveBot(channel.workerEnd, {
       download: async () => new Uint8Array(await readFile(FIXED_PREFERENCE_MODEL)),
     });
-    const bot = connectBot(channel.port2 as unknown as BotPort, MODEL);
+    const bot = connectBot(channel.pageEnd, MODEL);
 
     const move = await bot.requestMove(STARTING_POSITION);
 
@@ -53,7 +60,7 @@ describe('the Bot', () => {
   it('reports the download as it progresses, then preparing the model, then that it is ready', async () => {
     const channel = openChannel();
     const modelBytes = new Uint8Array(await readFile(FIXED_PREFERENCE_MODEL));
-    serveBot(channel.port1 as unknown as BotPort, {
+    serveBot(channel.workerEnd, {
       download: async (_model, onProgress) => {
         onProgress({ receivedBytes: 100, totalBytes: 200 });
         onProgress({ receivedBytes: 200, totalBytes: 200 });
@@ -63,7 +70,7 @@ describe('the Bot', () => {
 
     const statuses: BotStatus[] = [];
     const ready = new Promise<void>((resolve) => {
-      connectBot(channel.port2 as unknown as BotPort, MODEL, {
+      connectBot(channel.pageEnd, MODEL, {
         onStatus: (status) => {
           statuses.push(status);
           if (status.kind === 'ready') {
@@ -84,14 +91,14 @@ describe('the Bot', () => {
 
   it('reports a model that could not be downloaded, and refuses to move', async () => {
     const channel = openChannel();
-    serveBot(channel.port1 as unknown as BotPort, {
+    serveBot(channel.workerEnd, {
       download: async () => {
         throw new Error('Could not download the model: 404 Not Found');
       },
     });
 
     const statuses: BotStatus[] = [];
-    const bot = connectBot(channel.port2 as unknown as BotPort, MODEL, {
+    const bot = connectBot(channel.pageEnd, MODEL, {
       onStatus: (status) => statuses.push(status),
     });
 

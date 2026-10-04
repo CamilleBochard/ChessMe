@@ -23,19 +23,22 @@ export function connectBot(port: BotPort, model: ModelSource, listeners: BotList
   port.onmessage = (event) => {
     const message = event.data as WorkerMessage;
     if (message.kind === 'move') {
-      const reply = waitingReplies.get(message.id);
-      waitingReplies.delete(message.id);
-      reply?.resolve(message.move);
+      takeWaitingReply(message.id)?.resolve(message.move);
       return;
     }
     if (message.kind === 'no-move') {
-      const reply = waitingReplies.get(message.id);
-      waitingReplies.delete(message.id);
-      reply?.reject(new Error(message.reason));
+      takeWaitingReply(message.id)?.reject(new Error(message.reason));
       return;
     }
     listeners.onStatus?.(message);
   };
+
+  /** The request a reply answers, which is no longer waiting once answered. */
+  function takeWaitingReply(id: number): WaitingReply | undefined {
+    const reply = waitingReplies.get(id);
+    waitingReplies.delete(id);
+    return reply;
+  }
 
   send(port, { kind: 'start', model: model });
 

@@ -211,7 +211,7 @@ const modelPath = `/models/${modelFileName}`;
 
   /** Starts the Bot in its own Web Worker, so its thinking never blocks the board. */
   function startBot(frame: HTMLElement, onStatus: (status: BotStatus) => void): Bot {
-    const worker = new Worker(new URL('../engine/bot.worker.ts', import.meta.url), { type: 'module' });
+    const worker = new Worker(new URL('../engine/bot-worker-entry.ts', import.meta.url), { type: 'module' });
 
     // A worker that cannot even start, for instance on a browser without
     // WebAssembly, reports nothing through the Bot's own messages.
