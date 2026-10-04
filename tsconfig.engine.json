@@ -1,7 +1,10 @@
 {
   "extends": "astro/tsconfigs/strict",
   "compilerOptions": {
-    "lib": ["ES2022"],
+    // A Web Worker's globals (fetch, Response, caches, postMessage) and no
+    // document: this code runs in a worker in the browser and under Node, never
+    // on the page itself.
+    "lib": ["ES2022", "WebWorker"],
     "types": [],
     "noEmit": true
   },

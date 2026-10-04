@@ -56,4 +56,15 @@ describe('downloadModel', () => {
       { receivedBytes: 6, totalBytes: 6 },
     ]);
   });
+
+  it('serves a second download from the cache without touching the network', async () => {
+    const network = fakeNetwork([[1, 2, 3], [4, 5, 6]], { 'Content-Length': '6' });
+    const cache = memoryCache();
+    await downloadModel(MODEL_URL, { cache: cache, fetch: network.fetch });
+
+    const secondVisit = await downloadModel(MODEL_URL, { cache: cache, fetch: network.fetch });
+
+    expect(Array.from(secondVisit)).toEqual([1, 2, 3, 4, 5, 6]);
+    expect(network.requests).toBe(1);
+  });
 });
