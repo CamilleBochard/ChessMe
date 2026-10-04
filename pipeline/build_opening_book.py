@@ -1,0 +1,60 @@
+"""Builds the Opening Book from the dataset in data/dataset.
+
+Run from the repository root, after pipeline.build_dataset:
+
+    python -m pipeline.build_opening_book [--min-occurrences 3]
+
+Only the training games feed the book; the Test Set is read so that the
+builder, not the caller, is what keeps it out. The book is written to
+data/dataset/opening-book.json for the Move-Selection Engine to read.
+"""
+
+import argparse
+import json
+from pathlib import Path
+
+from pipeline.dataset import Dataset, Position
+from pipeline.opening_book import build_opening_book
+
+# A position must have been reached at least this many times: enough for a
+# two-to-one majority, never a move played once.
+DEFAULT_MIN_OCCURRENCES = 3
+
+REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
+DATASET_DIR = REPOSITORY_ROOT / "data" / "dataset"
+BOOK_PATH = DATASET_DIR / "opening-book.json"
+
+
+def build(dataset_dir: Path, book_path: Path, min_occurrences: int) -> dict[str, str]:
+    dataset = Dataset(
+        train=_read_json_lines(dataset_dir / "train.jsonl"),
+        test=_read_json_lines(dataset_dir / "test.jsonl"),
+    )
+    book = build_opening_book(dataset, min_occurrences=min_occurrences)
+
+    written = {"min_occurrences": min_occurrences, "positions": book}
+    book_path.write_text(json.dumps(written, indent=1), encoding="utf-8")
+    return book
+
+
+def _read_json_lines(path: Path) -> list[Position]:
+    positions = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.strip() == "":
+            continue
+        positions.append(Position(**json.loads(line)))
+    return positions
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Build the Opening Book from the training games.")
+    parser.add_argument(
+        "--min-occurrences",
+        type=int,
+        default=DEFAULT_MIN_OCCURRENCES,
+        help=f"times a position must have been reached to enter the book (default {DEFAULT_MIN_OCCURRENCES})",
+    )
+    arguments = parser.parse_args()
+
+    built = build(DATASET_DIR, BOOK_PATH, arguments.min_occurrences)
+    print(f"{len(built)} positions reached at least {arguments.min_occurrences} times, written to {BOOK_PATH}")

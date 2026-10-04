@@ -48,3 +48,27 @@ def test_leaves_out_a_position_where_two_moves_were_played_equally_often():
     book = build_opening_book(Dataset(train=train, test=[]), min_occurrences=2)
 
     assert book == {}
+
+
+def test_learns_nothing_from_test_set_games():
+    train = [played("lichess:a", START, "e2e4")]
+    test = [played("lichess:b", START, "d2d4"), played("lichess:c", START, "d2d4")]
+
+    book = build_opening_book(Dataset(train=train, test=test), min_occurrences=1)
+
+    assert book == {START_KEY: "e2e4"}
+
+
+def test_counts_a_position_reached_by_another_move_order_as_the_same_position():
+    # The same position after 2. Nc3 Nc6 and after the knights went out and
+    # back once more: only the move counters differ.
+    after_four_knight_moves = "r1bqkb1r/pppppppp/2n2n2/8/8/2N2N2/PPPPPPPP/R1BQKB1R w KQkq - 4 3"
+    after_eight_knight_moves = "r1bqkb1r/pppppppp/2n2n2/8/8/2N2N2/PPPPPPPP/R1BQKB1R w KQkq - 8 5"
+    train = [
+        played("lichess:a", after_four_knight_moves, "e2e4", ply=5),
+        played("lichess:b", after_eight_knight_moves, "e2e4", ply=9),
+    ]
+
+    book = build_opening_book(Dataset(train=train, test=[]), min_occurrences=2)
+
+    assert book == {"r1bqkb1r/pppppppp/2n2n2/8/8/2N2N2/PPPPPPPP/R1BQKB1R w KQkq -": "e2e4"}
