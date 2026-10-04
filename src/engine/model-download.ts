@@ -41,8 +41,13 @@ export async function downloadModel(url: string, options: DownloadOptions): Prom
 
   const bytes = await fetchWithProgress(url, options);
   // Stored only once every byte has arrived, so an interrupted download never
-  // leaves a truncated file behind for the next visit to trust.
-  await options.cache.put(url, new Response(bytes));
+  // leaves a truncated file behind for the next visit to trust. A cache that
+  // refuses the file costs the next visit a download, not this one its game.
+  try {
+    await options.cache.put(url, new Response(bytes));
+  } catch {
+    // Nothing to do: the bytes are in hand.
+  }
   return bytes;
 }
 

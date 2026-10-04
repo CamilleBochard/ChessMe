@@ -112,4 +112,20 @@ describe('downloadModel', () => {
     );
     expect(await cache.match(MODEL_URL)).toBeUndefined();
   });
+
+  it('still returns the file when the cache refuses to store it', async () => {
+    // A full disk or a private window can refuse the write after every byte
+    // has arrived; the visitor should still get to play.
+    const network = fakeNetwork([[1, 2, 3]], { 'Content-Length': '3' });
+    const refusingCache: ModelCache = {
+      match: async () => undefined,
+      put: async () => {
+        throw new Error('QuotaExceededError');
+      },
+    };
+
+    const bytes = await downloadModel(MODEL_URL, { cache: refusingCache, fetch: network.fetch });
+
+    expect(Array.from(bytes)).toEqual([1, 2, 3]);
+  });
 });
