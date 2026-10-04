@@ -67,4 +67,14 @@ describe('downloadModel', () => {
     expect(Array.from(secondVisit)).toEqual([1, 2, 3, 4, 5, 6]);
     expect(network.requests).toBe(1);
   });
+
+  it('fails, caching nothing, when the server does not have the file', async () => {
+    const cache = memoryCache();
+    const missing = async (_url: string) => new Response('Not Found', { status: 404, statusText: 'Not Found' });
+
+    await expect(downloadModel(MODEL_URL, { cache: cache, fetch: missing })).rejects.toThrow(
+      `Could not download ${MODEL_URL}: 404 Not Found`,
+    );
+    expect(await cache.match(MODEL_URL)).toBeUndefined();
+  });
 });

@@ -42,6 +42,10 @@ export async function downloadModel(url: string, options: DownloadOptions): Prom
 
 async function fetchWithProgress(url: string, options: DownloadOptions): Promise<Uint8Array<ArrayBuffer>> {
   const response = await options.fetch(url);
+  if (!response.ok) {
+    throw new Error(`Could not download ${url}: ${response.status} ${response.statusText}`);
+  }
+
   const totalBytes = Number(response.headers.get('Content-Length'));
 
   const chunks: Uint8Array[] = [];
