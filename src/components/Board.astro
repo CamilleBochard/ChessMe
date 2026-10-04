@@ -128,7 +128,17 @@ const modelPath = `/models/${modelFileName}`;
     });
     redraw();
 
-    const bot = startBot(frame, (status) => {
+    const bot = startBot(frame, showBotStatus);
+
+    if (sideToMove(game) !== playerColour) {
+      void playBotMove();
+    }
+
+    function redraw(): void {
+      showGame(board, statusElement, game, playerColour, botStatus);
+    }
+
+    function showBotStatus(status: BotStatus): void {
       botStatus = status;
       // Exposed on the page so the Bot's state can be checked from outside,
       // as the browser check of the download and the cache does.
@@ -138,14 +148,6 @@ const modelPath = `/models/${modelFileName}`;
       }
       showModelStatus(modelStatus, status);
       redraw();
-    });
-
-    if (sideToMove(game) !== playerColour) {
-      void playBotMove();
-    }
-
-    function redraw(): void {
-      showGame(board, statusElement, game, playerColour, botStatus);
     }
 
     async function onPlayerMove(from: Key, to: Key): Promise<void> {
@@ -193,9 +195,13 @@ const modelPath = `/models/${modelFileName}`;
       let reply: MoveRequest;
       try {
         reply = await bot.requestMove(currentFen(game));
-      } catch {
-        // The failure itself reaches the page as the Bot's status, which is
-        // what the visitor is shown.
+      } catch (error) {
+        // A model that failed to load has already been reported as the Bot's
+        // status. A move that failed after loading has not, and without this
+        // the page would say the Bot is thinking forever.
+        if (botStatus.kind !== 'failed') {
+          showBotStatus({ kind: 'failed', reason: (error as Error).message });
+        }
         return;
       }
 
@@ -337,6 +343,11 @@ const modelPath = `/models/${modelFileName}`;
   }
 
   function rememberModelCached(): void {
+    // Where the browser offers no Cache API the model was not kept, and the
+    // next visit downloads it again: that visit is a first one too.
+    if (!('caches' in window)) {
+      return;
+    }
     try {
       window.localStorage.setItem(MODEL_CACHED_KEY, 'yes');
     } catch {
