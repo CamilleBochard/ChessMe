@@ -13,7 +13,7 @@ import argparse
 import json
 from pathlib import Path
 
-from pipeline.dataset import Dataset, Position
+from pipeline.dataset import read_dataset
 from pipeline.opening_book import build_opening_book
 
 # A position must have been reached at least this many times, so a position
@@ -27,24 +27,12 @@ BOOK_PATH = DATASET_DIR / "opening-book.json"
 
 
 def build(dataset_dir: Path, book_path: Path, min_occurrences: int) -> dict[str, str]:
-    dataset = Dataset(
-        train=_read_json_lines(dataset_dir / "train.jsonl"),
-        test=_read_json_lines(dataset_dir / "test.jsonl"),
-    )
+    dataset = read_dataset(dataset_dir)
     book = build_opening_book(dataset, min_occurrences=min_occurrences)
 
     written = {"min_occurrences": min_occurrences, "positions": book}
     book_path.write_text(json.dumps(written, indent=1), encoding="utf-8")
     return book
-
-
-def _read_json_lines(path: Path) -> list[Position]:
-    positions = []
-    for line in path.read_text(encoding="utf-8").splitlines():
-        if line.strip() == "":
-            continue
-        positions.append(Position(**json.loads(line)))
-    return positions
 
 
 if __name__ == "__main__":

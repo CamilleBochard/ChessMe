@@ -1,6 +1,7 @@
 """Turns raw PGN exports into the positions the Bot is built and measured on."""
 
 import hashlib
+import json
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
@@ -61,6 +62,23 @@ def build_dataset(pgn_paths: list[Path], player: str, test_fraction: float) -> D
                 else:
                     train.extend(positions)
     return Dataset(train=train, test=test)
+
+
+def read_dataset(dataset_dir: Path) -> Dataset:
+    """Reads back the train.jsonl and test.jsonl files the dataset build wrote to dataset_dir."""
+    return Dataset(
+        train=_read_json_lines(dataset_dir / "train.jsonl"),
+        test=_read_json_lines(dataset_dir / "test.jsonl"),
+    )
+
+
+def _read_json_lines(path: Path) -> list[Position]:
+    positions = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.strip() == "":
+            continue
+        positions.append(Position(**json.loads(line)))
+    return positions
 
 
 def _is_held_back(game_id: str, test_fraction: float) -> bool:
