@@ -1,9 +1,15 @@
 // The entry point of the Bot's Web Worker. It connects the worker's side of the
-// Bot to the browser: the real network, and the Cache API for keeping the
-// model between visits.
+// Bot to the browser: the real network, the Cache API for keeping the model
+// between visits, and the Opening Book.
+//
+// The book is a few kilobytes, so it is bundled into the worker's own script
+// rather than downloaded beside the model: it is there the moment the worker
+// starts, and the browser caches it with the script.
 
+import openingBookFile from '../../data/dataset/opening-book.json';
 import { serveBot } from './bot-worker';
 import { downloadModel, type ModelCache } from './model-download';
+import { openingBookFrom } from './opening-book';
 
 /** The Cache API storage holding the Base Model. */
 const CACHE_NAME = 'chessme-base-model';
@@ -18,6 +24,7 @@ serveBot(self, {
       onProgress: onProgress,
     });
   },
+  openingBook: openingBookFrom(openingBookFile),
 });
 
 /**

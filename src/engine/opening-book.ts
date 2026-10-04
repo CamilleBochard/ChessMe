@@ -14,7 +14,7 @@ export interface OpeningBook {
 }
 
 /** The book as pipeline/build_opening_book.py writes it. */
-interface OpeningBookFile {
+export interface OpeningBookFile {
   min_occurrences: number;
   /** Position key, as positionKey gives it, to the move in UCI form. */
   positions: Record<string, string>;
@@ -23,6 +23,11 @@ interface OpeningBookFile {
 /** Reads the book from the text of its JSON file. */
 export function readOpeningBook(json: string): OpeningBook {
   const file = JSON.parse(json) as OpeningBookFile;
+  return openingBookFrom(file);
+}
+
+/** The book from its file once parsed, as a bundler hands over an imported JSON file. */
+export function openingBookFrom(file: OpeningBookFile): OpeningBook {
   const movesByPosition = new Map(Object.entries(file.positions));
 
   return {
