@@ -1,3 +1,5 @@
+import threading
+
 from chess.engine import Cp, Mate
 
 from pipeline.dataset import Position
@@ -105,3 +107,52 @@ def test_a_run_killed_while_writing_resumes_and_analyses_the_half_written_move_a
     third_analyser = FakeAnalyser()
     analyse_positions(positions, [third_analyser], cache_path)
     assert third_analyser.asked == []
+
+
+def test_analyses_made_at_another_depth_are_not_reused(tmp_path):
+    positions = [played("lichess:a", START, "d2d4")]
+    cache_path = tmp_path / "cache.jsonl"
+    analyse_positions(positions, [FakeAnalyser(depth=12)], cache_path)
+
+    deeper_analyser = FakeAnalyser(depth=18)
+    analyse_positions(positions, [deeper_analyser], cache_path)
+
+    assert deeper_analyser.asked == [(START, "d2d4")]
+
+
+def test_the_same_move_in_the_same_position_is_analysed_once_across_games(tmp_path):
+    positions = [played("lichess:a", START, "e2e4"), played("lichess:b", START, "e2e4")]
+    analyser = FakeAnalyser()
+
+    analyse_positions(positions, [analyser], tmp_path / "cache.jsonl")
+
+    assert analyser.asked == [(START, "e2e4")]
+
+
+class WaitingAnalyser(FakeAnalyser):
+    """Will not analyse until every analyser sharing the barrier has started one move."""
+
+    def __init__(self, barrier):
+        super().__init__()
+        self.barrier = barrier
+
+    def analyse(self, fen: str, move: str) -> Analysis:
+        self.barrier.wait(timeout=5)
+        return super().analyse(fen, move)
+
+
+def test_several_analysers_share_the_positions_between_them(tmp_path):
+    positions = [
+        played("lichess:a", START, "d2d4"),
+        played("lichess:a", AFTER_E4, "c7c5", ply=2),
+        played("lichess:b", START, "g1f3"),
+        played("lichess:b", AFTER_E4, "e7e5", ply=2),
+    ]
+    barrier = threading.Barrier(2)
+    analysers = [WaitingAnalyser(barrier), WaitingAnalyser(barrier)]
+
+    analyses = analyse_positions(positions, analysers, tmp_path / "cache.jsonl")
+
+    every_move_asked = analysers[0].asked + analysers[1].asked
+    assert sorted(every_move_asked) == sorted((position.fen, position.move) for position in positions)
+    assert len(analyses) == 4

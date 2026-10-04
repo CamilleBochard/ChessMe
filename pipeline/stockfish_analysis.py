@@ -6,6 +6,8 @@ stopped, and a finished one is never repeated.
 """
 
 import json
+import queue
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
@@ -36,28 +38,63 @@ def analyse_positions(
 ) -> dict[tuple[str, str], Analysis]:
     """Analyses each position's move, keyed by (FEN, move).
 
-    Moves already in the cache are read from it rather than analysed again.
+    Moves already in the cache are read from it rather than analysed again,
+    provided the same engine analysed them at the same depth. Each analyser
+    works on one move at a time, so several analysers run in parallel.
+    All analysers must be the same engine at the same depth.
     """
-    analyser = analysers[0]
-    analyses = _read_cache(cache_path)
-    with open(cache_path, "a", encoding="utf-8") as cache_file:
-        for position in positions:
-            key = (position.fen, position.move)
-            if key in analyses:
-                continue
-            analysis = analyser.analyse(position.fen, position.move)
-            analyses[key] = analysis
-            _append_to_cache(cache_file, position, analysis, analyser)
+    engine = analysers[0].engine
+    depth = analysers[0].depth
+    analyses = _read_cache(cache_path, engine, depth)
+
+    positions_to_analyse = {}
+    for position in positions:
+        key = (position.fen, position.move)
+        if key in analyses:
+            continue
+        positions_to_analyse[key] = position
+
+    free_analysers: queue.Queue[Analyser] = queue.Queue()
+    for analyser in analysers:
+        free_analysers.put(analyser)
+
+    def analyse_with_a_free_analyser(position: Position) -> Analysis:
+        analyser = free_analysers.get()
+        try:
+            return analyser.analyse(position.fen, position.move)
+        finally:
+            free_analysers.put(analyser)
+
+    executor = ThreadPoolExecutor(max_workers=len(analysers))
+    try:
+        with open(cache_path, "a", encoding="utf-8") as cache_file:
+            future_positions = {}
+            for position in positions_to_analyse.values():
+                future = executor.submit(analyse_with_a_free_analyser, position)
+                future_positions[future] = position
+            # Only this thread writes the cache, in the order analyses finish.
+            for future in as_completed(future_positions):
+                position = future_positions[future]
+                analysis = future.result()
+                analyses[(position.fen, position.move)] = analysis
+                _append_to_cache(cache_file, position, analysis, engine, depth)
+    finally:
+        # On an interruption, moves not yet started are dropped rather than
+        # analysed before the run can stop.
+        executor.shutdown(cancel_futures=True)
     return analyses
 
 
-def _read_cache(cache_path: Path) -> dict[tuple[str, str], Analysis]:
+def _read_cache(cache_path: Path, engine: str, depth: int) -> dict[tuple[str, str], Analysis]:
     analyses = {}
     if not cache_path.exists():
         return analyses
     _drop_half_written_last_line(cache_path)
     for line in cache_path.read_text(encoding="utf-8").splitlines():
         record = json.loads(line)
+        # Mixing depths would blur what the profile measures.
+        if record["engine"] != engine or record["depth"] != depth:
+            continue
         analysis = Analysis(
             best_move=record["best_move"],
             best=_score_from_json(record["best"]),
@@ -82,12 +119,12 @@ def _drop_half_written_last_line(cache_path: Path) -> None:
     cache_path.write_text(complete_records, encoding="utf-8")
 
 
-def _append_to_cache(cache_file, position: Position, analysis: Analysis, analyser: Analyser) -> None:
+def _append_to_cache(cache_file, position: Position, analysis: Analysis, engine: str, depth: int) -> None:
     record = {
         "fen": position.fen,
         "move": position.move,
-        "engine": analyser.engine,
-        "depth": analyser.depth,
+        "engine": engine,
+        "depth": depth,
         "best_move": analysis.best_move,
         "best": _score_to_json(analysis.best),
         "played": _score_to_json(analysis.played),
