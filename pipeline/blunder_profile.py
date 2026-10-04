@@ -10,7 +10,7 @@ from dataclasses import dataclass
 
 from chess.engine import Score
 
-PHASES = ["opening", "middlegame", "endgame"]
+from pipeline.dataset import PHASES
 
 # Where the histogram's buckets start, in centipawns; each bucket runs up to
 # the next start, the last one has no end. The first bucket holds exactly the

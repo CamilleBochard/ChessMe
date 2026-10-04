@@ -23,6 +23,7 @@ import re
 import time
 from dataclasses import asdict
 from pathlib import Path
+from typing import Callable
 
 from pipeline.blunder_profile import EVALUATION_CAP, MoveLoss, build_blunder_profile, centipawn_loss
 from pipeline.dataset import read_dataset
@@ -50,7 +51,7 @@ def extract(
     profile_path: Path,
     losses_path: Path,
     analysers: list[Analyser],
-    report_progress=None,
+    report_progress: Callable[[int, int], None] | None = None,
 ) -> dict:
     dataset = read_dataset(dataset_dir)
     positions = dataset.train + dataset.test
@@ -65,14 +66,17 @@ def extract(
 
     with open(losses_path, "w", encoding="utf-8") as losses_file:
         for move_loss in move_losses:
-            losses_file.write(json.dumps(asdict(move_loss)) + "\n")
+            line = json.dumps(asdict(move_loss))
+            losses_file.write(line + "\n")
 
+    distribution = build_blunder_profile(move_losses)
     profile = {
         "format_version": FORMAT_VERSION,
         "engine": analysers[0].engine,
         "depth": analysers[0].depth,
         "evaluation_cap": EVALUATION_CAP,
-        **build_blunder_profile(move_losses),
+        "phases": distribution["phases"],
+        "all_phases": distribution["all_phases"],
     }
     profile_path.write_text(json.dumps(profile, indent=1), encoding="utf-8")
     return profile
@@ -80,18 +84,27 @@ def extract(
 
 def _cache_path(engine: str, depth: int) -> Path:
     """One cache file per engine and depth, e.g. data/analysis/stockfish-19-depth-18.jsonl."""
-    engine_slug = re.sub(r"[^a-z0-9]+", "-", engine.lower()).strip("-")
+    # "Stockfish 19" becomes "stockfish-19".
+    lowercase_engine = engine.lower()
+    dashed_engine = re.sub(r"[^a-z0-9]+", "-", lowercase_engine)
+    engine_slug = dashed_engine.strip("-")
     return ANALYSIS_DIR / f"{engine_slug}-depth-{depth}.jsonl"
 
 
+# How many new analyses between two progress lines: about a minute apart at
+# depth 18 with four processes.
+MOVES_BETWEEN_PROGRESS_LINES = 200
+
+
 class _ProgressPrinter:
-    """Prints how far the run is every few hundred moves, with a rough time left."""
+    """Prints how far the run is every MOVES_BETWEEN_PROGRESS_LINES moves, with a rough time left."""
 
     def __init__(self):
         self.started = time.monotonic()
 
     def __call__(self, analysed: int, to_analyse: int) -> None:
-        if analysed % 200 != 0 and analysed != to_analyse:
+        is_last_move = analysed == to_analyse
+        if analysed % MOVES_BETWEEN_PROGRESS_LINES != 0 and not is_last_move:
             return
         elapsed = time.monotonic() - self.started
         seconds_left = elapsed / analysed * (to_analyse - analysed)
@@ -108,7 +121,12 @@ if __name__ == "__main__":
     )
     # Each Stockfish process uses one core; hyper-threads add little, so the
     # default is about one process per physical core.
-    default_workers = max(1, (os.cpu_count() or 2) // 2)
+    logical_cores = os.cpu_count()
+    if logical_cores is None:
+        logical_cores = 2
+    default_workers = logical_cores // 2
+    if default_workers < 1:
+        default_workers = 1
     parser.add_argument(
         "--workers",
         type=int,
@@ -126,7 +144,10 @@ if __name__ == "__main__":
     try:
         cache_path = _cache_path(stockfish_processes[0].engine, arguments.depth)
         ANALYSIS_DIR.mkdir(parents=True, exist_ok=True)
-        print(f"Analysing with {stockfish_processes[0].engine} at depth {arguments.depth}, caching in {cache_path}")
+        print(
+            f"Analysing with {stockfish_processes[0].engine} at depth {arguments.depth}, caching in {cache_path}",
+            flush=True,
+        )
         written = extract(DATASET_DIR, cache_path, PROFILE_PATH, LOSSES_PATH, stockfish_processes, _ProgressPrinter())
     finally:
         for stockfish in stockfish_processes:

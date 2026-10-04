@@ -103,6 +103,10 @@ def _is_ten_minutes(game: chess.pgn.Game) -> bool:
     return game.headers.get("TimeControl") in TEN_MINUTE_TIME_CONTROLS
 
 
+# Every Phase, in the order a game passes through them.
+PHASES = ["opening", "middlegame", "endgame"]
+
+
 def _phase_of(ply: int) -> str:
     """The Phase a move belongs to, by its ply: opening 1-10, middlegame 11-30, endgame 31+."""
     if ply <= 10:

@@ -184,7 +184,8 @@ def _append_to_cache(cache_file, position: Position, analysis: Analysis, engine:
         "best": _score_to_json(analysis.best),
         "played": _score_to_json(analysis.played),
     }
-    cache_file.write(json.dumps(record) + "\n")
+    line = json.dumps(record)
+    cache_file.write(line + "\n")
     # Written through at once, so stopping the run loses at most the move
     # being analysed.
     cache_file.flush()
