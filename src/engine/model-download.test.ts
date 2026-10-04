@@ -68,6 +68,25 @@ describe('downloadModel', () => {
     expect(network.requests).toBe(1);
   });
 
+  it('counts progress against the file size it is given when the server compresses the file', async () => {
+    // A browser hands the page the decompressed bytes, while Content-Length
+    // still gives the compressed size, so the header cannot be the total.
+    const network = fakeNetwork([[1, 2, 3], [4, 5, 6]], { 'Content-Encoding': 'br', 'Content-Length': '4' });
+    const progress: DownloadProgress[] = [];
+
+    await downloadModel(MODEL_URL, {
+      cache: memoryCache(),
+      fetch: network.fetch,
+      fileBytes: 6,
+      onProgress: (report) => progress.push(report),
+    });
+
+    expect(progress).toEqual([
+      { receivedBytes: 3, totalBytes: 6 },
+      { receivedBytes: 6, totalBytes: 6 },
+    ]);
+  });
+
   it('fails, caching nothing, when the server does not have the file', async () => {
     const cache = memoryCache();
     const missing = async (_url: string) => new Response('Not Found', { status: 404, statusText: 'Not Found' });

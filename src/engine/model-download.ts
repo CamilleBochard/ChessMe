@@ -20,6 +20,12 @@ export interface ModelCache {
 export interface DownloadOptions {
   cache: ModelCache;
   fetch: (url: string) => Promise<Response>;
+  /**
+   * The size of the file once decompressed. A browser hands over decompressed
+   * bytes while Content-Length gives the compressed size, so when the server
+   * compresses the file only the caller knows the total.
+   */
+  fileBytes?: number;
   onProgress?: (progress: DownloadProgress) => void;
 }
 
@@ -46,7 +52,10 @@ async function fetchWithProgress(url: string, options: DownloadOptions): Promise
     throw new Error(`Could not download ${url}: ${response.status} ${response.statusText}`);
   }
 
-  const totalBytes = Number(response.headers.get('Content-Length'));
+  let totalBytes = options.fileBytes;
+  if (totalBytes === undefined) {
+    totalBytes = Number(response.headers.get('Content-Length'));
+  }
 
   const chunks: Uint8Array[] = [];
   let receivedBytes = 0;
