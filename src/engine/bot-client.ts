@@ -17,15 +17,21 @@ export interface BotListeners {
 
 /** Starts the Bot behind the port loading the model, and returns a way to ask it for moves. */
 export function connectBot(port: BotPort, model: ModelSource, listeners: BotListeners = {}): Bot {
-  const waitingReplies = new Map<number, (move: MoveRequest) => void>();
+  const waitingReplies = new Map<number, WaitingReply>();
   let nextRequestId = 1;
 
   port.onmessage = (event) => {
     const message = event.data as WorkerMessage;
     if (message.kind === 'move') {
-      const resolve = waitingReplies.get(message.id);
+      const reply = waitingReplies.get(message.id);
       waitingReplies.delete(message.id);
-      resolve?.(message.move);
+      reply?.resolve(message.move);
+      return;
+    }
+    if (message.kind === 'no-move') {
+      const reply = waitingReplies.get(message.id);
+      waitingReplies.delete(message.id);
+      reply?.reject(new Error(message.reason));
       return;
     }
     listeners.onStatus?.(message);
@@ -37,12 +43,18 @@ export function connectBot(port: BotPort, model: ModelSource, listeners: BotList
     requestMove: (fen) => {
       const id = nextRequestId;
       nextRequestId = nextRequestId + 1;
-      return new Promise((resolve) => {
-        waitingReplies.set(id, resolve);
+      return new Promise((resolve, reject) => {
+        waitingReplies.set(id, { resolve: resolve, reject: reject });
         send(port, { kind: 'move', id: id, fen: fen });
       });
     },
   };
+}
+
+/** How to settle the promise of a request still waiting for its reply. */
+interface WaitingReply {
+  resolve(move: MoveRequest): void;
+  reject(error: Error): void;
 }
 
 /** Posts a message, typed so the page can only send what the worker understands. */

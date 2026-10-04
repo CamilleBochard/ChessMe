@@ -20,10 +20,16 @@ export type PageMessage =
   | { kind: 'move'; id: number; fen: string };
 
 /** Whether the Bot can play yet, for the page to show. */
-export type BotStatus = { kind: 'downloading'; progress: DownloadProgress } | { kind: 'ready' };
+export type BotStatus =
+  | { kind: 'downloading'; progress: DownloadProgress }
+  | { kind: 'ready' }
+  | { kind: 'failed'; reason: string };
 
 /** What the worker tells the page. */
-export type WorkerMessage = BotStatus | { kind: 'move'; id: number; move: MoveRequest };
+export type WorkerMessage =
+  | BotStatus
+  | { kind: 'move'; id: number; move: MoveRequest }
+  | { kind: 'no-move'; id: number; reason: string };
 
 /**
  * One end of the channel between the page and the worker. A Worker on the

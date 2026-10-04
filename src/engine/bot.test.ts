@@ -80,4 +80,21 @@ describe('the Bot', () => {
       { kind: 'ready' },
     ]);
   });
+
+  it('reports a model that could not be downloaded, and refuses to move', async () => {
+    const channel = openChannel();
+    serveBot(channel.port1 as unknown as BotPort, {
+      download: async () => {
+        throw new Error('Could not download the model: 404 Not Found');
+      },
+    });
+
+    const statuses: BotStatus[] = [];
+    const bot = connectBot(channel.port2 as unknown as BotPort, MODEL, {
+      onStatus: (status) => statuses.push(status),
+    });
+
+    await expect(bot.requestMove(STARTING_POSITION)).rejects.toThrow('Could not download the model: 404 Not Found');
+    expect(statuses).toEqual([{ kind: 'failed', reason: 'Could not download the model: 404 Not Found' }]);
+  });
 });
