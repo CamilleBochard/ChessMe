@@ -188,8 +188,8 @@ const modelPath = `/models/${modelFileName}`;
 
     /**
      * Asks the Bot for its reply and plays it. Before the model has arrived
-     * the request simply waits in the worker, so a visitor can make the first
-     * move during the download.
+     * the Opening Book answers the positions it holds at once, and any other
+     * request waits in the worker, so a visitor can play during the download.
      */
     async function playBotMove(): Promise<void> {
       let reply: MoveRequest;
