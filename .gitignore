@@ -17,6 +17,9 @@ __pycache__/
 # Derived data, rebuilt from data/raw by the pipeline
 data/dataset/
 
+# Stockfish analyses, kept between runs because a full pass takes hours
+data/analysis/
+
 # Personal working notes, kept out of the repository
 notes/
 

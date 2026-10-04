@@ -10,7 +10,7 @@ import queue
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
+from typing import Callable, Protocol
 
 import chess
 import chess.engine
@@ -79,7 +79,10 @@ class StockfishAnalyser:
 
 
 def analyse_positions(
-    positions: list[Position], analysers: list[Analyser], cache_path: Path
+    positions: list[Position],
+    analysers: list[Analyser],
+    cache_path: Path,
+    report_progress: Callable[[int, int], None] | None = None,
 ) -> dict[tuple[str, str], Analysis]:
     """Analyses each position's move, keyed by (FEN, move).
 
@@ -87,6 +90,9 @@ def analyse_positions(
     provided the same engine analysed them at the same depth. Each analyser
     works on one move at a time, so several analysers run in parallel.
     All analysers must be the same engine at the same depth.
+
+    report_progress, if given, is called after each new analysis with how many
+    have been made and how many this run has to make.
     """
     engine = analysers[0].engine
     depth = analysers[0].depth
@@ -118,11 +124,15 @@ def analyse_positions(
                 future = executor.submit(analyse_with_a_free_analyser, position)
                 future_positions[future] = position
             # Only this thread writes the cache, in the order analyses finish.
+            analysed_this_run = 0
             for future in as_completed(future_positions):
                 position = future_positions[future]
                 analysis = future.result()
                 analyses[(position.fen, position.move)] = analysis
                 _append_to_cache(cache_file, position, analysis, engine, depth)
+                analysed_this_run += 1
+                if report_progress is not None:
+                    report_progress(analysed_this_run, len(future_positions))
     finally:
         # On an interruption, moves not yet started are dropped rather than
         # analysed before the run can stop.
