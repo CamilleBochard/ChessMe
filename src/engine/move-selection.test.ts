@@ -9,7 +9,7 @@ import { currentFen, legalMoves, newGame, playMove, type Game, type MoveRequest 
 import { gameStatus } from '../game/game-status';
 import { loadBaseModel } from './base-model';
 import { selectMove } from './move-selection';
-import { readOpeningBook } from './opening-book';
+import { readOpeningBook, type OpeningBook } from './opening-book';
 
 /**
  * Stand-in Base Models written by pipeline/fixture_models.py, one shaped like
@@ -142,18 +142,19 @@ describe.each(FIXED_PREFERENCE_MODELS)('selectMove with a $family Base Model', (
   });
 });
 
+/** An Opening Book holding the given positions, each mapped to a move in UCI form. */
+function bookWith(positions: Record<string, string>): OpeningBook {
+  const file = { min_occurrences: 3, positions: positions };
+  return readOpeningBook(JSON.stringify(file));
+}
+
 describe('selectMove with an Opening Book', () => {
   const startingPosition = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
   it('plays the book move when the position is in the book', async () => {
     // The Base Model on its own would play e2e4 here.
     const baseModel = await loadBaseModel(await readFile(FIXED_PREFERENCE_MODELS[0].file));
-    const openingBook = readOpeningBook(
-      JSON.stringify({
-        min_occurrences: 3,
-        positions: { 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -': 'd2d4' },
-      }),
-    );
+    const openingBook = bookWith({ 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -': 'd2d4' });
 
     const move = await selectMove(startingPosition, { openingBook, baseModel });
 
@@ -163,12 +164,7 @@ describe('selectMove with an Opening Book', () => {
   it('plays the Base Model\'s move when the position is not in the book', async () => {
     const baseModel = await loadBaseModel(await readFile(FIXED_PREFERENCE_MODELS[0].file));
     // The book only knows Black's reply to 1. e4.
-    const openingBook = readOpeningBook(
-      JSON.stringify({
-        min_occurrences: 3,
-        positions: { 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -': 'c7c5' },
-      }),
-    );
+    const openingBook = bookWith({ 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -': 'c7c5' });
 
     const move = await selectMove(startingPosition, { openingBook, baseModel });
 
@@ -176,12 +172,7 @@ describe('selectMove with an Opening Book', () => {
   });
 
   it('finds a position in the book whatever its move counters', async () => {
-    const openingBook = readOpeningBook(
-      JSON.stringify({
-        min_occurrences: 3,
-        positions: { 'r1bqkb1r/pppppppp/2n2n2/8/8/2N2N2/PPPPPPPP/R1BQKB1R w KQkq -': 'e2e4' },
-      }),
-    );
+    const openingBook = bookWith({ 'r1bqkb1r/pppppppp/2n2n2/8/8/2N2N2/PPPPPPPP/R1BQKB1R w KQkq -': 'e2e4' });
     // The position the book was built from, reached after the knights went
     // out and back once more.
     const sameKnightsLater = 'r1bqkb1r/pppppppp/2n2n2/8/8/2N2N2/PPPPPPPP/R1BQKB1R w KQkq - 8 5';
@@ -193,12 +184,7 @@ describe('selectMove with an Opening Book', () => {
 
   it('castles when the book move is castling', async () => {
     const whiteMayCastleKingside = 'r3k2r/pppqbppp/2np1n2/4p3/2B1P3/2NP1N2/PPP2PPP/R2QK2R w Kkq - 0 8';
-    const openingBook = readOpeningBook(
-      JSON.stringify({
-        min_occurrences: 3,
-        positions: { 'r3k2r/pppqbppp/2np1n2/4p3/2B1P3/2NP1N2/PPP2PPP/R2QK2R w Kkq -': 'e1g1' },
-      }),
-    );
+    const openingBook = bookWith({ 'r3k2r/pppqbppp/2np1n2/4p3/2B1P3/2NP1N2/PPP2PPP/R2QK2R w Kkq -': 'e1g1' });
 
     const move = await selectMove(whiteMayCastleKingside, { openingBook, random: () => 0 });
 

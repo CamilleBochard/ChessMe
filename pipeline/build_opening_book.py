@@ -16,8 +16,9 @@ from pathlib import Path
 from pipeline.dataset import Dataset, Position
 from pipeline.opening_book import build_opening_book
 
-# A position must have been reached at least this many times: enough for a
-# two-to-one majority, never a move played once.
+# A position must have been reached at least this many times, so a position
+# met in only one or two games never enters the book. The book then plays
+# the most played reply, which need not be a majority of the visits.
 DEFAULT_MIN_OCCURRENCES = 3
 
 REPOSITORY_ROOT = Path(__file__).resolve().parent.parent

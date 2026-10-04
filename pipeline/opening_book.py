@@ -24,9 +24,11 @@ def build_opening_book(dataset: Dataset, min_occurrences: int) -> dict[str, str]
             continue
         ranked = moves.most_common()
         most_played_move, times_played = ranked[0]
-        # A tie means his reply is not known, and the Base Model answers instead.
-        if len(ranked) > 1 and ranked[1][1] == times_played:
-            continue
+        if len(ranked) > 1:
+            _, runner_up_times_played = ranked[1]
+            # A tie means his reply is not known, and the Base Model answers instead.
+            if runner_up_times_played == times_played:
+                continue
         book[key] = most_played_move
     return book
 
