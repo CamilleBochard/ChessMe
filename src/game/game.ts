@@ -175,6 +175,26 @@ export function isInCheck(game: Game): boolean {
 }
 
 /**
+ * The current position without its move counters, so the same position
+ * reached by another move order has the same key. The Opening Book names its
+ * positions this way.
+ */
+export function positionKey(game: Game): string {
+  return repetitionKey(game.position);
+}
+
+/** The move in UCI form, such as e2e4, e1g1 or e7e8q, the form the dataset records moves in. */
+export function uciName(move: MoveRequest): string {
+  let suffix = '';
+  if (move.promotion !== undefined) {
+    suffix = UCI_PROMOTION_LETTERS[move.promotion];
+  }
+  return move.from + move.to + suffix;
+}
+
+const UCI_PROMOTION_LETTERS = { queen: 'q', rook: 'r', bishop: 'b', knight: 'n' };
+
+/**
  * The part of a position that decides whether it repeats an earlier one: the
  * first four fields of its FEN. The move counters are left out, and chessops
  * only writes an en passant square when a capture there is legal, which is the

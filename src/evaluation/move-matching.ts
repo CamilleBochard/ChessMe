@@ -4,7 +4,7 @@
 // Free of anything DOM or Node, so the same code could score the engine
 // wherever it runs; reading files is left to the caller.
 
-import type { MoveRequest } from '../game/game';
+import { uciName, type MoveRequest } from '../game/game';
 
 /** A position where Camille moved, as the Python pipeline writes it to the dataset. */
 export interface PlayedPosition {
@@ -168,14 +168,3 @@ function clusteredStandardError(games: GameTally[], share: number): number {
   const variance = (smallSampleCorrection * sumOfSquaredResiduals) / (positions * positions);
   return Math.sqrt(variance);
 }
-
-/** The move in UCI form, the form the dataset records Camille's moves in. */
-function uciName(move: MoveRequest): string {
-  let suffix = '';
-  if (move.promotion !== undefined) {
-    suffix = UCI_PROMOTION_LETTERS[move.promotion];
-  }
-  return move.from + move.to + suffix;
-}
-
-const UCI_PROMOTION_LETTERS = { queen: 'q', rook: 'r', bishop: 'b', knight: 'n' };
