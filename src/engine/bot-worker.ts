@@ -1,5 +1,6 @@
 // The Bot's side of the Web Worker: it fetches the Base Model, loads it, and
-// answers the page's requests for a move. Running here rather than on the page
+// answers the page's requests for a move, from the Opening Book while the
+// model is still on its way. Running here rather than on the page
 // keeps the board responsive while the Bot thinks.
 // Free of anything DOM, so the tests can run it under Node.
 
@@ -8,11 +9,14 @@ import { loadBaseModel } from './base-model';
 import type { BotPort, ModelSource, PageMessage, WorkerMessage } from './bot-protocol';
 import type { DownloadProgress } from './model-download';
 import { selectMove } from './move-selection';
+import type { OpeningBook } from './opening-book';
 
 /** What the worker needs from its surroundings, supplied by the caller so tests can replace it. */
 export interface WorkerDependencies {
   /** Fetches the bytes of the model's ONNX file, reporting how far it has come. */
   download(model: ModelSource, onProgress: (progress: DownloadProgress) => void): Promise<Uint8Array>;
+  /** Camille's own replies, which need no model and so can answer during the download. */
+  openingBook?: OpeningBook;
 }
 
 /** Answers the page's messages arriving on the port. */
@@ -33,9 +37,9 @@ export function serveBot(port: BotPort, dependencies: WorkerDependencies): void 
     if (message.kind === 'move') {
       try {
         // The page sends 'start' before any request, and a port delivers
-        // messages in order, so the model has started loading by now.
-        const model = await baseModel!;
-        const move = await selectMove(message.fen, { baseModel: model });
+        // messages in order, so the model has started loading by now. It is
+        // handed over still loading, so a book move is played without waiting.
+        const move = await selectMove(message.fen, { openingBook: dependencies.openingBook, baseModel: baseModel! });
         send(port, { kind: 'move', id: message.id, move: move });
       } catch (error) {
         send(port, { kind: 'no-move', id: message.id, reason: describeError(error) });

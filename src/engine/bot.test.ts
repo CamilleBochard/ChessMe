@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { connectBot } from './bot-client';
 import type { BotPort, BotStatus } from './bot-protocol';
 import { serveBot } from './bot-worker';
+import { readOpeningBook } from './opening-book';
 
 /**
  * A stand-in Maia-3 model written by pipeline/fixture_models.py. Whatever the
@@ -55,6 +56,26 @@ describe('the Bot', () => {
     const move = await bot.requestMove(STARTING_POSITION);
 
     expect(move).toEqual({ from: 'e2', to: 'e4' });
+  });
+
+  it('plays a book move while the model is still downloading', async () => {
+    const channel = openChannel();
+    const openingBook = readOpeningBook(
+      JSON.stringify({
+        min_occurrences: 3,
+        positions: { 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -': 'd2d4' },
+      }),
+    );
+    serveBot(channel.workerEnd, {
+      // A download that never finishes.
+      download: () => new Promise(() => {}),
+      openingBook: openingBook,
+    });
+    const bot = connectBot(channel.pageEnd, MODEL);
+
+    const move = await bot.requestMove(STARTING_POSITION);
+
+    expect(move).toEqual({ from: 'd2', to: 'd4' });
   });
 
   it('reports the download as it progresses, then preparing the model, then that it is ready', async () => {

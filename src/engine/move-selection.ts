@@ -12,8 +12,11 @@ import type { OpeningBook } from './opening-book';
 export interface EngineOptions {
   /** Camille's own replies, consulted before the Base Model. */
   openingBook?: OpeningBook;
-  /** The network consulted for the move. */
-  baseModel?: BaseModel;
+  /**
+   * The network consulted for the move. It may still be loading: the Opening
+   * Book is asked first, so a move the book holds never waits for the model.
+   */
+  baseModel?: BaseModel | Promise<BaseModel>;
   /** Returns a number in [0, 1), like Math.random. */
   random?: () => number;
 }
@@ -44,7 +47,8 @@ export async function selectMove(fen: string, options: EngineOptions = {}): Prom
   }
 
   if (options.baseModel !== undefined) {
-    const policy = await options.baseModel.movePolicy(game);
+    const baseModel = await options.baseModel;
+    const policy = await baseModel.movePolicy(game);
     return policy[0].move;
   }
 
