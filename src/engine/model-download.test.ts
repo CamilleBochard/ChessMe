@@ -87,6 +87,22 @@ describe('downloadModel', () => {
     ]);
   });
 
+  it('leaves the total unknown when the server compresses the file and no size is given', async () => {
+    const network = fakeNetwork([[1, 2, 3], [4, 5, 6]], { 'Content-Encoding': 'br', 'Content-Length': '4' });
+    const progress: DownloadProgress[] = [];
+
+    await downloadModel(MODEL_URL, {
+      cache: memoryCache(),
+      fetch: network.fetch,
+      onProgress: (report) => progress.push(report),
+    });
+
+    expect(progress).toEqual([
+      { receivedBytes: 3, totalBytes: undefined },
+      { receivedBytes: 6, totalBytes: undefined },
+    ]);
+  });
+
   it('fails, caching nothing, when the server does not have the file', async () => {
     const cache = memoryCache();
     const missing = async (_url: string) => new Response('Not Found', { status: 404, statusText: 'Not Found' });

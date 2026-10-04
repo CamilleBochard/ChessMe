@@ -54,7 +54,7 @@ async function fetchWithProgress(url: string, options: DownloadOptions): Promise
 
   let totalBytes = options.fileBytes;
   if (totalBytes === undefined) {
-    totalBytes = Number(response.headers.get('Content-Length'));
+    totalBytes = sizeFromHeaders(response.headers);
   }
 
   const chunks: Uint8Array[] = [];
@@ -71,6 +71,19 @@ async function fetchWithProgress(url: string, options: DownloadOptions): Promise
   }
 
   return joinChunks(chunks, receivedBytes);
+}
+
+/**
+ * The file's size as the server states it, or undefined when the server does
+ * not state it or states only the size of a compressed copy.
+ */
+function sizeFromHeaders(headers: Headers): number | undefined {
+  const isCompressed = headers.get('Content-Encoding') !== null;
+  const contentLength = headers.get('Content-Length');
+  if (isCompressed || contentLength === null) {
+    return undefined;
+  }
+  return Number(contentLength);
 }
 
 /** Copies the chunks, in order, into one array of the given length. */
