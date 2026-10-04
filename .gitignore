@@ -23,3 +23,4 @@ notes/
 # Built tools and downloaded or converted models, recreated by the scripts
 tools/
 models/
+public/models/

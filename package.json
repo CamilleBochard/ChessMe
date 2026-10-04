@@ -5,11 +5,14 @@
   "type": "module",
   "license": "AGPL-3.0-or-later",
   "scripts": {
+    "predev": "npm run stage-model",
     "dev": "astro dev",
+    "prebuild": "npm run stage-model",
     "build": "astro build",
     "preview": "astro preview",
     "typecheck": "astro check && tsc -p tsconfig.engine.json",
     "test": "vitest run",
+    "stage-model": "tsx scripts/stage-model.ts",
     "check-models": "node --experimental-strip-types --no-warnings scripts/check-models.ts",
     "move-matching": "tsx scripts/move-matching.ts",
     "base-model-sweep": "tsx scripts/base-model-sweep.ts"
