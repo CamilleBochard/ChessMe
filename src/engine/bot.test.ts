@@ -50,7 +50,7 @@ describe('the Bot', () => {
     expect(move).toEqual({ from: 'e2', to: 'e4' });
   });
 
-  it('reports the download as it progresses, then that it is ready', async () => {
+  it('reports the download as it progresses, then preparing the model, then that it is ready', async () => {
     const channel = openChannel();
     const modelBytes = new Uint8Array(await readFile(FIXED_PREFERENCE_MODEL));
     serveBot(channel.port1 as unknown as BotPort, {
@@ -77,6 +77,7 @@ describe('the Bot', () => {
     expect(statuses).toEqual([
       { kind: 'downloading', progress: { receivedBytes: 100, totalBytes: 200 } },
       { kind: 'downloading', progress: { receivedBytes: 200, totalBytes: 200 } },
+      { kind: 'preparing' },
       { kind: 'ready' },
     ]);
   });

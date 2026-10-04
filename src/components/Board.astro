@@ -130,6 +130,9 @@ const modelPath = `/models/${modelFileName}`;
 
     const bot = startBot(frame, (status) => {
       botStatus = status;
+      // Exposed on the page so the Bot's state can be checked from outside,
+      // as the browser check of the download and the cache does.
+      frame.dataset.botStatus = status.kind;
       if (status.kind === 'ready') {
         rememberModelCached();
       }
@@ -269,8 +272,8 @@ const modelPath = `/models/${modelFileName}`;
       statusElement.textContent = 'The game cannot continue without the Bot.';
     } else if (isPlayersTurn) {
       statusElement.textContent = 'Your move.';
-    } else if (botStatus.kind === 'downloading') {
-      statusElement.textContent = 'The Bot will reply once its model has downloaded.';
+    } else if (botStatus.kind === 'downloading' || botStatus.kind === 'preparing') {
+      statusElement.textContent = 'The Bot will reply once its model has loaded.';
     } else {
       statusElement.textContent = 'The Bot is thinking…';
     }
@@ -291,6 +294,12 @@ const modelPath = `/models/${modelFileName}`;
       progressBar.hidden = true;
       container.classList.add('failed');
       message.textContent = `The Bot could not be loaded: ${status.reason}. Reload the page to try again.`;
+      return;
+    }
+
+    if (status.kind === 'preparing') {
+      progressBar.removeAttribute('value');
+      message.textContent = 'Preparing the Bot…';
       return;
     }
 

@@ -22,6 +22,9 @@ export type PageMessage =
 /** Whether the Bot can play yet, for the page to show. */
 export type BotStatus =
   | { kind: 'downloading'; progress: DownloadProgress }
+  // Downloaded, and being loaded into ONNX Runtime, which also fetches and
+  // compiles its own WebAssembly first.
+  | { kind: 'preparing' }
   | { kind: 'ready' }
   | { kind: 'failed'; reason: string };
 

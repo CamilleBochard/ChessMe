@@ -50,6 +50,7 @@ async function loadModel(model: ModelSource, port: BotPort, dependencies: Worker
     const bytes = await dependencies.download(model, (progress) => {
       send(port, { kind: 'downloading', progress: progress });
     });
+    send(port, { kind: 'preparing' });
     const baseModel = await loadBaseModel(bytes, { rating: model.rating });
     send(port, { kind: 'ready' });
     return baseModel;
