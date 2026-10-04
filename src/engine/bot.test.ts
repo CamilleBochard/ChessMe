@@ -6,7 +6,7 @@
 import { readFile } from 'node:fs/promises';
 import { afterEach, describe, expect, it } from 'vitest';
 import { connectBot } from './bot-client';
-import type { BotPort } from './bot-protocol';
+import type { BotPort, BotStatus } from './bot-protocol';
 import { serveBot } from './bot-worker';
 
 /**
@@ -48,5 +48,36 @@ describe('the Bot', () => {
     const move = await bot.requestMove(STARTING_POSITION);
 
     expect(move).toEqual({ from: 'e2', to: 'e4' });
+  });
+
+  it('reports the download as it progresses, then that it is ready', async () => {
+    const channel = openChannel();
+    const modelBytes = new Uint8Array(await readFile(FIXED_PREFERENCE_MODEL));
+    serveBot(channel.port1 as unknown as BotPort, {
+      download: async (_model, onProgress) => {
+        onProgress({ receivedBytes: 100, totalBytes: 200 });
+        onProgress({ receivedBytes: 200, totalBytes: 200 });
+        return modelBytes;
+      },
+    });
+
+    const statuses: BotStatus[] = [];
+    const ready = new Promise<void>((resolve) => {
+      connectBot(channel.port2 as unknown as BotPort, MODEL, {
+        onStatus: (status) => {
+          statuses.push(status);
+          if (status.kind === 'ready') {
+            resolve();
+          }
+        },
+      });
+    });
+    await ready;
+
+    expect(statuses).toEqual([
+      { kind: 'downloading', progress: { receivedBytes: 100, totalBytes: 200 } },
+      { kind: 'downloading', progress: { receivedBytes: 200, totalBytes: 200 } },
+      { kind: 'ready' },
+    ]);
   });
 });

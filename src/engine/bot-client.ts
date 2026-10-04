@@ -3,15 +3,20 @@
 // only matches each reply to the request it answers.
 
 import type { MoveRequest } from '../game/game';
-import type { BotPort, ModelSource, PageMessage, WorkerMessage } from './bot-protocol';
+import type { BotPort, BotStatus, ModelSource, PageMessage, WorkerMessage } from './bot-protocol';
 
 export interface Bot {
   /** The Bot's move in the position the FEN describes. */
   requestMove(fen: string): Promise<MoveRequest>;
 }
 
+export interface BotListeners {
+  /** Called each time the Bot's status changes, for the page to show. */
+  onStatus?: (status: BotStatus) => void;
+}
+
 /** Starts the Bot behind the port loading the model, and returns a way to ask it for moves. */
-export function connectBot(port: BotPort, model: ModelSource): Bot {
+export function connectBot(port: BotPort, model: ModelSource, listeners: BotListeners = {}): Bot {
   const waitingReplies = new Map<number, (move: MoveRequest) => void>();
   let nextRequestId = 1;
 
@@ -21,7 +26,9 @@ export function connectBot(port: BotPort, model: ModelSource): Bot {
       const resolve = waitingReplies.get(message.id);
       waitingReplies.delete(message.id);
       resolve?.(message.move);
+      return;
     }
+    listeners.onStatus?.(message);
   };
 
   send(port, { kind: 'start', model: model });

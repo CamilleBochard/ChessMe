@@ -3,6 +3,7 @@
 // to the other.
 
 import type { MoveRequest } from '../game/game';
+import type { DownloadProgress } from './model-download';
 
 /** Where the Base Model comes from and how it plays. */
 export interface ModelSource {
@@ -18,8 +19,11 @@ export type PageMessage =
   | { kind: 'start'; model: ModelSource }
   | { kind: 'move'; id: number; fen: string };
 
+/** Whether the Bot can play yet, for the page to show. */
+export type BotStatus = { kind: 'downloading'; progress: DownloadProgress } | { kind: 'ready' };
+
 /** What the worker tells the page. */
-export type WorkerMessage = { kind: 'move'; id: number; move: MoveRequest };
+export type WorkerMessage = BotStatus | { kind: 'move'; id: number; move: MoveRequest };
 
 /**
  * One end of the channel between the page and the worker. A Worker on the

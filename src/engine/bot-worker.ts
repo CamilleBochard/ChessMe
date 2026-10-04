@@ -6,12 +6,13 @@
 import type { BaseModel } from './base-model';
 import { loadBaseModel } from './base-model';
 import type { BotPort, ModelSource, PageMessage, WorkerMessage } from './bot-protocol';
+import type { DownloadProgress } from './model-download';
 import { selectMove } from './move-selection';
 
 /** What the worker needs from its surroundings, supplied by the caller so tests can replace it. */
 export interface WorkerDependencies {
-  /** Fetches the bytes of the model's ONNX file. */
-  download(model: ModelSource): Promise<Uint8Array>;
+  /** Fetches the bytes of the model's ONNX file, reporting how far it has come. */
+  download(model: ModelSource, onProgress: (progress: DownloadProgress) => void): Promise<Uint8Array>;
 }
 
 /** Answers the page's messages arriving on the port. */
@@ -22,7 +23,7 @@ export function serveBot(port: BotPort, dependencies: WorkerDependencies): void 
     const message = event.data as PageMessage;
 
     if (message.kind === 'start') {
-      baseModel = loadModel(message.model, dependencies);
+      baseModel = loadModel(message.model, port, dependencies);
       return;
     }
 
@@ -31,13 +32,22 @@ export function serveBot(port: BotPort, dependencies: WorkerDependencies): void 
       // messages in order, so the model has started loading by now.
       const model = await baseModel!;
       const move = await selectMove(message.fen, { baseModel: model });
-      const reply: WorkerMessage = { kind: 'move', id: message.id, move: move };
-      port.postMessage(reply);
+      send(port, { kind: 'move', id: message.id, move: move });
     }
   };
 }
 
-async function loadModel(model: ModelSource, dependencies: WorkerDependencies): Promise<BaseModel> {
-  const bytes = await dependencies.download(model);
-  return loadBaseModel(bytes, { rating: model.rating });
+/** Downloads and loads the model, telling the page how it is going. */
+async function loadModel(model: ModelSource, port: BotPort, dependencies: WorkerDependencies): Promise<BaseModel> {
+  const bytes = await dependencies.download(model, (progress) => {
+    send(port, { kind: 'downloading', progress: progress });
+  });
+  const baseModel = await loadBaseModel(bytes, { rating: model.rating });
+  send(port, { kind: 'ready' });
+  return baseModel;
+}
+
+/** Posts a message, typed so the worker can only send what the page understands. */
+function send(port: BotPort, message: WorkerMessage): void {
+  port.postMessage(message);
 }
