@@ -6,7 +6,7 @@ import urllib.request
 import pytest
 
 from pipeline.serve_session_games import make_server
-from pipeline.session_games import open_store, session_game_pgns
+from pipeline.session_games import open_store, session_game_counts, session_game_pgns
 
 FOOLS_MATE = {
     "botColour": "black",
@@ -87,3 +87,16 @@ def test_refuses_a_body_far_larger_than_any_game(service):
     status, reply = post(service["url"] + "/api/session-games", oversized)
 
     assert status == 413
+
+
+def test_records_the_visitors_impression_of_a_stored_game(service):
+    _, stored = post(service["url"] + "/api/session-games", FOOLS_MATE)
+
+    status, reply = post(
+        service["url"] + f"/api/session-games/{stored['id']}/impression",
+        {"feltLikeARealPlayer": True},
+    )
+
+    assert status == 204
+    counts = session_game_counts(open_store(service["database"]))
+    assert counts["felt_like_a_real_player"] == 1

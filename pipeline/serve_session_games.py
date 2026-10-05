@@ -12,14 +12,19 @@ it is what the internet reaches.
 
 import argparse
 import json
+import re
 from datetime import UTC, datetime
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from pipeline.session_games import RejectedGame, open_store, record_session_game
+from pipeline.session_games import RejectedGame, open_store, record_impression, record_session_game
 
 SESSION_GAMES_PATH = "/api/session-games"
+
+# Where the visitor's end-of-game answer is sent, naming the game by the id
+# the service gave it when it was stored.
+IMPRESSION_PATH = re.compile(r"/api/session-games/(?P<game_id>[0-9a-f-]{36})/impression")
 
 DEFAULT_PORT = 8787
 
@@ -46,6 +51,12 @@ def make_server(database: Path, host: str, port: int) -> ThreadingHTTPServer:
             if self.path == SESSION_GAMES_PATH:
                 self.receive_game()
                 return
+
+            impression_path = IMPRESSION_PATH.fullmatch(self.path)
+            if impression_path is not None:
+                self.receive_impression(impression_path["game_id"])
+                return
+
             self.reply(HTTPStatus.NOT_FOUND, {"error": "no such endpoint"})
 
         def receive_game(self) -> None:
@@ -66,6 +77,22 @@ def make_server(database: Path, host: str, port: int) -> ThreadingHTTPServer:
                 store.close()
 
             self.reply(HTTPStatus.CREATED, {"id": game_id})
+
+        def receive_impression(self, game_id: str) -> None:
+            try:
+                answer = self.read_json_body()
+            except BadRequest as problem:
+                self.reply(problem.status, {"error": problem.reason})
+                return
+            felt_like_a_real_player = answer["feltLikeARealPlayer"]
+
+            store = open_store(database)
+            try:
+                record_impression(store, game_id, felt_like_a_real_player=felt_like_a_real_player)
+            finally:
+                store.close()
+
+            self.reply(HTTPStatus.NO_CONTENT, None)
 
         def read_json_body(self) -> object:
             """The request's body as JSON. Raises BadRequest when there is none to read."""
