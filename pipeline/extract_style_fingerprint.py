@@ -101,8 +101,8 @@ def side_by_side_table(written: dict) -> str:
         label = PHASE_LABELS[phase]
         add(f"Mean centipawn loss, {label}", lambda player: _number(player["centipawn_loss"]["phases"][phase]["mean"]))
         add(f"Moves losing 300 or more, {label}", lambda player: _percent(_share_losing_300(player, phase)))
-        add(f"Median loss, {label}", lambda player: str(player["centipawn_loss"]["phases"][phase]["percentiles"]["50"]))
-        add(f"90th percentile loss, {label}", lambda player: str(player["centipawn_loss"]["phases"][phase]["percentiles"]["90"]))
+        add(f"Median loss, {label}", lambda player: _number(player["centipawn_loss"]["phases"][phase]["percentiles"]["50"], decimals=0))
+        add(f"90th percentile loss, {label}", lambda player: _number(player["centipawn_loss"]["phases"][phase]["percentiles"]["90"], decimals=0))
 
     for piece in PIECES:
         add(f"Moves made by a {piece}", lambda player: _percent(player["piece_share"]["all_phases"][piece]))
@@ -131,10 +131,10 @@ def _share_losing_300(player: dict, phase: str) -> float | None:
     return losing_300 / distribution["moves"]
 
 
-def _number(value: float | None) -> str:
+def _number(value: float | None, decimals: int = 1) -> str:
     if value is None:
         return "-"
-    return f"{value:.1f}"
+    return f"{value:.{decimals}f}"
 
 
 def _percent(share: float | None) -> str:

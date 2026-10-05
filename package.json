@@ -16,7 +16,8 @@
     "check-models": "node --experimental-strip-types --no-warnings scripts/check-models.ts",
     "move-matching": "tsx scripts/move-matching.ts",
     "base-model-sweep": "tsx scripts/base-model-sweep.ts",
-    "opening-book": "tsx scripts/opening-book.ts"
+    "opening-book": "tsx scripts/opening-book.ts",
+    "bot-games": "tsx scripts/bot-games.ts"
   },
   "dependencies": {
     "@lichess-org/chessground": "^10.1.1",
