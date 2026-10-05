@@ -8,7 +8,7 @@ import { parseSquare } from 'chessops/util';
 import { currentFen, legalMoves, newGame, playMove, type Game, type MoveRequest } from '../game/game';
 import { gameStatus } from '../game/game-status';
 import { loadBaseModel } from './base-model';
-import { selectMove } from './move-selection';
+import { selectMove, selectMoveWithSource } from './move-selection';
 import { readOpeningBook, type OpeningBook } from './opening-book';
 import { seededRandom } from '../evaluation/seeded-random';
 
@@ -176,6 +176,36 @@ describe('selectMove with an Opening Book', () => {
     const move = await selectMove(whiteMayCastleKingside, { openingBook, random: () => 0 });
 
     expect(move).toEqual({ from: 'e1', to: 'g1' });
+  });
+});
+
+describe('selectMoveWithSource', () => {
+  const startingPosition = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+
+  it('names the Opening Book as the source of a book move', async () => {
+    const baseModel = await loadBaseModel(await readFile(FIXED_PREFERENCE_MODELS[0].file));
+    const openingBook = bookWith({ 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -': 'd2d4' });
+
+    const botMove = await selectMoveWithSource(startingPosition, { openingBook, baseModel });
+
+    expect(botMove).toEqual({ move: { from: 'd2', to: 'd4' }, source: 'opening-book' });
+  });
+
+  it('names the Base Model as the source of a move the book does not hold', async () => {
+    const baseModel = await loadBaseModel(await readFile(FIXED_PREFERENCE_MODELS[0].file));
+    const openingBook = bookWith({ 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -': 'c7c5' });
+
+    const botMove = await selectMoveWithSource(startingPosition, { openingBook, baseModel });
+
+    expect(botMove).toEqual({ move: { from: 'e2', to: 'e4' }, source: 'base-model' });
+  });
+
+  it('names chance as the source when neither the book nor a Base Model is given', async () => {
+    const kingMustTakeTheRook = '7k/8/8/8/8/8/1r6/K7 w - - 0 1';
+
+    const botMove = await selectMoveWithSource(kingMustTakeTheRook);
+
+    expect(botMove).toEqual({ move: { from: 'a1', to: 'b2' }, source: 'random' });
   });
 });
 

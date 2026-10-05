@@ -21,6 +21,15 @@ export interface EngineOptions {
   random?: () => number;
 }
 
+/** Where a move of the Bot came from. */
+export type MoveSource = 'opening-book' | 'base-model' | 'random';
+
+/** One move of the Bot, with where it came from, which the Session Game records. */
+export interface BotMove {
+  move: MoveRequest;
+  source: MoveSource;
+}
+
 /**
  * Chooses the Bot's move in the position the FEN describes: Camille's own
  * reply when the Opening Book holds the position, otherwise the move the Base
@@ -30,6 +39,12 @@ export interface EngineOptions {
  * game.
  */
 export async function selectMove(fen: string, options: EngineOptions = {}): Promise<MoveRequest> {
+  const botMove = await selectMoveWithSource(fen, options);
+  return botMove.move;
+}
+
+/** The same choice as selectMove, also saying which of the three gave the move. */
+export async function selectMoveWithSource(fen: string, options: EngineOptions = {}): Promise<BotMove> {
   const random = options.random ?? Math.random;
 
   const game = gameFromFen(fen);
@@ -42,16 +57,16 @@ export async function selectMove(fen: string, options: EngineOptions = {}): Prom
   if (options.openingBook !== undefined) {
     const bookMove = options.openingBook.move(game);
     if (bookMove !== undefined) {
-      return bookMove;
+      return { move: bookMove, source: 'opening-book' };
     }
   }
 
   if (options.baseModel !== undefined) {
     const baseModel = await options.baseModel;
     const policy = await baseModel.movePolicy(game);
-    return policy[0].move;
+    return { move: policy[0].move, source: 'base-model' };
   }
 
   const index = Math.floor(random() * candidates.length);
-  return candidates[index];
+  return { move: candidates[index], source: 'random' };
 }
