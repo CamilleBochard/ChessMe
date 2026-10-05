@@ -5,6 +5,14 @@ import { defineConfig } from 'astro/config';
 // with one small client script and no framework runtime.
 export default defineConfig({
   vite: {
+    server: {
+      // In development the page reports Session Games to a local copy of the
+      // service, started with python -m pipeline.serve_session_games. On the
+      // VPS the web server does this forwarding.
+      proxy: {
+        '/api': 'http://127.0.0.1:8787',
+      },
+    },
     resolve: {
       alias: [
         // The browser gets ONNX Runtime's WebAssembly-only build. The default

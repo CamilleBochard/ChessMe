@@ -24,6 +24,9 @@ if (modelFileName === undefined) {
 }
 const modelBytes = statSync(join(SERVED_MODEL_DIRECTORY, modelFileName)).size;
 const modelPath = `/models/${modelFileName}`;
+// How a Session Game names the Bot it was played against: the model's file,
+// whose name carries a hash of its contents, and the rating it plays at.
+const baseModelName = `${modelFileName.replace(/\.onnx$/, '')}-rating-${SERVED_MODEL_RATING}`;
 ---
 
 <div
@@ -32,12 +35,22 @@ const modelPath = `/models/${modelFileName}`;
   data-model-path={modelPath}
   data-model-bytes={modelBytes}
   data-model-rating={SERVED_MODEL_RATING}
+  data-base-model={baseModelName}
 >
   <div class="board" data-orientation={orientation}></div>
   <p class="status" data-status aria-live="polite"></p>
   <div class="model-status" data-model-status hidden>
     <progress data-model-progress></progress>
     <p data-model-message></p>
+  </div>
+
+  <div class="impression" data-impression hidden>
+    <p>Did the Bot feel like a real player of about {SERVED_MODEL_RATING} on Lichess?</p>
+    <div class="impression-choices" data-impression-choices>
+      <button type="button" data-felt-real="yes">Yes</button>
+      <button type="button" data-felt-real="no">No</button>
+    </div>
+    <p class="impression-thanks" data-impression-thanks hidden></p>
   </div>
 
   <dialog class="promotion" data-promotion aria-label="Choose a promotion piece">
@@ -75,6 +88,13 @@ const modelPath = `/models/${modelFileName}`;
   import { connectBot, type Bot } from '../engine/bot-client';
   import type { BotStatus } from '../engine/bot-protocol';
   import type { BotMove } from '../engine/move-selection';
+  import {
+    connectTelemetry,
+    recordBotMove,
+    recordVisitorMove,
+    startSessionGame,
+    type Telemetry,
+  } from '../telemetry/session-game';
   import type { DownloadProgress } from '../engine/model-download';
 
   /**
@@ -105,8 +125,14 @@ const modelPath = `/models/${modelFileName}`;
     const promotionDialog = frame.querySelector<HTMLDialogElement>('[data-promotion]')!;
     const modelStatus = frame.querySelector<HTMLElement>('[data-model-status]')!;
     const playerColour = (boardElement.dataset.orientation ?? 'white') as Colour;
+    let botColour: Colour = 'black';
+    if (playerColour === 'black') {
+      botColour = 'white';
+    }
 
     let game = newGame();
+    let sessionGame = startSessionGame(botColour, frame.dataset.baseModel!);
+    const telemetry = connectTelemetry((input, init) => window.fetch(input, init));
     let botStatus: BotStatus = { kind: 'downloading', progress: { receivedBytes: 0, totalBytes: undefined } };
 
     if (isFirstVisit()) {
@@ -177,6 +203,7 @@ const modelPath = `/models/${modelFileName}`;
       }
 
       game = next;
+      sessionGame = recordVisitorMove(sessionGame, move);
       // Redraw from the game even after a legal move: chessground moved only
       // the piece that was dragged, so a pawn taken en passant or a promoted
       // pawn would otherwise still show its old state.
@@ -184,6 +211,8 @@ const modelPath = `/models/${modelFileName}`;
 
       if (gameStatus(game).kind === 'ongoing') {
         await playBotMove();
+      } else {
+        finishGame();
       }
     }
 
@@ -213,8 +242,60 @@ const modelPath = `/models/${modelFileName}`;
       }
 
       game = next;
+      sessionGame = recordBotMove(sessionGame, reply);
       redraw();
+
+      if (gameStatus(game).kind !== 'ongoing') {
+        finishGame();
+      }
     }
+
+    /**
+     * Reports the finished game and, once it is stored, asks the visitor what
+     * they made of the Bot. A game left unfinished is never reported.
+     */
+    function finishGame(): void {
+      void telemetry.reportGame(sessionGame).then((gameId) => {
+        if (gameId !== undefined) {
+          askImpression(frame, telemetry, gameId);
+        }
+      });
+    }
+  }
+
+  /**
+   * Shows the end-of-game question and sends the visitor's answer. The
+   * question only appears for a game the service stored, since an answer
+   * needs a game to be attached to.
+   */
+  function askImpression(frame: HTMLElement, telemetry: Telemetry, gameId: string): void {
+    const container = frame.querySelector<HTMLElement>('[data-impression]')!;
+    const choices = container.querySelector<HTMLElement>('[data-impression-choices]')!;
+    const thanks = container.querySelector<HTMLElement>('[data-impression-thanks]')!;
+    const buttons = choices.querySelectorAll<HTMLButtonElement>('button');
+
+    for (const button of buttons) {
+      button.addEventListener(
+        'click',
+        async () => {
+          for (const each of buttons) {
+            each.disabled = true;
+          }
+          const feltLikeARealPlayer = button.dataset.feltReal === 'yes';
+          const recorded = await telemetry.reportImpression(gameId, feltLikeARealPlayer);
+
+          choices.hidden = true;
+          thanks.hidden = false;
+          if (recorded) {
+            thanks.textContent = 'Thank you, your answer has been recorded.';
+          } else {
+            thanks.textContent = 'Your answer could not be recorded.';
+          }
+        },
+        { once: true },
+      );
+    }
+    container.hidden = false;
   }
 
   /** Starts the Bot in its own Web Worker, so its thinking never blocks the board. */
@@ -483,6 +564,33 @@ const modelPath = `/models/${modelFileName}`;
 
   .model-status.failed p {
     font-weight: 600;
+  }
+
+  .impression {
+    margin: 0.75rem auto 0;
+    max-width: 24rem;
+    text-align: center;
+  }
+
+  .impression p {
+    margin: 0 0 0.5rem;
+  }
+
+  .impression-choices {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .impression-choices button {
+    font: inherit;
+    min-width: 5rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid currentColor;
+    border-radius: 0.375rem;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
   }
 
   .promotion {
