@@ -108,11 +108,9 @@ def record_session_game(connection: sqlite3.Connection, report: dict, played_on:
             bot_moves.append((ply, uci, source))
         board.push(move)
 
-    # The page ends a game at the fifty-move rule and at threefold repetition
-    # without waiting for a claim, so a claimable draw counts as an ending.
     # A game the visitor walked away from never reaches its end, and is
     # refused here rather than stored half-played.
-    if not board.is_game_over(claim_draw=True):
+    if not has_ended_as_the_page_ends_it(board):
         raise RejectedGame("the game has not ended")
 
     if bot_plays_white:
@@ -167,6 +165,23 @@ def record_impression(connection: sqlite3.Connection, game_id: str, felt_like_a_
     if stored is None:
         raise UnknownGame(f"there is no game {game_id}")
     raise RejectedImpression("the game has already been given an impression")
+
+
+def has_ended_as_the_page_ends_it(board: chess.Board) -> bool:
+    """
+    True when the page would have ended the game in this position. The page
+    ends a game at the fifty-move rule and at threefold repetition without
+    waiting for a claim. python-chess's own test for a claimable draw is not
+    used: it also allows a draw one move early, when the next move could
+    complete the repetition.
+    """
+    if board.is_checkmate() or board.is_stalemate() or board.is_insufficient_material():
+        return True
+    if board.halfmove_clock >= 100:
+        return True
+    if board.is_repetition(3):
+        return True
+    return False
 
 
 def check_shape(report: object) -> None:

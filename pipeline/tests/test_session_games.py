@@ -211,3 +211,33 @@ def test_refuses_an_impression_for_a_game_that_was_never_stored(tmp_path):
 
     with pytest.raises(RejectedImpression, match="no game"):
         record_impression(store, "00000000-0000-4000-8000-000000000000", felt_like_a_real_player=True)
+
+
+def knights_out_and_back(plies):
+    """Both sides' king's knights out and home again, repeating the start, cut after plies."""
+    moves = ["g1f3", "g8f6", "f3g1", "f6g8"] * 2
+    reported = []
+    for index, uci in enumerate(moves[:plies]):
+        if index % 2 == 1:
+            reported.append({"uci": uci, "source": "base-model"})
+        else:
+            reported.append({"uci": uci})
+    return {"botColour": "black", "baseModel": "maia3-5m", "moves": reported}
+
+
+def test_stores_a_draw_by_threefold_repetition(tmp_path):
+    store = open_store(tmp_path / "session-games.sqlite")
+
+    # The starting position stands for the third time.
+    record_session_game(store, knights_out_and_back(8), played_on=PLAYED_ON)
+
+    assert session_game_counts(store)["draws"] == 1
+
+
+def test_refuses_a_game_one_move_short_of_threefold_repetition(tmp_path):
+    store = open_store(tmp_path / "session-games.sqlite")
+
+    # Black could repeat the position next move, but the page only ends the
+    # game once the repetition has happened.
+    with pytest.raises(RejectedGame, match="has not ended"):
+        record_session_game(store, knights_out_and_back(7), played_on=PLAYED_ON)
