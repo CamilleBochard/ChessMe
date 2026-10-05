@@ -1,6 +1,8 @@
 from chess.engine import Cp, Mate
 
-from pipeline.blunder_profile import MoveLoss, build_blunder_profile, centipawn_loss
+import pytest
+
+from pipeline.blunder_profile import MoveLoss, build_blunder_profile, centipawn_loss, share_losing_at_least
 
 
 def test_centipawn_loss_is_how_far_the_played_move_falls_below_the_best_move():
@@ -69,3 +71,16 @@ def test_also_summarises_every_move_whatever_its_phase():
 
     assert profile["all_phases"]["moves"] == 3
     assert profile["all_phases"]["percentiles"]["50"] == 20
+
+
+def test_reads_the_share_of_moves_losing_at_least_a_threshold_off_the_histogram():
+    profile = build_blunder_profile(losses("opening", [0, 50, 299, 300, 1200]))
+
+    assert share_losing_at_least(profile["phases"]["opening"], 300) == 0.4
+
+
+def test_refuses_a_threshold_the_histogram_cannot_answer():
+    profile = build_blunder_profile(losses("opening", [0, 400]))
+
+    with pytest.raises(ValueError):
+        share_losing_at_least(profile["phases"]["opening"], 250)

@@ -92,6 +92,24 @@ def _histogram(losses: list[int]) -> list[dict]:
     return buckets
 
 
+def share_losing_at_least(distribution: dict, centipawns: int) -> float | None:
+    """The share of a distribution's moves that lost at least this many centipawns.
+
+    Read off the histogram, so the threshold must be where a bucket starts.
+    None when the distribution holds no move.
+    """
+    if centipawns not in HISTOGRAM_BUCKET_STARTS:
+        raise ValueError(f"{centipawns} cp is not a histogram bucket edge: {HISTOGRAM_BUCKET_STARTS}")
+    if distribution["moves"] == 0:
+        return None
+
+    moves_losing_that_much = 0
+    for bucket in distribution["histogram"]:
+        if bucket["from"] >= centipawns:
+            moves_losing_that_much += bucket["moves"]
+    return moves_losing_that_much / distribution["moves"]
+
+
 def centipawn_loss(best: Score, played: Score) -> int:
     """How much evaluation the played move gave up against the best move, in centipawns.
 
