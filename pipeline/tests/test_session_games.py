@@ -141,3 +141,12 @@ def test_refuses_a_bot_move_not_marked_as_from_the_book_or_the_base_model(tmp_pa
         record_session_game(store, report, played_on=PLAYED_ON)
 
     assert session_game_pgns(store) == []
+
+
+def test_refuses_a_report_that_does_not_say_which_side_the_bot_played(tmp_path):
+    store = open_store(tmp_path / "session-games.sqlite")
+    report = fools_mate_reported_by_the_page()
+    report["botColour"] = "green"
+
+    with pytest.raises(RejectedGame, match="Bot's colour green"):
+        record_session_game(store, report, played_on=PLAYED_ON)

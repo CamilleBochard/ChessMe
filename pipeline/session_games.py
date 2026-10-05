@@ -61,6 +61,8 @@ def open_store(path: Path) -> sqlite3.Connection:
 def record_session_game(connection: sqlite3.Connection, report: dict, played_on: date) -> str:
     """Stores the game the page reported and returns the id it was stored under."""
     bot_colour = report["botColour"]
+    if bot_colour not in ("white", "black"):
+        raise RejectedGame(f"the Bot's colour {bot_colour} is neither white nor black")
     bot_plays_white = bot_colour == "white"
 
     board = chess.Board()
