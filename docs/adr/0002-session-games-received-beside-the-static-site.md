@@ -31,10 +31,12 @@ game is stored only if it is legal and finished, and its result is the one
 the service computed. An abandoned game is never reported and would be
 refused if it were.
 
-No account, cookie or address is stored. The service turns off the request
-log the standard library writes by default, which would otherwise record
-every visitor's IP address, and the web server's access log is turned off
-for `/api/` for the same reason.
+No account, cookie or address is stored. The service still logs each
+request, but without the client's address, which the standard library's
+log would otherwise put on every line; the web server's access and error
+logs are turned off for `/api/` for the same reason. The cost is that a
+failure between the web server and the service shows only in the service's
+own log.
 
 The endpoint is public, so anyone can post a legal finished game that was
 never played on the site. Replaying refuses nonsense but cannot tell a real

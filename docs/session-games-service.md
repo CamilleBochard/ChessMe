@@ -19,7 +19,12 @@ one that has not ended.
 
 The service needs Python 3.12 and python-chess, installed from this
 repository with `pip install .` in a virtual environment. It listens on
-127.0.0.1 only.
+127.0.0.1 only, and creates its database on the first request, in a
+directory the service's user must be able to write:
+
+```sh
+sudo install -d -o chessme -g chessme /srv/chessme/data
+```
 
 A systemd unit, for instance `/etc/systemd/system/chessme-session-games.service`:
 
@@ -47,8 +52,12 @@ In the nginx server block that serves the site:
 limit_req_zone $binary_remote_addr zone=session_games:1m rate=10r/m;
 
 location /api/ {
-    # No access log: it would record every visitor's address.
+    # No access log, and no error log: both record the visitor's address,
+    # the error log for each request the rate limit turns away and each one
+    # that fails while the service is down. The service keeps its own log,
+    # without addresses, in the system journal.
     access_log off;
+    error_log /dev/null;
     limit_req zone=session_games burst=5 nodelay;
     client_max_body_size 64k;
     proxy_pass http://127.0.0.1:8787;
