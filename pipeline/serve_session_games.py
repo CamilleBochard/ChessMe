@@ -13,6 +13,8 @@ it is what the internet reaches.
 import argparse
 import json
 import re
+import sys
+import traceback
 from datetime import UTC, datetime
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -132,6 +134,12 @@ def make_server(database: Path, host: str, port: int) -> ThreadingHTTPServer:
             except ValueError:
                 raise BadRequest(HTTPStatus.BAD_REQUEST, "the body is not JSON")
 
+        def log_message(self, format: str, *args) -> None:
+            # The standard handler starts every line with the client's address.
+            # The line is kept for following what the service does, and the
+            # address is left out, since no visitor's address is stored.
+            sys.stderr.write(format % args + "\n")
+
         def reply(self, status: HTTPStatus, body: dict | None) -> None:
             self.send_response(status)
             if body is None:
@@ -145,8 +153,15 @@ def make_server(database: Path, host: str, port: int) -> ThreadingHTTPServer:
             self.end_headers()
             self.wfile.write(encoded)
 
-    server = ThreadingHTTPServer((host, port), SessionGameHandler)
+    server = AddressFreeServer((host, port), SessionGameHandler)
     return server
+
+
+class AddressFreeServer(ThreadingHTTPServer):
+    """A server whose report of a failed request leaves out who sent it."""
+
+    def handle_error(self, request, client_address) -> None:
+        traceback.print_exc()
 
 
 if __name__ == "__main__":

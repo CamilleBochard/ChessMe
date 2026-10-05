@@ -128,3 +128,14 @@ def test_answers_an_impression_that_is_not_yes_or_no_as_a_bad_request(service, a
     status, _ = post(service["url"] + f"/api/session-games/{stored['id']}/impression", answer)
 
     assert status == 400
+
+
+def test_writes_no_visitor_address_to_its_output(service, capsys):
+    _, stored = post(service["url"] + "/api/session-games", FOOLS_MATE)
+    post(service["url"] + f"/api/session-games/{stored['id']}/impression", {"feltLikeARealPlayer": True})
+    post(service["url"] + "/api/session-games", {"moves": "nonsense"})
+
+    output = capsys.readouterr()
+
+    assert "127.0.0.1" not in output.out
+    assert "127.0.0.1" not in output.err
