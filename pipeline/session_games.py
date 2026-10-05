@@ -9,6 +9,7 @@ Nothing about the visitor is stored: no account, no address, not even the
 time of day, only the date the game was played.
 """
 
+import re
 import sqlite3
 import uuid
 from datetime import date
@@ -25,6 +26,10 @@ VISITOR_NAME = "Visitor"
 # it that way, so a move from anywhere else means the report is not the
 # page's own.
 BOT_MOVE_SOURCES = ("opening-book", "base-model")
+
+# The Base Model is named after its file, such as maia3-5m. Anything else is
+# refused, so that no text a sender chooses ends up in a PGN header.
+BASE_MODEL_NAME = re.compile(r"[a-z0-9][a-z0-9._-]{0,63}")
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS session_games (
@@ -113,6 +118,9 @@ def record_session_game(connection: sqlite3.Connection, report: dict, played_on:
     game.headers["Black"] = black_player
     result = board.result(claim_draw=True)
     game.headers["Result"] = result
+    # The served Base Model may change, and its games must not be mixed with
+    # the next one's without anyone noticing.
+    game.headers["BaseModel"] = report["baseModel"]
     pgn = str(game)
 
     game_id = str(uuid.uuid4())
@@ -137,6 +145,10 @@ def check_shape(report: object) -> None:
     """
     if not isinstance(report, dict):
         raise RejectedGame("the report is not an object")
+
+    base_model = report.get("baseModel")
+    if not isinstance(base_model, str) or BASE_MODEL_NAME.fullmatch(base_model) is None:
+        raise RejectedGame("the report does not name the Base Model")
 
     moves = report.get("moves")
     if not isinstance(moves, list):

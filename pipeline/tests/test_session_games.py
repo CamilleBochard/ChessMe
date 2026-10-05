@@ -167,3 +167,12 @@ def test_refuses_a_report_that_is_not_shaped_like_the_pages(tmp_path, report):
 
     with pytest.raises(RejectedGame):
         record_session_game(store, report, played_on=PLAYED_ON)
+
+
+def test_names_the_base_model_the_bot_played_with_in_the_pgn(tmp_path):
+    store = open_store(tmp_path / "session-games.sqlite")
+
+    record_session_game(store, fools_mate_reported_by_the_page(), played_on=PLAYED_ON)
+
+    pgn = session_game_pgns(store)[0]
+    assert '[BaseModel "maia3-5m"]' in pgn
