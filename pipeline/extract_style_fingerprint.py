@@ -23,20 +23,18 @@ import json
 from pathlib import Path
 from typing import Callable
 
+from pipeline.blunder_profile import share_losing_at_least
 from pipeline.bot_games import read_bot_games
-from pipeline.dataset import PHASES, Position, read_dataset
+from pipeline.dataset import PHASE_LABELS, PHASES, Position, read_dataset
 from pipeline.extract_blunder_profile import (
-    ANALYSIS_DIR,
     DATASET_DIR,
-    DEFAULT_DEPTH,
-    STOCKFISH_PATH,
     ProgressPrinter,
-    cache_path_for,
-    default_worker_count,
+    add_stockfish_arguments,
     measure_move_losses,
+    running_stockfish,
 )
-from pipeline.stockfish_analysis import Analyser, StockfishAnalyser
-from pipeline.style_fingerprint import build_style_fingerprint
+from pipeline.stockfish_analysis import Analyser
+from pipeline.style_fingerprint import PIECE_NAMES, build_style_fingerprint
 
 # The version of the file's layout. Raise it whenever a reader of the old
 # layout would misread the new one.
@@ -58,7 +56,7 @@ def extract(
     camille_positions = dataset.train + dataset.test
     bot_positions = read_bot_games(bot_games_path)
 
-    written = {
+    fingerprints = {
         "format_version": FORMAT_VERSION,
         "engine": analysers[0].engine,
         "depth": analysers[0].depth,
@@ -70,8 +68,8 @@ def extract(
         "camille_training_games": _fingerprint(dataset.train, analysers, cache_path, report_progress),
         "camille_test_set": _fingerprint(dataset.test, analysers, cache_path, report_progress),
     }
-    fingerprint_path.write_text(json.dumps(written, indent=1), encoding="utf-8")
-    return written
+    fingerprint_path.write_text(json.dumps(fingerprints, indent=1), encoding="utf-8")
+    return fingerprints
 
 
 def _fingerprint(
@@ -87,11 +85,6 @@ def _fingerprint(
     return fingerprint
 
 
-PHASE_LABELS = {"opening": "Opening (1-10)", "middlegame": "Middlegame (11-30)", "endgame": "Endgame (31+)"}
-
-PIECES = ["pawn", "knight", "bishop", "rook", "queen", "king"]
-
-
 # The columns of the table, in order, and the fingerprint each one shows.
 COLUMNS = [
     ("Camille", "camille"),
@@ -100,38 +93,37 @@ COLUMNS = [
     ("Camille, Test Set", "camille_test_set"),
 ]
 
+# The usual threshold for a blunder: three pawns.
+BLUNDER_CENTIPAWNS = 300
 
-def side_by_side_table(written: dict) -> str:
+
+def side_by_side_table(fingerprints: dict) -> str:
     """The fingerprints as one Markdown table: Camille, the Bot, then Camille's two halves for scale."""
-    header = "| Statistic | " + " | ".join(title for title, _ in COLUMNS) + " |"
-    divider = "|---|" + "---|" * len(COLUMNS)
-    rows = [header, divider]
+    titles = [title for title, _ in COLUMNS]
+    rows = [_table_row("Statistic", titles), "|---|" + "---|" * len(COLUMNS)]
 
-    def add(label: str, read: Callable[[dict], str]) -> None:
-        cells = [read(written[key]) for _, key in COLUMNS]
-        rows.append(f"| {label} | " + " | ".join(cells) + " |")
+    def add(label: str, cell_of: Callable[[dict], str]) -> None:
+        cells = [cell_of(fingerprints[key]) for _, key in COLUMNS]
+        rows.append(_table_row(label, cells))
 
     add("Games", lambda player: f"{player['games']:,}")
     add("Moves", lambda player: f"{player['moves']:,}")
 
     for phase in PHASES:
         label = PHASE_LABELS[phase]
-        add(f"Mean centipawn loss, {label}", lambda player: _number(player["centipawn_loss"]["phases"][phase]["mean"]))
+        add(f"Mean centipawn loss, {label}", lambda player: _decimal(_losses(player, phase)["mean"]))
+        add(f"Median loss, {label}", lambda player: _whole(_losses(player, phase)["percentiles"]["50"]))
+        add(f"90th percentile loss, {label}", lambda player: _whole(_losses(player, phase)["percentiles"]["90"]))
         add(
-            f"Median loss, {label}",
-            lambda player: _number(player["centipawn_loss"]["phases"][phase]["percentiles"]["50"], decimals=0),
+            f"Moves losing {BLUNDER_CENTIPAWNS} or more, {label}",
+            lambda player: _percent(share_losing_at_least(_losses(player, phase), BLUNDER_CENTIPAWNS)),
         )
-        add(
-            f"90th percentile loss, {label}",
-            lambda player: _number(player["centipawn_loss"]["phases"][phase]["percentiles"]["90"], decimals=0),
-        )
-        add(f"Moves losing 300 or more, {label}", lambda player: _percent(_share_losing_300(player, phase)))
 
     # Shares over the whole game would mostly measure how long games last,
     # since the king and rooks move far more in the endgame, so each Phase is
     # shown on its own.
     for phase in PHASES:
-        for piece in PIECES:
+        for piece in PIECE_NAMES.values():
             add(
                 f"Moves made by a {piece}, {PHASE_LABELS[phase]}",
                 lambda player: _percent(player["piece_share"]["phases"][phase][piece]),
@@ -144,32 +136,39 @@ def side_by_side_table(written: dict) -> str:
         )
 
     add("Queens off before move 20", lambda player: _percent(player["queen_trade_before_move_20"]["rate"]))
-    add(
-        "Games reaching move 30",
-        lambda player: _percent(player["material_at_move_30"]["games_reaching_move_30"] / player["games"]),
-    )
-    add("Material at move 30, mean (of 78)", lambda player: _number(player["material_at_move_30"]["mean"]))
+    add("Games reaching move 30", lambda player: _percent(_share_reaching_move_30(player)))
+    add("Material at move 30, mean (of 78)", lambda player: _decimal(player["material_at_move_30"]["mean"]))
     add("Castled kingside", lambda player: _percent(player["castling"]["kingside"]))
     add("Castled queenside", lambda player: _percent(player["castling"]["queenside"]))
     add("Never castled", lambda player: _percent(player["castling"]["never"]))
     return "\n".join(rows)
 
 
-def _share_losing_300(player: dict, phase: str) -> float | None:
-    distribution = player["centipawn_loss"]["phases"][phase]
-    if distribution["moves"] == 0:
-        return None
-    losing_300 = 0
-    for bucket in distribution["histogram"]:
-        if bucket["from"] >= 300:
-            losing_300 += bucket["moves"]
-    return losing_300 / distribution["moves"]
+def _table_row(label: str, cells: list[str]) -> str:
+    columns = [label] + cells
+    return f"| {' | '.join(columns)} |"
 
 
-def _number(value: float | None, decimals: int = 1) -> str:
+def _losses(player: dict, phase: str) -> dict:
+    """The distribution of one Phase's centipawn losses."""
+    return player["centipawn_loss"]["phases"][phase]
+
+
+def _share_reaching_move_30(player: dict) -> float:
+    material = player["material_at_move_30"]
+    return material["games_reaching_move_30"] / material["games"]
+
+
+def _decimal(value: float | None) -> str:
     if value is None:
         return "-"
-    return f"{value:.{decimals}f}"
+    return f"{value:.1f}"
+
+
+def _whole(value: int | None) -> str:
+    if value is None:
+        return "-"
+    return str(value)
 
 
 def _percent(share: float | None) -> str:
@@ -181,41 +180,14 @@ def _percent(share: float | None) -> str:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Measure the Style Fingerprint of Camille and of the Bot.")
     parser.add_argument("--bot-games", type=Path, default=BOT_GAMES_PATH, help="the games npm run bot-games wrote")
-    parser.add_argument(
-        "--depth",
-        type=int,
-        default=DEFAULT_DEPTH,
-        help=f"Stockfish search depth, the Blunder Profile's by default ({DEFAULT_DEPTH})",
-    )
-    default_workers = default_worker_count()
-    parser.add_argument(
-        "--workers",
-        type=int,
-        default=default_workers,
-        help=f"Stockfish processes run in parallel (default {default_workers})",
-    )
+    add_stockfish_arguments(parser)
     arguments = parser.parse_args()
 
-    if not STOCKFISH_PATH.exists():
-        raise SystemExit(f"Stockfish is not at {STOCKFISH_PATH}; run scripts/fetch_stockfish.sh first.")
-
-    stockfish_processes = []
-    for _ in range(arguments.workers):
-        stockfish_processes.append(StockfishAnalyser(STOCKFISH_PATH, arguments.depth))
-    try:
-        cache_path = cache_path_for(stockfish_processes[0].engine, arguments.depth)
-        ANALYSIS_DIR.mkdir(parents=True, exist_ok=True)
-        print(
-            f"Analysing with {stockfish_processes[0].engine} at depth {arguments.depth}, caching in {cache_path}",
-            flush=True,
-        )
-        result = extract(
+    with running_stockfish(arguments.depth, arguments.workers) as (stockfish_processes, cache_path):
+        fingerprints = extract(
             DATASET_DIR, arguments.bot_games, cache_path, FINGERPRINT_PATH, stockfish_processes, ProgressPrinter()
         )
-    finally:
-        for stockfish in stockfish_processes:
-            stockfish.close()
 
     print(f"Written to {FINGERPRINT_PATH}")
     print()
-    print(side_by_side_table(result))
+    print(side_by_side_table(fingerprints))

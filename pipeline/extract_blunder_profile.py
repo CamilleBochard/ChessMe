@@ -21,9 +21,10 @@ import json
 import os
 import re
 import time
+from contextlib import contextmanager
 from dataclasses import asdict
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Iterator
 
 from pipeline.blunder_profile import EVALUATION_CAP, MoveLoss, build_blunder_profile, centipawn_loss
 from pipeline.dataset import Position, read_dataset
@@ -133,13 +134,13 @@ class ProgressPrinter:
         print(f"{analysed}/{to_analyse} moves analysed, about {seconds_left / 3600:.1f} h left", flush=True)
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Measure every move in the dataset with Stockfish.")
+def add_stockfish_arguments(parser: argparse.ArgumentParser) -> None:
+    """The --depth and --workers options every command that runs Stockfish takes."""
     parser.add_argument(
         "--depth",
         type=int,
         default=DEFAULT_DEPTH,
-        help=f"Stockfish search depth, recorded in the profile (default {DEFAULT_DEPTH})",
+        help=f"Stockfish search depth, recorded with the results (default {DEFAULT_DEPTH})",
     )
     default_workers = default_worker_count()
     parser.add_argument(
@@ -148,25 +149,35 @@ if __name__ == "__main__":
         default=default_workers,
         help=f"Stockfish processes run in parallel (default {default_workers})",
     )
-    arguments = parser.parse_args()
 
+
+@contextmanager
+def running_stockfish(depth: int, workers: int) -> Iterator[tuple[list[StockfishAnalyser], Path]]:
+    """Starts the Stockfish processes and names their cache file; closes the processes however the run ends."""
     if not STOCKFISH_PATH.exists():
         raise SystemExit(f"Stockfish is not at {STOCKFISH_PATH}; run scripts/fetch_stockfish.sh first.")
 
     stockfish_processes = []
-    for _ in range(arguments.workers):
-        stockfish_processes.append(StockfishAnalyser(STOCKFISH_PATH, arguments.depth))
+    for _ in range(workers):
+        stockfish_processes.append(StockfishAnalyser(STOCKFISH_PATH, depth))
     try:
-        cache_path = cache_path_for(stockfish_processes[0].engine, arguments.depth)
+        engine = stockfish_processes[0].engine
+        cache_path = cache_path_for(engine, depth)
         ANALYSIS_DIR.mkdir(parents=True, exist_ok=True)
-        print(
-            f"Analysing with {stockfish_processes[0].engine} at depth {arguments.depth}, caching in {cache_path}",
-            flush=True,
-        )
-        written = extract(DATASET_DIR, cache_path, PROFILE_PATH, LOSSES_PATH, stockfish_processes, ProgressPrinter())
+        print(f"Analysing with {engine} at depth {depth}, caching in {cache_path}", flush=True)
+        yield stockfish_processes, cache_path
     finally:
         for stockfish in stockfish_processes:
             stockfish.close()
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Measure every move in the dataset with Stockfish.")
+    add_stockfish_arguments(parser)
+    arguments = parser.parse_args()
+
+    with running_stockfish(arguments.depth, arguments.workers) as (stockfish_processes, cache_path):
+        written = extract(DATASET_DIR, cache_path, PROFILE_PATH, LOSSES_PATH, stockfish_processes, ProgressPrinter())
 
     all_phases = written["all_phases"]
     print(f"{all_phases['moves']} moves measured, mean loss {all_phases['mean']:.1f} cp, written to {PROFILE_PATH}")

@@ -106,6 +106,9 @@ def _is_ten_minutes(game: chess.pgn.Game) -> bool:
 # Every Phase, in the order a game passes through them.
 PHASES = ["opening", "middlegame", "endgame"]
 
+# How a Phase is named in a table, with the plies _phase_of assigns to it.
+PHASE_LABELS = {"opening": "Opening (1-10)", "middlegame": "Middlegame (11-30)", "endgame": "Endgame (31+)"}
+
 
 def _phase_of(ply: int) -> str:
     """The Phase a move belongs to, by its ply: opening 1-10, middlegame 11-30, endgame 31+."""

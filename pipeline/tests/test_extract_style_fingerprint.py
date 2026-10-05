@@ -5,7 +5,7 @@ from pathlib import Path
 from chess.engine import Cp
 
 from pipeline.dataset import Position
-from pipeline.extract_style_fingerprint import extract
+from pipeline.extract_style_fingerprint import extract, side_by_side_table
 from pipeline.stockfish_analysis import Analysis
 
 START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
@@ -63,3 +63,22 @@ def test_also_measures_camille_s_training_games_and_test_set_apart_to_show_the_n
     written = json.loads(fingerprint_path.read_text(encoding="utf-8"))
     assert written["camille_training_games"]["piece_share"]["all_phases"]["pawn"] == 1
     assert written["camille_test_set"]["piece_share"]["all_phases"]["knight"] == 1
+
+
+def test_sets_the_fingerprints_side_by_side_in_one_table_row_per_statistic(tmp_path):
+    camille_move = Position(game_id="lichess:a", source="lichess", ply=1, phase="opening", fen=START, move="e2e4")
+    write_json_lines([asdict(camille_move)], tmp_path / "train.jsonl")
+    write_json_lines([asdict(camille_move)], tmp_path / "test.jsonl")
+    bot_games_path = tmp_path / "bot-games.jsonl"
+    write_json_lines([{"game_id": "bot:1", "bot_colour": "white", "moves": ["g1f3"]}], bot_games_path)
+
+    fingerprints = extract(
+        tmp_path, bot_games_path, tmp_path / "cache.jsonl", tmp_path / "out.json", [LosingAPawnAnalyser()]
+    )
+    table = side_by_side_table(fingerprints).splitlines()
+
+    assert table[0] == "| Statistic | Camille | Bot | Camille, training games | Camille, Test Set |"
+    assert "| Moves made by a knight, Opening (1-10) | 0.0% | 100.0% | 0.0% | 0.0% |" in table
+    assert "| Moves losing 300 or more, Opening (1-10) | 0.0% | 0.0% | 0.0% | 0.0% |" in table
+    assert "| Mean centipawn loss, Middlegame (11-30) | - | - | - | - |" in table
+    assert "| Never castled | 100.0% | 100.0% | 100.0% | 100.0% |" in table
