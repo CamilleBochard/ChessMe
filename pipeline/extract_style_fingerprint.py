@@ -12,7 +12,9 @@ cache, and the same fingerprint function. Camille's moves are already in the
 cache once the Blunder Profile has been extracted, so only the Bot's moves
 cost Stockfish time.
 
-Written to data/dataset/style-fingerprint.json; a Markdown table of the two
+Camille's training games and Test Set are also measured apart: the same
+player on two sets of games shows how far fingerprints drift by chance.
+Written to data/dataset/style-fingerprint.json; a Markdown table of the
 fingerprints goes to standard output.
 """
 
@@ -62,6 +64,11 @@ def extract(
         "depth": analysers[0].depth,
         "camille": _fingerprint(camille_positions, analysers, cache_path, report_progress),
         "bot": _fingerprint(bot_positions, analysers, cache_path, report_progress),
+        # The same player on two sets of his own games: how far apart they
+        # land is how far two fingerprints drift by chance, the yardstick for
+        # whether a gap between Camille and the Bot means anything.
+        "camille_training_games": _fingerprint(dataset.train, analysers, cache_path, report_progress),
+        "camille_test_set": _fingerprint(dataset.test, analysers, cache_path, report_progress),
     }
     fingerprint_path.write_text(json.dumps(written, indent=1), encoding="utf-8")
     return written
@@ -85,14 +92,24 @@ PHASE_LABELS = {"opening": "Opening (1-10)", "middlegame": "Middlegame (11-30)",
 PIECES = ["pawn", "knight", "bishop", "rook", "queen", "king"]
 
 
+# The columns of the table, in order, and the fingerprint each one shows.
+COLUMNS = [
+    ("Camille", "camille"),
+    ("Bot", "bot"),
+    ("Camille, training games", "camille_training_games"),
+    ("Camille, Test Set", "camille_test_set"),
+]
+
+
 def side_by_side_table(written: dict) -> str:
-    """The two fingerprints as one Markdown table, Camille's column beside the Bot's."""
-    camille = written["camille"]
-    bot = written["bot"]
-    rows = ["| Statistic | Camille | Bot |", "|---|---|---|"]
+    """The fingerprints as one Markdown table: Camille, the Bot, then Camille's two halves for scale."""
+    header = "| Statistic | " + " | ".join(title for title, _ in COLUMNS) + " |"
+    divider = "|---|" + "---|" * len(COLUMNS)
+    rows = [header, divider]
 
     def add(label: str, read: Callable[[dict], str]) -> None:
-        rows.append(f"| {label} | {read(camille)} | {read(bot)} |")
+        cells = [read(written[key]) for _, key in COLUMNS]
+        rows.append(f"| {label} | " + " | ".join(cells) + " |")
 
     add("Games", lambda player: f"{player['games']:,}")
     add("Moves", lambda player: f"{player['moves']:,}")
@@ -100,19 +117,37 @@ def side_by_side_table(written: dict) -> str:
     for phase in PHASES:
         label = PHASE_LABELS[phase]
         add(f"Mean centipawn loss, {label}", lambda player: _number(player["centipawn_loss"]["phases"][phase]["mean"]))
+        add(
+            f"Median loss, {label}",
+            lambda player: _number(player["centipawn_loss"]["phases"][phase]["percentiles"]["50"], decimals=0),
+        )
+        add(
+            f"90th percentile loss, {label}",
+            lambda player: _number(player["centipawn_loss"]["phases"][phase]["percentiles"]["90"], decimals=0),
+        )
         add(f"Moves losing 300 or more, {label}", lambda player: _percent(_share_losing_300(player, phase)))
-        add(f"Median loss, {label}", lambda player: _number(player["centipawn_loss"]["phases"][phase]["percentiles"]["50"], decimals=0))
-        add(f"90th percentile loss, {label}", lambda player: _number(player["centipawn_loss"]["phases"][phase]["percentiles"]["90"], decimals=0))
 
-    for piece in PIECES:
-        add(f"Moves made by a {piece}", lambda player: _percent(player["piece_share"]["all_phases"][piece]))
+    # Shares over the whole game would mostly measure how long games last,
+    # since the king and rooks move far more in the endgame, so each Phase is
+    # shown on its own.
+    for phase in PHASES:
+        for piece in PIECES:
+            add(
+                f"Moves made by a {piece}, {PHASE_LABELS[phase]}",
+                lambda player: _percent(player["piece_share"]["phases"][phase][piece]),
+            )
 
     for phase in PHASES:
-        label = PHASE_LABELS[phase]
-        add(f"Capture taken when one is on offer, {label}", lambda player: _percent(player["capture_taken_rate"]["phases"][phase]["rate"]))
+        add(
+            f"Capture taken when one is on offer, {PHASE_LABELS[phase]}",
+            lambda player: _percent(player["capture_taken_rate"]["phases"][phase]["rate"]),
+        )
 
     add("Queens off before move 20", lambda player: _percent(player["queen_trade_before_move_20"]["rate"]))
-    add("Games reaching move 30", lambda player: _percent(player["material_at_move_30"]["games_reaching_move_30"] / player["games"]))
+    add(
+        "Games reaching move 30",
+        lambda player: _percent(player["material_at_move_30"]["games_reaching_move_30"] / player["games"]),
+    )
     add("Material at move 30, mean (of 78)", lambda player: _number(player["material_at_move_30"]["mean"]))
     add("Castled kingside", lambda player: _percent(player["castling"]["kingside"]))
     add("Castled queenside", lambda player: _percent(player["castling"]["queenside"]))
