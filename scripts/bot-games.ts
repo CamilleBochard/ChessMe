@@ -16,8 +16,8 @@
 // the dataset). A drawing opponent at the Bot's own rating loses almost every
 // game, because the top move is stronger than a draw at the same rating, and a
 // Bot that is always winning would trade, attack and keep material as a
-// winning player does rather than as Camille does. In trial runs the Bot
-// scored 62% against 1900 and 39% against 2100, hence 2000.
+// winning player does rather than as Camille does. The trial runs that set
+// the rating are in docs/experiments/style-fingerprint.md.
 //
 // The Bot plays White in even-numbered games and Black in odd-numbered ones.
 // Each game is written as one JSON line: its id, the Bot's colour, every move
