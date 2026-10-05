@@ -25,7 +25,9 @@ VISITOR_NAME = "Visitor"
 # random legal move only when it has no Base Model, and the page never runs
 # it that way, so a move from anywhere else means the report is not the
 # page's own.
-BOT_MOVE_SOURCES = ("opening-book", "base-model")
+OPENING_BOOK = "opening-book"
+BASE_MODEL = "base-model"
+BOT_MOVE_SOURCES = (OPENING_BOOK, BASE_MODEL)
 
 # The Base Model is named after its file, such as maia3-5m-f9725c961e03. Anything else is
 # refused, so that no text a sender chooses ends up in a PGN header.
@@ -238,8 +240,9 @@ def session_game_counts(connection: sqlite3.Connection) -> dict[str, int]:
            WHERE (result = '1-0' AND bot_colour = 'black') OR (result = '0-1' AND bot_colour = 'white')""",
     )
     draws = scalar(connection, "SELECT COUNT(*) FROM session_games WHERE result = '1/2-1/2'")
-    from_opening_book = scalar(connection, "SELECT COUNT(*) FROM bot_moves WHERE source = 'opening-book'")
-    from_base_model = scalar(connection, "SELECT COUNT(*) FROM bot_moves WHERE source = 'base-model'")
+    moves_by_source = "SELECT COUNT(*) FROM bot_moves WHERE source = ?"
+    from_opening_book = scalar(connection, moves_by_source, (OPENING_BOOK,))
+    from_base_model = scalar(connection, moves_by_source, (BASE_MODEL,))
     felt_real = scalar(connection, "SELECT COUNT(*) FROM session_games WHERE felt_like_a_real_player = 1")
     did_not_feel_real = scalar(connection, "SELECT COUNT(*) FROM session_games WHERE felt_like_a_real_player = 0")
     not_given = scalar(connection, "SELECT COUNT(*) FROM session_games WHERE felt_like_a_real_player IS NULL")
@@ -258,7 +261,7 @@ def session_game_counts(connection: sqlite3.Connection) -> dict[str, int]:
     return counts
 
 
-def scalar(connection: sqlite3.Connection, query: str) -> int:
+def scalar(connection: sqlite3.Connection, query: str, parameters: tuple = ()) -> int:
     """The single number a counting query returns."""
-    row = connection.execute(query).fetchone()
+    row = connection.execute(query, parameters).fetchone()
     return row[0]
