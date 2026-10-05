@@ -24,6 +24,8 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS session_games (
     id TEXT PRIMARY KEY,
     played_on TEXT NOT NULL,
+    bot_colour TEXT NOT NULL,
+    result TEXT NOT NULL,
     pgn TEXT NOT NULL
 );
 """
@@ -74,14 +76,15 @@ def record_session_game(connection: sqlite3.Connection, report: dict, played_on:
     game.headers["Date"] = played_on.strftime("%Y.%m.%d")
     game.headers["White"] = white_player
     game.headers["Black"] = black_player
-    game.headers["Result"] = board.result(claim_draw=True)
+    result = board.result(claim_draw=True)
+    game.headers["Result"] = result
     pgn = str(game)
 
     game_id = str(uuid.uuid4())
     with connection:
         connection.execute(
-            "INSERT INTO session_games (id, played_on, pgn) VALUES (?, ?, ?)",
-            (game_id, played_on.isoformat(), pgn),
+            "INSERT INTO session_games (id, played_on, bot_colour, result, pgn) VALUES (?, ?, ?, ?, ?)",
+            (game_id, played_on.isoformat(), bot_colour, result, pgn),
         )
     return game_id
 
@@ -91,3 +94,33 @@ def session_game_pgns(connection: sqlite3.Connection) -> list[str]:
     rows = connection.execute("SELECT pgn FROM session_games ORDER BY rowid").fetchall()
     pgns = [row[0] for row in rows]
     return pgns
+
+
+def session_game_counts(connection: sqlite3.Connection) -> dict[str, int]:
+    """How many games have been stored and how the Bot fared in them."""
+    games = scalar(connection, "SELECT COUNT(*) FROM session_games")
+    bot_wins = scalar(
+        connection,
+        """SELECT COUNT(*) FROM session_games
+           WHERE (result = '1-0' AND bot_colour = 'white') OR (result = '0-1' AND bot_colour = 'black')""",
+    )
+    bot_losses = scalar(
+        connection,
+        """SELECT COUNT(*) FROM session_games
+           WHERE (result = '1-0' AND bot_colour = 'black') OR (result = '0-1' AND bot_colour = 'white')""",
+    )
+    draws = scalar(connection, "SELECT COUNT(*) FROM session_games WHERE result = '1/2-1/2'")
+
+    counts = {
+        "games": games,
+        "bot_wins": bot_wins,
+        "bot_losses": bot_losses,
+        "draws": draws,
+    }
+    return counts
+
+
+def scalar(connection: sqlite3.Connection, query: str) -> int:
+    """The single number a counting query returns."""
+    row = connection.execute(query).fetchone()
+    return row[0]
