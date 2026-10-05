@@ -88,3 +88,19 @@ def test_sees_a_queen_trade_from_black_s_side_of_the_board():
     queen_trades = fingerprint_of(positions)["queen_trade_before_move_20"]
 
     assert queen_trades["games_with_a_queen_trade"] == 1
+
+
+def test_measures_the_material_left_on_the_board_at_move_30_in_games_that_reach_it():
+    # The queen trade, played after thirty plies of shuffling, also costs
+    # White a pawn and Black two. Knights then shuffle on to move 30, so
+    # its board holds 78 - 18 - 3 = 57 pawns' worth of material.
+    shuffling_before = "g1f3 g8f6 f3g1 f6g8 " * 7 + "g1f3 g8f6 "
+    shuffling_after = " b8c6 c3b1 c6b8 b1c3" * 5
+    reaches_move_30 = white_positions("lichess:long", shuffling_before + QUEEN_TRADE + shuffling_after)
+    ends_early = white_positions("lichess:short", "e2e4 e7e5 g1f3")
+
+    material = fingerprint_of(reaches_move_30 + ends_early)["material_at_move_30"]
+
+    assert material["games"] == 2
+    assert material["games_reaching_move_30"] == 1
+    assert material["mean"] == 57

@@ -60,22 +60,22 @@ def _distribution(losses: list[int]) -> dict:
     return {
         "moves": len(losses),
         "mean": mean,
-        "percentiles": _percentiles(losses),
+        "percentiles": nearest_rank_percentiles(losses, PERCENTILES),
         "histogram": _histogram(losses),
     }
 
 
-def _percentiles(losses: list[int]) -> dict[str, int | None]:
-    """The nearest-rank percentiles: the p-th is the smallest loss with at least p% of the moves at or below it."""
-    ordered = sorted(losses)
-    percentiles = {}
-    for percentile in PERCENTILES:
+def nearest_rank_percentiles(values: list[int], percentiles: list[int]) -> dict[str, int | None]:
+    """The p-th percentile is the smallest value with at least p% of the values at or below it."""
+    ordered = sorted(values)
+    result = {}
+    for percentile in percentiles:
         if not ordered:
-            percentiles[str(percentile)] = None
+            result[str(percentile)] = None
             continue
         rank = math.ceil(percentile / 100 * len(ordered))
-        percentiles[str(percentile)] = ordered[rank - 1]
-    return percentiles
+        result[str(percentile)] = ordered[rank - 1]
+    return result
 
 
 def _histogram(losses: list[int]) -> list[dict]:

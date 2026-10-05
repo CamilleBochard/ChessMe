@@ -14,11 +14,19 @@ from typing import Callable
 
 import chess
 
-from pipeline.blunder_profile import MoveLoss
+from pipeline.blunder_profile import MoveLoss, nearest_rank_percentiles
 from pipeline.dataset import PHASES, Position
 
 # Move 20 begins at ply 39, so a trade before it is complete within 38 plies.
 PLIES_BEFORE_MOVE_20 = 38
+
+# Move 30 begins once 58 plies have been played.
+PLIES_BEFORE_MOVE_30 = 58
+
+# The usual piece values, in pawns. A full board holds 78 of material.
+PIECE_VALUES = {chess.PAWN: 1, chess.KNIGHT: 3, chess.BISHOP: 3, chess.ROOK: 5, chess.QUEEN: 9, chess.KING: 0}
+
+MATERIAL_PERCENTILES = [25, 50, 75]
 
 PIECE_NAMES = {
     chess.PAWN: "pawn",
@@ -35,6 +43,7 @@ def build_style_fingerprint(positions: list[Position], move_losses: list[MoveLos
         "piece_share": _per_phase(positions, _share_by_piece),
         "capture_taken_rate": _per_phase(positions, _capture_taken_rate),
         "queen_trade_before_move_20": _queen_trade_rate(positions),
+        "material_at_move_30": _material_at_move_30(positions),
     }
 
 
@@ -136,3 +145,36 @@ def _queens_on(board: chess.Board) -> int:
     white_queens = len(board.pieces(chess.QUEEN, chess.WHITE))
     black_queens = len(board.pieces(chess.QUEEN, chess.BLACK))
     return white_queens + black_queens
+
+
+def _material_at_move_30(positions: list[Position]) -> dict:
+    """The material left on the board, both sides together, as move 30 begins.
+
+    Only games that reach move 30 have a board to measure, so how many do is
+    reported beside the distribution: a player whose games end early leaves
+    only his long games in it.
+    """
+    games = _boards_by_game(positions)
+    materials = []
+    for boards in games.values():
+        if PLIES_BEFORE_MOVE_30 not in boards:
+            continue
+        materials.append(_material_on(boards[PLIES_BEFORE_MOVE_30]))
+
+    mean = None
+    if materials:
+        mean = sum(materials) / len(materials)
+    return {
+        "games": len(games),
+        "games_reaching_move_30": len(materials),
+        "mean": mean,
+        "percentiles": nearest_rank_percentiles(materials, MATERIAL_PERCENTILES),
+    }
+
+
+def _material_on(board: chess.Board) -> int:
+    material = 0
+    for piece in board.piece_map().values():
+        material += PIECE_VALUES[piece.piece_type]
+    return material
+
