@@ -27,3 +27,6 @@ notes/
 tools/
 models/
 public/models/
+
+# Session Games received by pipeline/serve_session_games.py, kept on the VPS
+data/session-games*.sqlite
