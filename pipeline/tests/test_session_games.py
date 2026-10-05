@@ -4,6 +4,7 @@ import pytest
 
 from pipeline.session_games import (
     RejectedGame,
+    RejectedImpression,
     open_store,
     record_impression,
     record_session_game,
@@ -192,3 +193,14 @@ def test_counts_whether_visitors_felt_they_played_a_real_player(tmp_path):
     assert counts["felt_like_a_real_player"] == 1
     assert counts["did_not_feel_like_a_real_player"] == 1
     assert counts["impression_not_given"] == 1
+
+
+def test_keeps_the_first_impression_given_for_a_game(tmp_path):
+    store = open_store(tmp_path / "session-games.sqlite")
+    game_id = record_session_game(store, fools_mate_reported_by_the_page(), played_on=PLAYED_ON)
+    record_impression(store, game_id, felt_like_a_real_player=True)
+
+    with pytest.raises(RejectedImpression, match="already"):
+        record_impression(store, game_id, felt_like_a_real_player=False)
+
+    assert session_game_counts(store)["felt_like_a_real_player"] == 1
