@@ -14,7 +14,7 @@ from typing import Callable
 
 import chess
 
-from pipeline.blunder_profile import MoveLoss, nearest_rank_percentiles
+from pipeline.blunder_profile import MoveLoss, build_blunder_profile, nearest_rank_percentiles
 from pipeline.dataset import PHASES, Position
 
 # Move 20 begins at ply 39, so a trade before it is complete within 38 plies.
@@ -39,7 +39,14 @@ PIECE_NAMES = {
 
 
 def build_style_fingerprint(positions: list[Position], move_losses: list[MoveLoss]) -> dict:
+    """The fingerprint of the player who faced these positions.
+
+    move_losses holds the centipawn loss of each move, as the Blunder Profile
+    measures it; its distribution is summarised by the Blunder Profile's own
+    code, so the two can never disagree on what the error shape is.
+    """
     return {
+        "centipawn_loss": build_blunder_profile(move_losses),
         "piece_share": _per_phase(positions, _share_by_piece),
         "capture_taken_rate": _per_phase(positions, _capture_taken_rate),
         "queen_trade_before_move_20": _queen_trade_rate(positions),

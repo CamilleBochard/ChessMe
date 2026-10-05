@@ -115,3 +115,17 @@ def test_records_which_side_each_game_castled_to_if_it_castled_at_all():
     castling = fingerprint_of(kingside + queenside + never + never_either)["castling"]
 
     assert castling == {"games": 4, "kingside": 0.25, "queenside": 0.25, "never": 0.5}
+
+
+def test_describes_the_shape_of_the_centipawn_losses_by_phase():
+    positions = white_positions("lichess:a", "e2e4 e7e5 g1f3")
+    losses = [
+        MoveLoss(game_id="lichess:a", ply=1, phase="opening", centipawn_loss=0),
+        MoveLoss(game_id="lichess:a", ply=3, phase="opening", centipawn_loss=300),
+    ]
+
+    centipawn_loss = build_style_fingerprint(positions, losses)["centipawn_loss"]
+
+    assert centipawn_loss["phases"]["opening"]["mean"] == 150
+    assert centipawn_loss["phases"]["opening"]["percentiles"]["95"] == 300
+    assert centipawn_loss["all_phases"]["moves"] == 2
