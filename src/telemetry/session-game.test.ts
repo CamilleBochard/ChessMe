@@ -72,3 +72,17 @@ describe('reporting a Session Game', () => {
     expect(gameId).toBeUndefined();
   });
 });
+
+describe("reporting the visitor's impression", () => {
+  it('sends the answer to the game it is about', async () => {
+    const service = fetchAnswering(() => new Response(null, { status: 204 }));
+    const telemetry = connectTelemetry(service.fetch);
+
+    const recorded = await telemetry.reportImpression('game-1', false);
+
+    expect(recorded).toBe(true);
+    expect(service.sent).toEqual([
+      { url: '/api/session-games/game-1/impression', method: 'POST', body: { feltLikeARealPlayer: false } },
+    ]);
+  });
+});

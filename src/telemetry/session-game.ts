@@ -50,6 +50,11 @@ export interface Telemetry {
    * or with no id when the service refused it or could not be reached.
    */
   reportGame(sessionGame: SessionGame): Promise<string | undefined>;
+  /**
+   * Sends the visitor's answer to whether the Bot felt like a real player at
+   * that level, resolving with whether the service recorded it.
+   */
+  reportImpression(gameId: string, feltLikeARealPlayer: boolean): Promise<boolean>;
 }
 
 /** Reports through the fetch given, which the page passes as the browser's own. */
@@ -73,6 +78,15 @@ export function connectTelemetry(fetchFunction: typeof fetch): Telemetry {
       } catch {
         return undefined;
       }
+    },
+
+    reportImpression: async (gameId, feltLikeARealPlayer) => {
+      const response = await fetchFunction(`${SESSION_GAMES_URL}/${gameId}/impression`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ feltLikeARealPlayer: feltLikeARealPlayer }),
+      });
+      return response.ok;
     },
   };
 }
