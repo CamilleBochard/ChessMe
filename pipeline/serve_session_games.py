@@ -23,6 +23,11 @@ SESSION_GAMES_PATH = "/api/session-games"
 
 DEFAULT_PORT = 8787
 
+# A long game of 300 moves reports in about 12 KB. A body far beyond that is
+# refused unread, so a request cannot make the service hold a large upload
+# in memory.
+MAX_BODY_BYTES = 64_000
+
 
 class BadRequest(Exception):
     """A request the service refuses before looking at what it reports."""
@@ -64,7 +69,18 @@ def make_server(database: Path, host: str, port: int) -> ThreadingHTTPServer:
 
         def read_json_body(self) -> object:
             """The request's body as JSON. Raises BadRequest when there is none to read."""
-            raw = self.rfile.read(int(self.headers.get("Content-Length", "0")))
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                raise BadRequest(HTTPStatus.BAD_REQUEST, "the body's length is not a number")
+            if length < 0:
+                raise BadRequest(HTTPStatus.BAD_REQUEST, "the body's length is negative")
+            if length > MAX_BODY_BYTES:
+                # The body is left unread, so the connection cannot be reused.
+                self.close_connection = True
+                raise BadRequest(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "the body is too large")
+
+            raw = self.rfile.read(length)
             try:
                 return json.loads(raw)
             except ValueError:

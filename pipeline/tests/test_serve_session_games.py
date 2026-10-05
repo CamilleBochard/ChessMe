@@ -78,3 +78,12 @@ def test_answers_a_body_that_is_not_json_as_a_bad_request(service):
         urllib.request.urlopen(request)
 
     assert refusal.value.code == 400
+
+
+def test_refuses_a_body_far_larger_than_any_game(service):
+    # A long game of 300 moves reports in about 12 KB.
+    oversized = {"botColour": "black", "baseModel": "maia3-5m", "moves": [{"uci": "e2e4"}] * 20_000}
+
+    status, reply = post(service["url"] + "/api/session-games", oversized)
+
+    assert status == 413
