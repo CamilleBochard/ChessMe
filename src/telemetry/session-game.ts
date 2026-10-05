@@ -45,7 +45,10 @@ export function recordBotMove(sessionGame: SessionGame, botMove: BotMove): Sessi
 
 /** The page's way of reporting to the service. */
 export interface Telemetry {
-  /** Sends a finished game, resolving with the id the service stored it under. */
+  /**
+   * Sends a finished game, resolving with the id the service stored it under,
+   * or with no id when the service refused it or could not be reached.
+   */
   reportGame(sessionGame: SessionGame): Promise<string | undefined>;
 }
 
@@ -53,13 +56,23 @@ export interface Telemetry {
 export function connectTelemetry(fetchFunction: typeof fetch): Telemetry {
   return {
     reportGame: async (sessionGame) => {
-      const response = await fetchFunction(SESSION_GAMES_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(sessionGame),
-      });
-      const reply = (await response.json()) as { id: string };
-      return reply.id;
+      // The game has already been played and shown to the visitor. A report
+      // that fails costs one game in the counts and nothing more, so no
+      // failure reaches the page.
+      try {
+        const response = await fetchFunction(SESSION_GAMES_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(sessionGame),
+        });
+        if (!response.ok) {
+          return undefined;
+        }
+        const reply = (await response.json()) as { id: string };
+        return reply.id;
+      } catch {
+        return undefined;
+      }
     },
   };
 }

@@ -51,4 +51,24 @@ describe('reporting a Session Game', () => {
       },
     ]);
   });
+
+  it('returns no id when the service refuses the game', async () => {
+    const service = fetchAnswering(() => Response.json({ error: 'the game has not ended' }, { status: 400 }));
+    const telemetry = connectTelemetry(service.fetch);
+
+    const gameId = await telemetry.reportGame(startSessionGame('black', 'maia3-5m'));
+
+    expect(gameId).toBeUndefined();
+  });
+
+  it('returns no id when the service cannot be reached', async () => {
+    const unreachable = (async () => {
+      throw new TypeError('Failed to fetch');
+    }) as typeof fetch;
+    const telemetry = connectTelemetry(unreachable);
+
+    const gameId = await telemetry.reportGame(startSessionGame('black', 'maia3-5m'));
+
+    expect(gameId).toBeUndefined();
+  });
 });
