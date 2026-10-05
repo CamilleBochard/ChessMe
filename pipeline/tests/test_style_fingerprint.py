@@ -104,3 +104,14 @@ def test_measures_the_material_left_on_the_board_at_move_30_in_games_that_reach_
     assert material["games"] == 2
     assert material["games_reaching_move_30"] == 1
     assert material["mean"] == 57
+
+
+def test_records_which_side_each_game_castled_to_if_it_castled_at_all():
+    kingside = white_positions("lichess:a", "e2e4 e7e5 g1f3 b8c6 f1c4 g8f6 e1g1")
+    queenside = white_positions("lichess:b", "d2d4 d7d5 b1c3 b8c6 c1f4 c8f5 d1d2 d8d7 e1c1")
+    never = white_positions("lichess:c", "e2e4 e7e5 e1e2")
+    never_either = white_positions("lichess:d", "d2d4 d7d5")
+
+    castling = fingerprint_of(kingside + queenside + never + never_either)["castling"]
+
+    assert castling == {"games": 4, "kingside": 0.25, "queenside": 0.25, "never": 0.5}

@@ -44,6 +44,7 @@ def build_style_fingerprint(positions: list[Position], move_losses: list[MoveLos
         "capture_taken_rate": _per_phase(positions, _capture_taken_rate),
         "queen_trade_before_move_20": _queen_trade_rate(positions),
         "material_at_move_30": _material_at_move_30(positions),
+        "castling": _castling_choice(positions),
     }
 
 
@@ -178,3 +179,26 @@ def _material_on(board: chess.Board) -> int:
         material += PIECE_VALUES[piece.piece_type]
     return material
 
+
+
+def _castling_choice(positions: list[Position]) -> dict:
+    """The share of games in which the player castled kingside, castled queenside, or never castled."""
+    castling_by_game = {}
+    for position in positions:
+        castling_by_game.setdefault(position.game_id, "never")
+        board = chess.Board(position.fen)
+        move = chess.Move.from_uci(position.move)
+        if board.is_kingside_castling(move):
+            castling_by_game[position.game_id] = "kingside"
+        elif board.is_queenside_castling(move):
+            castling_by_game[position.game_id] = "queenside"
+
+    games = len(castling_by_game)
+    choices = list(castling_by_game.values())
+    shares = {"games": games}
+    for choice in ["kingside", "queenside", "never"]:
+        if games > 0:
+            shares[choice] = choices.count(choice) / games
+        else:
+            shares[choice] = None
+    return shares
