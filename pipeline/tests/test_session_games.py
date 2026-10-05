@@ -204,3 +204,10 @@ def test_keeps_the_first_impression_given_for_a_game(tmp_path):
         record_impression(store, game_id, felt_like_a_real_player=False)
 
     assert session_game_counts(store)["felt_like_a_real_player"] == 1
+
+
+def test_refuses_an_impression_for_a_game_that_was_never_stored(tmp_path):
+    store = open_store(tmp_path / "session-games.sqlite")
+
+    with pytest.raises(RejectedImpression, match="no game"):
+        record_impression(store, "00000000-0000-4000-8000-000000000000", felt_like_a_real_player=True)

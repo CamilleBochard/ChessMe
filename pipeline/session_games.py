@@ -64,6 +64,10 @@ class RejectedImpression(ValueError):
     """The visitor's impression cannot be recorded for that game."""
 
 
+class UnknownGame(RejectedImpression):
+    """No game is stored under the id the impression names."""
+
+
 def open_store(path: Path) -> sqlite3.Connection:
     """Opens the database at path, creating it and its tables if needed."""
     connection = sqlite3.connect(path)
@@ -156,8 +160,13 @@ def record_impression(connection: sqlite3.Connection, game_id: str, felt_like_a_
             "UPDATE session_games SET felt_like_a_real_player = ? WHERE id = ? AND felt_like_a_real_player IS NULL",
             (felt_like_a_real_player, game_id),
         )
-    if updated.rowcount == 0:
-        raise RejectedImpression("the game has already been given an impression")
+    if updated.rowcount == 1:
+        return
+
+    stored = connection.execute("SELECT 1 FROM session_games WHERE id = ?", (game_id,)).fetchone()
+    if stored is None:
+        raise UnknownGame(f"there is no game {game_id}")
+    raise RejectedImpression("the game has already been given an impression")
 
 
 def check_shape(report: object) -> None:
