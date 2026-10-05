@@ -26,7 +26,7 @@ from pathlib import Path
 from typing import Callable
 
 from pipeline.blunder_profile import EVALUATION_CAP, MoveLoss, build_blunder_profile, centipawn_loss
-from pipeline.dataset import read_dataset
+from pipeline.dataset import Position, read_dataset
 from pipeline.stockfish_analysis import Analyser, StockfishAnalyser, analyse_positions
 
 # The version of the profile's layout. Raise it whenever a reader of the old
@@ -55,14 +55,7 @@ def extract(
 ) -> dict:
     dataset = read_dataset(dataset_dir)
     positions = dataset.train + dataset.test
-    analyses = analyse_positions(positions, analysers, cache_path, report_progress)
-
-    move_losses = []
-    for position in positions:
-        analysis = analyses[(position.fen, position.move)]
-        loss = centipawn_loss(best=analysis.best, played=analysis.played)
-        move_loss = MoveLoss(game_id=position.game_id, ply=position.ply, phase=position.phase, centipawn_loss=loss)
-        move_losses.append(move_loss)
+    move_losses = measure_move_losses(positions, analysers, cache_path, report_progress)
 
     with open(losses_path, "w", encoding="utf-8") as losses_file:
         for move_loss in move_losses:
@@ -82,7 +75,25 @@ def extract(
     return profile
 
 
-def _cache_path(engine: str, depth: int) -> Path:
+def measure_move_losses(
+    positions: list[Position],
+    analysers: list[Analyser],
+    cache_path: Path,
+    report_progress: Callable[[int, int], None] | None = None,
+) -> list[MoveLoss]:
+    """The centipawn loss of the move played in each position, analysed or read from the cache."""
+    analyses = analyse_positions(positions, analysers, cache_path, report_progress)
+
+    move_losses = []
+    for position in positions:
+        analysis = analyses[(position.fen, position.move)]
+        loss = centipawn_loss(best=analysis.best, played=analysis.played)
+        move_loss = MoveLoss(game_id=position.game_id, ply=position.ply, phase=position.phase, centipawn_loss=loss)
+        move_losses.append(move_loss)
+    return move_losses
+
+
+def cache_path_for(engine: str, depth: int) -> Path:
     """One cache file per engine and depth, e.g. data/analysis/stockfish-19-depth-18.jsonl."""
     # "Stockfish 19" becomes "stockfish-19".
     lowercase_engine = engine.lower()
@@ -96,7 +107,18 @@ def _cache_path(engine: str, depth: int) -> Path:
 MOVES_BETWEEN_PROGRESS_LINES = 200
 
 
-class _ProgressPrinter:
+def default_worker_count() -> int:
+    """About one Stockfish process per physical core: each uses one core, and hyper-threads add little."""
+    logical_cores = os.cpu_count()
+    if logical_cores is None:
+        logical_cores = 2
+    workers = logical_cores // 2
+    if workers < 1:
+        workers = 1
+    return workers
+
+
+class ProgressPrinter:
     """Prints how far the run is every MOVES_BETWEEN_PROGRESS_LINES moves, with a rough time left."""
 
     def __init__(self):
@@ -119,14 +141,7 @@ if __name__ == "__main__":
         default=DEFAULT_DEPTH,
         help=f"Stockfish search depth, recorded in the profile (default {DEFAULT_DEPTH})",
     )
-    # Each Stockfish process uses one core; hyper-threads add little, so the
-    # default is about one process per physical core.
-    logical_cores = os.cpu_count()
-    if logical_cores is None:
-        logical_cores = 2
-    default_workers = logical_cores // 2
-    if default_workers < 1:
-        default_workers = 1
+    default_workers = default_worker_count()
     parser.add_argument(
         "--workers",
         type=int,
@@ -142,13 +157,13 @@ if __name__ == "__main__":
     for _ in range(arguments.workers):
         stockfish_processes.append(StockfishAnalyser(STOCKFISH_PATH, arguments.depth))
     try:
-        cache_path = _cache_path(stockfish_processes[0].engine, arguments.depth)
+        cache_path = cache_path_for(stockfish_processes[0].engine, arguments.depth)
         ANALYSIS_DIR.mkdir(parents=True, exist_ok=True)
         print(
             f"Analysing with {stockfish_processes[0].engine} at depth {arguments.depth}, caching in {cache_path}",
             flush=True,
         )
-        written = extract(DATASET_DIR, cache_path, PROFILE_PATH, LOSSES_PATH, stockfish_processes, _ProgressPrinter())
+        written = extract(DATASET_DIR, cache_path, PROFILE_PATH, LOSSES_PATH, stockfish_processes, ProgressPrinter())
     finally:
         for stockfish in stockfish_processes:
             stockfish.close()
