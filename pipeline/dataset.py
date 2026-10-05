@@ -125,13 +125,22 @@ def _played_on(game: chess.pgn.Game) -> date:
 def _player_positions(game: chess.pgn.Game, game_id: str, player: str) -> list[Position]:
     player_colour = _player_colour(game, player, game_id)
     source = _source(game)
+    moves = list(game.mainline_moves())
+    return positions_faced(game_id, source, moves, player_colour)
 
+
+def positions_faced(game_id: str, source: str, moves: list[chess.Move], colour: chess.Color) -> list[Position]:
+    """The positions the side playing colour faced in a game from the starting position, each with its move.
+
+    Camille's games and the Bot's games both go through here, so a position
+    is recorded, and its Phase assigned, the same way for either player.
+    """
     positions = []
-    board = game.board()
-    for move in game.mainline_moves():
+    board = chess.Board()
+    for move in moves:
         # The ply of the move about to be played: White's first move is ply 1.
         ply = board.ply() + 1
-        if board.turn == player_colour:
+        if board.turn == colour:
             position = Position(
                 game_id=game_id,
                 source=source,
