@@ -27,7 +27,7 @@ VISITOR_NAME = "Visitor"
 # page's own.
 BOT_MOVE_SOURCES = ("opening-book", "base-model")
 
-# The Base Model is named after its file, such as maia3-5m. Anything else is
+# The Base Model is named after its file, such as maia3-5m-f9725c961e03. Anything else is
 # refused, so that no text a sender chooses ends up in a PGN header.
 BASE_MODEL_NAME = re.compile(r"[a-z0-9][a-z0-9._-]{0,63}")
 
@@ -131,6 +131,7 @@ def record_session_game(connection: sqlite3.Connection, report: dict, played_on:
     # The served Base Model may change, and its games must not be mixed with
     # the next one's without anyone noticing.
     game.headers["BaseModel"] = report["baseModel"]
+    game.headers["BaseModelRating"] = str(report["rating"])
     pgn = str(game)
 
     game_id = str(uuid.uuid4())
@@ -196,6 +197,11 @@ def check_shape(report: object) -> None:
     base_model = report.get("baseModel")
     if not isinstance(base_model, str) or BASE_MODEL_NAME.fullmatch(base_model) is None:
         raise RejectedGame("the report does not name the Base Model")
+
+    # bool is a kind of int in Python, and true is no rating.
+    rating = report.get("rating")
+    if not isinstance(rating, int) or isinstance(rating, bool):
+        raise RejectedGame("the report does not give the Base Model's rating")
 
     moves = report.get("moves")
     if not isinstance(moves, list):

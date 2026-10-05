@@ -26,7 +26,7 @@ describe('reporting a Session Game', () => {
     const service = fetchAnswering(() => Response.json({ id: 'game-1' }, { status: 201 }));
     const telemetry = connectTelemetry(service.fetch);
 
-    let sessionGame = startSessionGame('black', 'maia3-5m');
+    let sessionGame = startSessionGame('black', { baseModel: 'maia3-5m', rating: 1100 });
     sessionGame = recordVisitorMove(sessionGame, { from: 'f2', to: 'f3' });
     sessionGame = recordBotMove(sessionGame, { move: { from: 'e7', to: 'e5' }, source: 'opening-book' });
     sessionGame = recordVisitorMove(sessionGame, { from: 'g2', to: 'g4' });
@@ -41,6 +41,7 @@ describe('reporting a Session Game', () => {
         body: {
           botColour: 'black',
           baseModel: 'maia3-5m',
+          rating: 1100,
           moves: [
             { uci: 'f2f3' },
             { uci: 'e7e5', source: 'opening-book' },
@@ -56,7 +57,7 @@ describe('reporting a Session Game', () => {
     const service = fetchAnswering(() => Response.json({ error: 'the game has not ended' }, { status: 400 }));
     const telemetry = connectTelemetry(service.fetch);
 
-    const gameId = await telemetry.reportGame(startSessionGame('black', 'maia3-5m'));
+    const gameId = await telemetry.reportGame(startSessionGame('black', { baseModel: 'maia3-5m', rating: 1100 }));
 
     expect(gameId).toBeUndefined();
   });
@@ -67,7 +68,7 @@ describe('reporting a Session Game', () => {
     }) as typeof fetch;
     const telemetry = connectTelemetry(unreachable);
 
-    const gameId = await telemetry.reportGame(startSessionGame('black', 'maia3-5m'));
+    const gameId = await telemetry.reportGame(startSessionGame('black', { baseModel: 'maia3-5m', rating: 1100 }));
 
     expect(gameId).toBeUndefined();
   });

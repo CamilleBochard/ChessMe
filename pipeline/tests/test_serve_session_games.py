@@ -11,6 +11,7 @@ from pipeline.session_games import open_store, session_game_counts, session_game
 FOOLS_MATE = {
     "botColour": "black",
     "baseModel": "maia3-5m",
+    "rating": 1100,
     "moves": [
         {"uci": "f2f3"},
         {"uci": "e7e5", "source": "opening-book"},
@@ -63,7 +64,7 @@ def test_stores_a_finished_game_posted_to_it(service):
 
 
 def test_answers_a_refused_game_with_the_reason(service):
-    abandoned = {"botColour": "black", "baseModel": "maia3-5m", "moves": [{"uci": "e2e4"}]}
+    abandoned = {"botColour": "black", "baseModel": "maia3-5m", "rating": 1100, "moves": [{"uci": "e2e4"}]}
 
     status, reply = post(service["url"] + "/api/session-games", abandoned)
 
@@ -82,7 +83,7 @@ def test_answers_a_body_that_is_not_json_as_a_bad_request(service):
 
 def test_refuses_a_body_far_larger_than_any_game(service):
     # A long game of 300 moves reports in about 12 KB.
-    oversized = {"botColour": "black", "baseModel": "maia3-5m", "moves": [{"uci": "e2e4"}] * 20_000}
+    oversized = {"botColour": "black", "baseModel": "maia3-5m", "rating": 1100, "moves": [{"uci": "e2e4"}] * 20_000}
 
     status, reply = post(service["url"] + "/api/session-games", oversized)
 

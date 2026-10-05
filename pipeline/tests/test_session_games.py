@@ -15,17 +15,22 @@ from pipeline.session_games import (
 PLAYED_ON = date(2026, 10, 5)
 
 
+# The shortest checkmate: the visitor plays White and the Bot mates with Black.
+FOOLS_MATE_MOVES = [
+    {"uci": "f2f3"},
+    {"uci": "e7e5", "source": "opening-book"},
+    {"uci": "g2g4"},
+    {"uci": "d8h4", "source": "base-model"},
+]
+
+
 def fools_mate_reported_by_the_page():
-    """The shortest checkmate: the visitor plays White and the Bot mates with Black."""
+    """Fool's mate as the page reports it, with the Bot on the winning side."""
     return {
         "botColour": "black",
         "baseModel": "maia3-5m",
-        "moves": [
-            {"uci": "f2f3"},
-            {"uci": "e7e5", "source": "opening-book"},
-            {"uci": "g2g4"},
-            {"uci": "d8h4", "source": "base-model"},
-        ],
+        "rating": 1100,
+        "moves": [dict(move) for move in FOOLS_MATE_MOVES],
     }
 
 
@@ -34,6 +39,7 @@ def fools_mate_with_the_bot_as_white():
     return {
         "botColour": "white",
         "baseModel": "maia3-5m",
+        "rating": 1100,
         "moves": [
             {"uci": "f2f3", "source": "base-model"},
             {"uci": "e7e5"},
@@ -53,7 +59,7 @@ def stalemate_in_ten_with_the_bot_as_black():
             reported.append({"uci": uci, "source": "base-model"})
         else:
             reported.append({"uci": uci})
-    return {"botColour": "black", "baseModel": "maia3-5m", "moves": reported}
+    return {"botColour": "black", "baseModel": "maia3-5m", "rating": 1100, "moves": reported}
 
 
 def test_stores_a_finished_game_as_pgn(tmp_path):
@@ -83,6 +89,7 @@ def test_refuses_a_game_that_has_not_ended(tmp_path):
     abandoned_after_two_moves = {
         "botColour": "black",
         "baseModel": "maia3-5m",
+        "rating": 1100,
         "moves": [{"uci": "e2e4"}, {"uci": "e7e5", "source": "opening-book"}],
     }
 
@@ -159,9 +166,13 @@ def test_refuses_a_report_that_does_not_say_which_side_the_bot_played(tmp_path):
     [
         "not a game",
         {"botColour": "black", "baseModel": "maia3-5m"},
-        {"botColour": "black", "baseModel": "maia3-5m", "moves": "f2f3 e7e5"},
-        {"botColour": "black", "baseModel": "maia3-5m", "moves": [{"from": "f2", "to": "f3"}]},
-        {"botColour": "black", "baseModel": "maia3-5m", "moves": [{"uci": 42}]},
+        {"botColour": "black", "baseModel": "maia3-5m", "rating": 1100, "moves": "f2f3 e7e5"},
+        {"botColour": "black", "baseModel": "maia3-5m", "rating": 1100, "moves": [{"from": "f2", "to": "f3"}]},
+        {"botColour": "black", "baseModel": "maia3-5m", "rating": 1100, "moves": [{"uci": 42}]},
+        # A finished game, so that only the missing or mistyped rating is wrong.
+        {"botColour": "black", "baseModel": "maia3-5m", "moves": FOOLS_MATE_MOVES},
+        {"botColour": "black", "baseModel": "maia3-5m", "rating": "1100", "moves": FOOLS_MATE_MOVES},
+        {"botColour": "black", "baseModel": "maia3-5m", "rating": True, "moves": FOOLS_MATE_MOVES},
     ],
 )
 def test_refuses_a_report_that_is_not_shaped_like_the_pages(tmp_path, report):
@@ -222,7 +233,7 @@ def knights_out_and_back(plies):
             reported.append({"uci": uci, "source": "base-model"})
         else:
             reported.append({"uci": uci})
-    return {"botColour": "black", "baseModel": "maia3-5m", "moves": reported}
+    return {"botColour": "black", "baseModel": "maia3-5m", "rating": 1100, "moves": reported}
 
 
 def test_stores_a_draw_by_threefold_repetition(tmp_path):
@@ -241,3 +252,11 @@ def test_refuses_a_game_one_move_short_of_threefold_repetition(tmp_path):
     # game once the repetition has happened.
     with pytest.raises(RejectedGame, match="has not ended"):
         record_session_game(store, knights_out_and_back(7), played_on=PLAYED_ON)
+
+
+def test_names_the_rating_the_base_model_played_at_in_the_pgn(tmp_path):
+    store = open_store(tmp_path / "session-games.sqlite")
+    record_session_game(store, fools_mate_reported_by_the_page(), played_on=PLAYED_ON)
+
+    pgn = session_game_pgns(store)[0]
+    assert '[BaseModelRating "1100"]' in pgn

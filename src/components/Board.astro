@@ -24,9 +24,9 @@ if (modelFileName === undefined) {
 }
 const modelBytes = statSync(join(SERVED_MODEL_DIRECTORY, modelFileName)).size;
 const modelPath = `/models/${modelFileName}`;
-// How a Session Game names the Bot it was played against: the model's file,
-// whose name carries a hash of its contents, and the rating it plays at.
-const baseModelName = `${modelFileName.replace(/\.onnx$/, '')}-rating-${SERVED_MODEL_RATING}`;
+// How a Session Game names the Base Model: after its file, whose name carries
+// a hash of its contents, so two versions of a model are never confused.
+const baseModelName = modelFileName.replace(/\.onnx$/, '');
 ---
 
 <div
@@ -131,7 +131,10 @@ const baseModelName = `${modelFileName.replace(/\.onnx$/, '')}-rating-${SERVED_M
     }
 
     let game = newGame();
-    let sessionGame = startSessionGame(botColour, frame.dataset.baseModel!);
+    let sessionGame = startSessionGame(botColour, {
+      baseModel: frame.dataset.baseModel!,
+      rating: Number(frame.dataset.modelRating),
+    });
     const telemetry = connectTelemetry((input, init) => window.fetch(input, init));
     let botStatus: BotStatus = { kind: 'downloading', progress: { receivedBytes: 0, totalBytes: undefined } };
 
@@ -212,7 +215,7 @@ const baseModelName = `${modelFileName.replace(/\.onnx$/, '')}-rating-${SERVED_M
       if (gameStatus(game).kind === 'ongoing') {
         await playBotMove();
       } else {
-        finishGame();
+        reportFinishedGame();
       }
     }
 
@@ -246,7 +249,7 @@ const baseModelName = `${modelFileName.replace(/\.onnx$/, '')}-rating-${SERVED_M
       redraw();
 
       if (gameStatus(game).kind !== 'ongoing') {
-        finishGame();
+        reportFinishedGame();
       }
     }
 
@@ -254,7 +257,7 @@ const baseModelName = `${modelFileName.replace(/\.onnx$/, '')}-rating-${SERVED_M
      * Reports the finished game and, once it is stored, asks the visitor what
      * they made of the Bot. A game left unfinished is never reported.
      */
-    function finishGame(): void {
+    function reportFinishedGame(): void {
       void telemetry.reportGame(sessionGame).then((gameId) => {
         if (gameId !== undefined) {
           askImpression(frame, telemetry, gameId);

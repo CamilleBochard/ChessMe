@@ -18,17 +18,23 @@ export interface ReportedMove {
   source?: MoveSource;
 }
 
-/** A game in progress or finished, in the shape the service stores. */
-export interface SessionGame {
-  readonly botColour: Colour;
-  /** The Base Model the Bot plays with, named after its file. */
+/** The Base Model the Bot plays with, as a Session Game records it. */
+export interface PlayedModel {
+  /** Named after its file, whose name carries a hash of its contents. */
   readonly baseModel: string;
+  /** The rating it plays at. */
+  readonly rating: number;
+}
+
+/** A game in progress or finished, in the shape the service stores. */
+export interface SessionGame extends PlayedModel {
+  readonly botColour: Colour;
   readonly moves: readonly ReportedMove[];
 }
 
 /** A Session Game with no move played yet. */
-export function startSessionGame(botColour: Colour, baseModel: string): SessionGame {
-  return { botColour: botColour, baseModel: baseModel, moves: [] };
+export function startSessionGame(botColour: Colour, model: PlayedModel): SessionGame {
+  return { botColour: botColour, baseModel: model.baseModel, rating: model.rating, moves: [] };
 }
 
 /** The game with the visitor's move added. */
