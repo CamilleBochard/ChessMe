@@ -126,3 +126,18 @@ def test_counts_the_bots_moves_by_where_they_came_from(tmp_path):
 
     assert counts["bot_moves_from_opening_book"] == 1
     assert counts["bot_moves_from_base_model"] == 3
+
+
+@pytest.mark.parametrize("source", [None, "random", "stockfish"])
+def test_refuses_a_bot_move_not_marked_as_from_the_book_or_the_base_model(tmp_path, source):
+    store = open_store(tmp_path / "session-games.sqlite")
+    report = fools_mate_reported_by_the_page()
+    if source is None:
+        report["moves"][1] = {"uci": "e7e5"}
+    else:
+        report["moves"][1] = {"uci": "e7e5", "source": source}
+
+    with pytest.raises(RejectedGame, match="Bot's move e7e5"):
+        record_session_game(store, report, played_on=PLAYED_ON)
+
+    assert session_game_pgns(store) == []

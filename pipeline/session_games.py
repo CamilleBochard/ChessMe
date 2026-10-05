@@ -20,6 +20,12 @@ import chess.pgn
 BOT_NAME = "ChessMe Bot"
 VISITOR_NAME = "Visitor"
 
+# Where a Bot move on the site can come from. The engine falls back to a
+# random legal move only when it has no Base Model, and the page never runs
+# it that way, so a move from anywhere else means the report is not the
+# page's own.
+BOT_MOVE_SOURCES = ("opening-book", "base-model")
+
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS session_games (
     id TEXT PRIMARY KEY,
@@ -70,8 +76,11 @@ def record_session_game(connection: sqlite3.Connection, report: dict, played_on:
 
         is_bot_move = board.turn == bot_plays_white
         if is_bot_move:
+            source = reported_move.get("source")
+            if source not in BOT_MOVE_SOURCES:
+                raise RejectedGame(f"the Bot's move {uci} came from {source}, not the Opening Book or the Base Model")
             ply = board.ply() + 1
-            bot_moves.append((ply, uci, reported_move["source"]))
+            bot_moves.append((ply, uci, source))
         board.push(move)
 
     # The page ends a game at the fifty-move rule and at threefold repetition
