@@ -81,12 +81,16 @@ export function connectTelemetry(fetchFunction: typeof fetch): Telemetry {
     },
 
     reportImpression: async (gameId, feltLikeARealPlayer) => {
-      const response = await fetchFunction(`${SESSION_GAMES_URL}/${gameId}/impression`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ feltLikeARealPlayer: feltLikeARealPlayer }),
-      });
-      return response.ok;
+      try {
+        const response = await fetchFunction(`${SESSION_GAMES_URL}/${gameId}/impression`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ feltLikeARealPlayer: feltLikeARealPlayer }),
+        });
+        return response.ok;
+      } catch {
+        return false;
+      }
     },
   };
 }

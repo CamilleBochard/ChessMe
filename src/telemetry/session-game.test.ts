@@ -85,4 +85,15 @@ describe("reporting the visitor's impression", () => {
       { url: '/api/session-games/game-1/impression', method: 'POST', body: { feltLikeARealPlayer: false } },
     ]);
   });
+
+  it('says the answer was not recorded when the service cannot be reached', async () => {
+    const unreachable = (async () => {
+      throw new TypeError('Failed to fetch');
+    }) as typeof fetch;
+    const telemetry = connectTelemetry(unreachable);
+
+    const recorded = await telemetry.reportImpression('game-1', true);
+
+    expect(recorded).toBe(false);
+  });
 });
