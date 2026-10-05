@@ -24,6 +24,15 @@ SESSION_GAMES_PATH = "/api/session-games"
 DEFAULT_PORT = 8787
 
 
+class BadRequest(Exception):
+    """A request the service refuses before looking at what it reports."""
+
+    def __init__(self, status: HTTPStatus, reason: str):
+        super().__init__(reason)
+        self.status = status
+        self.reason = reason
+
+
 def make_server(database: Path, host: str, port: int) -> ThreadingHTTPServer:
     """A server, not yet serving, that stores what it receives in the database at that path."""
 
@@ -35,7 +44,11 @@ def make_server(database: Path, host: str, port: int) -> ThreadingHTTPServer:
             self.reply(HTTPStatus.NOT_FOUND, {"error": "no such endpoint"})
 
         def receive_game(self) -> None:
-            report = self.read_json_body()
+            try:
+                report = self.read_json_body()
+            except BadRequest as problem:
+                self.reply(problem.status, {"error": problem.reason})
+                return
             played_on = datetime.now(UTC).date()
 
             store = open_store(database)
@@ -50,9 +63,12 @@ def make_server(database: Path, host: str, port: int) -> ThreadingHTTPServer:
             self.reply(HTTPStatus.CREATED, {"id": game_id})
 
         def read_json_body(self) -> object:
-            length = int(self.headers.get("Content-Length", "0"))
-            raw = self.rfile.read(length)
-            return json.loads(raw)
+            """The request's body as JSON. Raises BadRequest when there is none to read."""
+            raw = self.rfile.read(int(self.headers.get("Content-Length", "0")))
+            try:
+                return json.loads(raw)
+            except ValueError:
+                raise BadRequest(HTTPStatus.BAD_REQUEST, "the body is not JSON")
 
         def reply(self, status: HTTPStatus, body: dict | None) -> None:
             self.send_response(status)

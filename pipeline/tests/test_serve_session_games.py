@@ -60,3 +60,21 @@ def test_stores_a_finished_game_posted_to_it(service):
     pgns = session_game_pgns(open_store(service["database"]))
     assert len(pgns) == 1
     assert "1. f3 e5 2. g4 Qh4# 0-1" in pgns[0]
+
+
+def test_answers_a_refused_game_with_the_reason(service):
+    abandoned = {"botColour": "black", "baseModel": "maia3-5m", "moves": [{"uci": "e2e4"}]}
+
+    status, reply = post(service["url"] + "/api/session-games", abandoned)
+
+    assert status == 400
+    assert reply == {"error": "the game has not ended"}
+
+
+def test_answers_a_body_that_is_not_json_as_a_bad_request(service):
+    request = urllib.request.Request(service["url"] + "/api/session-games", data=b"{not json", method="POST")
+
+    with pytest.raises(urllib.error.HTTPError) as refusal:
+        urllib.request.urlopen(request)
+
+    assert refusal.value.code == 400
