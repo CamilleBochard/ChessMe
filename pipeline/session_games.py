@@ -28,6 +28,16 @@ CREATE TABLE IF NOT EXISTS session_games (
     result TEXT NOT NULL,
     pgn TEXT NOT NULL
 );
+
+-- One row per move the Bot played, so where its moves came from can be
+-- counted without reading the PGN back.
+CREATE TABLE IF NOT EXISTS bot_moves (
+    game_id TEXT NOT NULL REFERENCES session_games (id),
+    ply INTEGER NOT NULL,
+    uci TEXT NOT NULL,
+    source TEXT NOT NULL,
+    PRIMARY KEY (game_id, ply)
+);
 """
 
 
@@ -44,7 +54,11 @@ def open_store(path: Path) -> sqlite3.Connection:
 
 def record_session_game(connection: sqlite3.Connection, report: dict, played_on: date) -> str:
     """Stores the game the page reported and returns the id it was stored under."""
+    bot_colour = report["botColour"]
+    bot_plays_white = bot_colour == "white"
+
     board = chess.Board()
+    bot_moves = []
     for reported_move in report["moves"]:
         uci = reported_move["uci"]
         try:
@@ -53,6 +67,11 @@ def record_session_game(connection: sqlite3.Connection, report: dict, played_on:
             raise RejectedGame(f"unreadable move {uci}")
         if not board.is_legal(move):
             raise RejectedGame(f"illegal move {uci}")
+
+        is_bot_move = board.turn == bot_plays_white
+        if is_bot_move:
+            ply = board.ply() + 1
+            bot_moves.append((ply, uci, reported_move["source"]))
         board.push(move)
 
     # The page ends a game at the fifty-move rule and at threefold repetition
@@ -62,8 +81,7 @@ def record_session_game(connection: sqlite3.Connection, report: dict, played_on:
     if not board.is_game_over(claim_draw=True):
         raise RejectedGame("the game has not ended")
 
-    bot_colour = report["botColour"]
-    if bot_colour == "white":
+    if bot_plays_white:
         white_player = BOT_NAME
         black_player = VISITOR_NAME
     else:
@@ -86,6 +104,11 @@ def record_session_game(connection: sqlite3.Connection, report: dict, played_on:
             "INSERT INTO session_games (id, played_on, bot_colour, result, pgn) VALUES (?, ?, ?, ?, ?)",
             (game_id, played_on.isoformat(), bot_colour, result, pgn),
         )
+        for ply, uci, source in bot_moves:
+            connection.execute(
+                "INSERT INTO bot_moves (game_id, ply, uci, source) VALUES (?, ?, ?, ?)",
+                (game_id, ply, uci, source),
+            )
     return game_id
 
 
@@ -97,7 +120,7 @@ def session_game_pgns(connection: sqlite3.Connection) -> list[str]:
 
 
 def session_game_counts(connection: sqlite3.Connection) -> dict[str, int]:
-    """How many games have been stored and how the Bot fared in them."""
+    """How many games have been stored, how the Bot fared in them, and where its moves came from."""
     games = scalar(connection, "SELECT COUNT(*) FROM session_games")
     bot_wins = scalar(
         connection,
@@ -110,12 +133,16 @@ def session_game_counts(connection: sqlite3.Connection) -> dict[str, int]:
            WHERE (result = '1-0' AND bot_colour = 'black') OR (result = '0-1' AND bot_colour = 'white')""",
     )
     draws = scalar(connection, "SELECT COUNT(*) FROM session_games WHERE result = '1/2-1/2'")
+    from_opening_book = scalar(connection, "SELECT COUNT(*) FROM bot_moves WHERE source = 'opening-book'")
+    from_base_model = scalar(connection, "SELECT COUNT(*) FROM bot_moves WHERE source = 'base-model'")
 
     counts = {
         "games": games,
         "bot_wins": bot_wins,
         "bot_losses": bot_losses,
         "draws": draws,
+        "bot_moves_from_opening_book": from_opening_book,
+        "bot_moves_from_base_model": from_base_model,
     }
     return counts
 

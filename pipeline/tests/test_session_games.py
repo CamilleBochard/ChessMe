@@ -113,3 +113,16 @@ def test_counts_the_bots_wins_losses_and_draws(tmp_path):
     assert counts["bot_wins"] == 2
     assert counts["bot_losses"] == 1
     assert counts["draws"] == 1
+
+
+def test_counts_the_bots_moves_by_where_they_came_from(tmp_path):
+    store = open_store(tmp_path / "session-games.sqlite")
+    # One book move and one Base Model move.
+    record_session_game(store, fools_mate_reported_by_the_page(), played_on=PLAYED_ON)
+    # Two Base Model moves.
+    record_session_game(store, fools_mate_with_the_bot_as_white(), played_on=PLAYED_ON)
+
+    counts = session_game_counts(store)
+
+    assert counts["bot_moves_from_opening_book"] == 1
+    assert counts["bot_moves_from_base_model"] == 3
