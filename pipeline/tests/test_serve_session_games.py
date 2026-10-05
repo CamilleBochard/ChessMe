@@ -100,3 +100,31 @@ def test_records_the_visitors_impression_of_a_stored_game(service):
     assert status == 204
     counts = session_game_counts(open_store(service["database"]))
     assert counts["felt_like_a_real_player"] == 1
+
+
+def test_answers_an_impression_for_an_unknown_game_as_not_found(service):
+    status, _ = post(
+        service["url"] + "/api/session-games/00000000-0000-4000-8000-000000000000/impression",
+        {"feltLikeARealPlayer": True},
+    )
+
+    assert status == 404
+
+
+def test_answers_a_second_impression_for_a_game_as_a_conflict(service):
+    _, stored = post(service["url"] + "/api/session-games", FOOLS_MATE)
+    impression_url = service["url"] + f"/api/session-games/{stored['id']}/impression"
+    post(impression_url, {"feltLikeARealPlayer": True})
+
+    status, _ = post(impression_url, {"feltLikeARealPlayer": False})
+
+    assert status == 409
+
+
+@pytest.mark.parametrize("answer", [{}, {"feltLikeARealPlayer": "yes"}, {"feltLikeARealPlayer": 1}, ["yes"]])
+def test_answers_an_impression_that_is_not_yes_or_no_as_a_bad_request(service, answer):
+    _, stored = post(service["url"] + "/api/session-games", FOOLS_MATE)
+
+    status, _ = post(service["url"] + f"/api/session-games/{stored['id']}/impression", answer)
+
+    assert status == 400

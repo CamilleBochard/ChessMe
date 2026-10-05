@@ -18,7 +18,14 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from pipeline.session_games import RejectedGame, open_store, record_impression, record_session_game
+from pipeline.session_games import (
+    RejectedGame,
+    RejectedImpression,
+    UnknownGame,
+    open_store,
+    record_impression,
+    record_session_game,
+)
 
 SESSION_GAMES_PATH = "/api/session-games"
 
@@ -84,11 +91,23 @@ def make_server(database: Path, host: str, port: int) -> ThreadingHTTPServer:
             except BadRequest as problem:
                 self.reply(problem.status, {"error": problem.reason})
                 return
-            felt_like_a_real_player = answer["feltLikeARealPlayer"]
+
+            felt_like_a_real_player = None
+            if isinstance(answer, dict):
+                felt_like_a_real_player = answer.get("feltLikeARealPlayer")
+            if not isinstance(felt_like_a_real_player, bool):
+                self.reply(HTTPStatus.BAD_REQUEST, {"error": "the answer is neither yes nor no"})
+                return
 
             store = open_store(database)
             try:
                 record_impression(store, game_id, felt_like_a_real_player=felt_like_a_real_player)
+            except UnknownGame as rejection:
+                self.reply(HTTPStatus.NOT_FOUND, {"error": str(rejection)})
+                return
+            except RejectedImpression as rejection:
+                self.reply(HTTPStatus.CONFLICT, {"error": str(rejection)})
+                return
             finally:
                 store.close()
 
