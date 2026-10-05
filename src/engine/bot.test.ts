@@ -53,9 +53,9 @@ describe('the Bot', () => {
     });
     const bot = connectBot(channel.pageEnd, MODEL);
 
-    const move = await bot.requestMove(STARTING_POSITION);
+    const botMove = await bot.requestMove(STARTING_POSITION);
 
-    expect(move).toEqual({ from: 'e2', to: 'e4' });
+    expect(botMove).toEqual({ move: { from: 'e2', to: 'e4' }, source: 'base-model' });
   });
 
   it('plays a book move while the model is still downloading', async () => {
@@ -73,9 +73,9 @@ describe('the Bot', () => {
     });
     const bot = connectBot(channel.pageEnd, MODEL);
 
-    const move = await bot.requestMove(STARTING_POSITION);
+    const botMove = await bot.requestMove(STARTING_POSITION);
 
-    expect(move).toEqual({ from: 'd2', to: 'd4' });
+    expect(botMove).toEqual({ move: { from: 'd2', to: 'd4' }, source: 'opening-book' });
   });
 
   it('reports the download as it progresses, then preparing the model, then that it is ready', async () => {

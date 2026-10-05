@@ -2,8 +2,8 @@
 // memory: everything passes as one of these messages, copied from one thread
 // to the other.
 
-import type { MoveRequest } from '../game/game';
 import type { DownloadProgress } from './model-download';
+import type { BotMove } from './move-selection';
 
 /** Where the Base Model comes from and how it plays. */
 export interface ModelSource {
@@ -31,7 +31,7 @@ export type BotStatus =
 /** What the worker tells the page. */
 export type WorkerMessage =
   | BotStatus
-  | { kind: 'move'; id: number; move: MoveRequest }
+  | { kind: 'move'; id: number; botMove: BotMove }
   | { kind: 'no-move'; id: number; reason: string };
 
 /**

@@ -8,7 +8,7 @@ import type { BaseModel } from './base-model';
 import { loadBaseModel } from './base-model';
 import type { BotPort, ModelSource, PageMessage, WorkerMessage } from './bot-protocol';
 import type { DownloadProgress } from './model-download';
-import { selectMove } from './move-selection';
+import { selectMoveWithSource } from './move-selection';
 import type { OpeningBook } from './opening-book';
 
 /** What the worker needs from its surroundings, supplied by the caller so tests can replace it. */
@@ -39,8 +39,11 @@ export function serveBot(port: BotPort, dependencies: WorkerDependencies): void 
         // The page sends 'start' before any request, and a port delivers
         // messages in order, so the model has started loading by now. It is
         // handed over still loading, so a book move is played without waiting.
-        const move = await selectMove(message.fen, { openingBook: dependencies.openingBook, baseModel: baseModel! });
-        send(port, { kind: 'move', id: message.id, move: move });
+        const botMove = await selectMoveWithSource(message.fen, {
+          openingBook: dependencies.openingBook,
+          baseModel: baseModel!,
+        });
+        send(port, { kind: 'move', id: message.id, botMove: botMove });
       } catch (error) {
         send(port, { kind: 'no-move', id: message.id, reason: describeError(error) });
       }

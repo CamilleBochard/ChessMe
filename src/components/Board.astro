@@ -74,6 +74,7 @@ const modelPath = `/models/${modelFileName}`;
   import { describeResult, gameStatus } from '../game/game-status';
   import { connectBot, type Bot } from '../engine/bot-client';
   import type { BotStatus } from '../engine/bot-protocol';
+  import type { BotMove } from '../engine/move-selection';
   import type { DownloadProgress } from '../engine/model-download';
 
   /**
@@ -192,7 +193,7 @@ const modelPath = `/models/${modelFileName}`;
      * request waits in the worker, so a visitor can play during the download.
      */
     async function playBotMove(): Promise<void> {
-      let reply: MoveRequest;
+      let reply: BotMove;
       try {
         reply = await bot.requestMove(currentFen(game));
       } catch (error) {
@@ -205,9 +206,10 @@ const modelPath = `/models/${modelFileName}`;
         return;
       }
 
-      const next = playMove(game, reply);
+      const next = playMove(game, reply.move);
       if (next === null) {
-        throw new Error(`The engine chose an illegal move: ${reply.from}-${reply.to} in ${currentFen(game)}`);
+        const move = reply.move;
+        throw new Error(`The engine chose an illegal move: ${move.from}-${move.to} in ${currentFen(game)}`);
       }
 
       game = next;

@@ -2,12 +2,12 @@
 // The work happens in a Web Worker on the other end of the port; this module
 // only matches each reply to the request it answers.
 
-import type { MoveRequest } from '../game/game';
 import type { BotPort, BotStatus, ModelSource, PageMessage, WorkerMessage } from './bot-protocol';
+import type { BotMove } from './move-selection';
 
 export interface Bot {
-  /** The Bot's move in the position the FEN describes. */
-  requestMove(fen: string): Promise<MoveRequest>;
+  /** The Bot's move in the position the FEN describes, and where it came from. */
+  requestMove(fen: string): Promise<BotMove>;
 }
 
 export interface BotListeners {
@@ -23,7 +23,7 @@ export function connectBot(port: BotPort, model: ModelSource, listeners: BotList
   port.onmessage = (event) => {
     const message = event.data as WorkerMessage;
     if (message.kind === 'move') {
-      takeWaitingReply(message.id)?.resolve(message.move);
+      takeWaitingReply(message.id)?.resolve(message.botMove);
       return;
     }
     if (message.kind === 'no-move') {
@@ -56,7 +56,7 @@ export function connectBot(port: BotPort, model: ModelSource, listeners: BotList
 
 /** How to settle the promise of a request still waiting for its reply. */
 interface WaitingReply {
-  resolve(move: MoveRequest): void;
+  resolve(botMove: BotMove): void;
   reject(error: Error): void;
 }
 
