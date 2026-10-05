@@ -37,7 +37,11 @@ CREATE TABLE IF NOT EXISTS session_games (
     played_on TEXT NOT NULL,
     bot_colour TEXT NOT NULL,
     result TEXT NOT NULL,
-    pgn TEXT NOT NULL
+    pgn TEXT NOT NULL,
+    -- The visitor's answer to "did it feel like a real player at that
+    -- level?": 1 for yes, 0 for no, NULL until they answer, which they may
+    -- never do.
+    felt_like_a_real_player INTEGER
 );
 
 -- One row per move the Bot played, so where its moves came from can be
@@ -137,6 +141,15 @@ def record_session_game(connection: sqlite3.Connection, report: dict, played_on:
     return game_id
 
 
+def record_impression(connection: sqlite3.Connection, game_id: str, felt_like_a_real_player: bool) -> None:
+    """Records the visitor's answer to whether the Bot felt like a real player at that level."""
+    with connection:
+        connection.execute(
+            "UPDATE session_games SET felt_like_a_real_player = ? WHERE id = ?",
+            (felt_like_a_real_player, game_id),
+        )
+
+
 def check_shape(report: object) -> None:
     """
     Raises RejectedGame unless the report has the fields the page sends, of
@@ -169,7 +182,10 @@ def session_game_pgns(connection: sqlite3.Connection) -> list[str]:
 
 
 def session_game_counts(connection: sqlite3.Connection) -> dict[str, int]:
-    """How many games have been stored, how the Bot fared in them, and where its moves came from."""
+    """
+    How many games have been stored, how the Bot fared in them, where its
+    moves came from, and what visitors made of it.
+    """
     games = scalar(connection, "SELECT COUNT(*) FROM session_games")
     bot_wins = scalar(
         connection,
@@ -184,6 +200,9 @@ def session_game_counts(connection: sqlite3.Connection) -> dict[str, int]:
     draws = scalar(connection, "SELECT COUNT(*) FROM session_games WHERE result = '1/2-1/2'")
     from_opening_book = scalar(connection, "SELECT COUNT(*) FROM bot_moves WHERE source = 'opening-book'")
     from_base_model = scalar(connection, "SELECT COUNT(*) FROM bot_moves WHERE source = 'base-model'")
+    felt_real = scalar(connection, "SELECT COUNT(*) FROM session_games WHERE felt_like_a_real_player = 1")
+    did_not_feel_real = scalar(connection, "SELECT COUNT(*) FROM session_games WHERE felt_like_a_real_player = 0")
+    not_given = scalar(connection, "SELECT COUNT(*) FROM session_games WHERE felt_like_a_real_player IS NULL")
 
     counts = {
         "games": games,
@@ -192,6 +211,9 @@ def session_game_counts(connection: sqlite3.Connection) -> dict[str, int]:
         "draws": draws,
         "bot_moves_from_opening_book": from_opening_book,
         "bot_moves_from_base_model": from_base_model,
+        "felt_like_a_real_player": felt_real,
+        "did_not_feel_like_a_real_player": did_not_feel_real,
+        "impression_not_given": not_given,
     }
     return counts
 

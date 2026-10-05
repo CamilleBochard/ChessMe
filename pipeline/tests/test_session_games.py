@@ -5,6 +5,7 @@ import pytest
 from pipeline.session_games import (
     RejectedGame,
     open_store,
+    record_impression,
     record_session_game,
     session_game_counts,
     session_game_pgns,
@@ -176,3 +177,18 @@ def test_names_the_base_model_the_bot_played_with_in_the_pgn(tmp_path):
 
     pgn = session_game_pgns(store)[0]
     assert '[BaseModel "maia3-5m"]' in pgn
+
+
+def test_counts_whether_visitors_felt_they_played_a_real_player(tmp_path):
+    store = open_store(tmp_path / "session-games.sqlite")
+    felt_real = record_session_game(store, fools_mate_reported_by_the_page(), played_on=PLAYED_ON)
+    felt_artificial = record_session_game(store, fools_mate_reported_by_the_page(), played_on=PLAYED_ON)
+    record_session_game(store, fools_mate_reported_by_the_page(), played_on=PLAYED_ON)
+
+    record_impression(store, felt_real, felt_like_a_real_player=True)
+    record_impression(store, felt_artificial, felt_like_a_real_player=False)
+
+    counts = session_game_counts(store)
+    assert counts["felt_like_a_real_player"] == 1
+    assert counts["did_not_feel_like_a_real_player"] == 1
+    assert counts["impression_not_given"] == 1
