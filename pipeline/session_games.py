@@ -59,8 +59,14 @@ def open_store(path: Path) -> sqlite3.Connection:
 
 
 def record_session_game(connection: sqlite3.Connection, report: dict, played_on: date) -> str:
-    """Stores the game the page reported and returns the id it was stored under."""
-    bot_colour = report["botColour"]
+    """
+    Stores the game the page reported and returns the id it was stored under.
+    Raises RejectedGame, storing nothing, when the report is not a finished,
+    legal game shaped as the page sends it.
+    """
+    check_shape(report)
+
+    bot_colour = report.get("botColour")
     if bot_colour not in ("white", "black"):
         raise RejectedGame(f"the Bot's colour {bot_colour} is neither white nor black")
     bot_plays_white = bot_colour == "white"
@@ -121,6 +127,26 @@ def record_session_game(connection: sqlite3.Connection, report: dict, played_on:
                 (game_id, ply, uci, source),
             )
     return game_id
+
+
+def check_shape(report: object) -> None:
+    """
+    Raises RejectedGame unless the report has the fields the page sends, of
+    the right types. Anyone can send the service a request, so nothing in it
+    is assumed until checked.
+    """
+    if not isinstance(report, dict):
+        raise RejectedGame("the report is not an object")
+
+    moves = report.get("moves")
+    if not isinstance(moves, list):
+        raise RejectedGame("the report has no list of moves")
+
+    for reported_move in moves:
+        if not isinstance(reported_move, dict):
+            raise RejectedGame("a move is not an object")
+        if not isinstance(reported_move.get("uci"), str):
+            raise RejectedGame("a move has no UCI name")
 
 
 def session_game_pgns(connection: sqlite3.Connection) -> list[str]:

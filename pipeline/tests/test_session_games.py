@@ -150,3 +150,20 @@ def test_refuses_a_report_that_does_not_say_which_side_the_bot_played(tmp_path):
 
     with pytest.raises(RejectedGame, match="Bot's colour green"):
         record_session_game(store, report, played_on=PLAYED_ON)
+
+
+@pytest.mark.parametrize(
+    "report",
+    [
+        "not a game",
+        {"botColour": "black", "baseModel": "maia3-5m"},
+        {"botColour": "black", "baseModel": "maia3-5m", "moves": "f2f3 e7e5"},
+        {"botColour": "black", "baseModel": "maia3-5m", "moves": [{"from": "f2", "to": "f3"}]},
+        {"botColour": "black", "baseModel": "maia3-5m", "moves": [{"uci": 42}]},
+    ],
+)
+def test_refuses_a_report_that_is_not_shaped_like_the_pages(tmp_path, report):
+    store = open_store(tmp_path / "session-games.sqlite")
+
+    with pytest.raises(RejectedGame):
+        record_session_game(store, report, played_on=PLAYED_ON)
