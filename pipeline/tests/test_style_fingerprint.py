@@ -26,3 +26,25 @@ def test_shares_the_moves_out_by_the_piece_that_made_them():
     piece_share = fingerprint_of(positions)["piece_share"]["all_phases"]
 
     assert piece_share == {"pawn": 0.25, "knight": 0.25, "bishop": 0.25, "rook": 0, "queen": 0, "king": 0.25}
+
+
+def test_counts_how_often_a_capture_is_played_when_one_is_on_offer():
+    # Ply 1 offers no capture; ply 3 offers exd5 and White declines it;
+    # ply 5 offers Nxe4 and White takes.
+    positions = white_positions("lichess:a", "e2e4 d7d5 b1c3 d5e4 c3e4")
+
+    capture_rate = fingerprint_of(positions)["capture_taken_rate"]["all_phases"]
+
+    assert capture_rate == {"positions_with_a_capture": 2, "captures_played": 1, "rate": 0.5}
+
+
+def test_keeps_each_phase_s_moves_apart():
+    # White's first five moves (plies 1-9) are the opening: four knight moves
+    # and a pawn move. Its sixth move (ply 11) opens the middlegame: a pawn.
+    positions = white_positions("lichess:a", "g1f3 g8f6 f3g1 f6g8 g1f3 g8f6 f3g1 f6g8 e2e4 e7e5 d2d4 d7d5")
+
+    piece_share = fingerprint_of(positions)["piece_share"]["phases"]
+
+    assert piece_share["opening"]["knight"] == 0.8
+    assert piece_share["middlegame"]["pawn"] == 1
+    assert piece_share["endgame"]["pawn"] is None

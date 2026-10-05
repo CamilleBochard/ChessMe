@@ -10,6 +10,7 @@ played in each, the shape the dataset records Camille's moves in.
 """
 
 from collections import defaultdict
+from typing import Callable
 
 import chess
 
@@ -27,19 +28,22 @@ PIECE_NAMES = {
 
 
 def build_style_fingerprint(positions: list[Position], move_losses: list[MoveLoss]) -> dict:
-    return {"piece_share": _piece_share(positions)}
+    return {
+        "piece_share": _per_phase(positions, _share_by_piece),
+        "capture_taken_rate": _per_phase(positions, _capture_taken_rate),
+    }
 
 
-def _piece_share(positions: list[Position]) -> dict:
-    """The share of moves made by each piece type, per Phase and over every Phase."""
+def _per_phase(positions: list[Position], summarise: Callable[[list[Position]], dict]) -> dict:
+    """Applies summarise to each Phase's positions and to every position."""
     positions_by_phase = defaultdict(list)
     for position in positions:
         positions_by_phase[position.phase].append(position)
 
     phases = {}
     for phase in PHASES:
-        phases[phase] = _share_by_piece(positions_by_phase[phase])
-    return {"phases": phases, "all_phases": _share_by_piece(positions)}
+        phases[phase] = summarise(positions_by_phase[phase])
+    return {"phases": phases, "all_phases": summarise(positions)}
 
 
 def _share_by_piece(positions: list[Position]) -> dict[str, float]:
@@ -58,3 +62,27 @@ def _share_by_piece(positions: list[Position]) -> dict[str, float]:
         else:
             share_by_piece[name] = None
     return share_by_piece
+
+
+def _capture_taken_rate(positions: list[Position]) -> dict:
+    """How often a capture was played, among the positions where at least one was legal.
+
+    Positions with no capture on offer say nothing about a taste for taking,
+    so they are left out of the count.
+    """
+    positions_with_a_capture = 0
+    captures_played = 0
+    for position in positions:
+        board = chess.Board(position.fen)
+        capture_on_offer = any(board.is_capture(move) for move in board.legal_moves)
+        if not capture_on_offer:
+            continue
+        positions_with_a_capture += 1
+        played = chess.Move.from_uci(position.move)
+        if board.is_capture(played):
+            captures_played += 1
+
+    rate = None
+    if positions_with_a_capture > 0:
+        rate = captures_played / positions_with_a_capture
+    return {"positions_with_a_capture": positions_with_a_capture, "captures_played": captures_played, "rate": rate}
