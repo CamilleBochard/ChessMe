@@ -17,6 +17,9 @@ import chess
 from pipeline.blunder_profile import MoveLoss
 from pipeline.dataset import PHASES, Position
 
+# Move 20 begins at ply 39, so a trade before it is complete within 38 plies.
+PLIES_BEFORE_MOVE_20 = 38
+
 PIECE_NAMES = {
     chess.PAWN: "pawn",
     chess.KNIGHT: "knight",
@@ -31,6 +34,7 @@ def build_style_fingerprint(positions: list[Position], move_losses: list[MoveLos
     return {
         "piece_share": _per_phase(positions, _share_by_piece),
         "capture_taken_rate": _per_phase(positions, _capture_taken_rate),
+        "queen_trade_before_move_20": _queen_trade_rate(positions),
     }
 
 
@@ -86,3 +90,49 @@ def _capture_taken_rate(positions: list[Position]) -> dict:
     if positions_with_a_capture > 0:
         rate = captures_played / positions_with_a_capture
     return {"positions_with_a_capture": positions_with_a_capture, "captures_played": captures_played, "rate": rate}
+
+
+def _queen_trade_rate(positions: list[Position]) -> dict:
+    """The share of games in which both queens were off the board before move 20.
+
+    Every game counts, including one that ended before move 20 with its
+    queens on: the rate is how often a game of this player loses its queens
+    early, not how often a long game does.
+    """
+    games = _boards_by_game(positions)
+    games_with_a_queen_trade = 0
+    for boards in games.values():
+        plies_seen = [plies for plies in boards if plies <= PLIES_BEFORE_MOVE_20]
+        last_board_before_move_20 = boards[max(plies_seen)]
+        if _queens_on(last_board_before_move_20) == 0:
+            games_with_a_queen_trade += 1
+
+    rate = None
+    if games:
+        rate = games_with_a_queen_trade / len(games)
+    return {"games": len(games), "games_with_a_queen_trade": games_with_a_queen_trade, "rate": rate}
+
+
+def _boards_by_game(positions: list[Position]) -> dict[str, dict[int, chess.Board]]:
+    """For each game, the boards known from the player's positions, keyed by how many plies had been played.
+
+    Only the player's own positions are recorded, but the board is known
+    after every ply all the same: either as a position he faced or as that
+    position once his move was played. Only the opponent's last move, when a
+    game ends on it, is missing.
+    """
+    games: dict[str, dict[int, chess.Board]] = defaultdict(dict)
+    for position in positions:
+        board_faced = chess.Board(position.fen)
+        games[position.game_id][position.ply - 1] = board_faced
+
+        board_after_the_move = board_faced.copy()
+        board_after_the_move.push(chess.Move.from_uci(position.move))
+        games[position.game_id][position.ply] = board_after_the_move
+    return games
+
+
+def _queens_on(board: chess.Board) -> int:
+    white_queens = len(board.pieces(chess.QUEEN, chess.WHITE))
+    black_queens = len(board.pieces(chess.QUEEN, chess.BLACK))
+    return white_queens + black_queens

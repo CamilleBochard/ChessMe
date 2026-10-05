@@ -11,6 +11,11 @@ def white_positions(game_id: str, moves: str) -> list[Position]:
     return positions_faced(game_id, "lichess", parsed, chess.WHITE)
 
 
+def black_positions(game_id: str, moves: str) -> list[Position]:
+    parsed = [chess.Move.from_uci(move) for move in moves.split()]
+    return positions_faced(game_id, "lichess", parsed, chess.BLACK)
+
+
 def no_losses(positions: list[Position]) -> list[MoveLoss]:
     return [MoveLoss(game_id=p.game_id, ply=p.ply, phase=p.phase, centipawn_loss=0) for p in positions]
 
@@ -48,3 +53,38 @@ def test_keeps_each_phase_s_moves_apart():
     assert piece_share["opening"]["knight"] == 0.8
     assert piece_share["middlegame"]["pawn"] == 1
     assert piece_share["endgame"]["pawn"] is None
+
+
+# Both queens come off: White takes on d6 at ply 7, Black recaptures at ply 8.
+QUEEN_TRADE = "d2d4 e7e5 d4e5 d7d6 e5d6 d8d6 d1d6 c7d6 b1c3"
+
+
+def test_counts_the_games_in_which_both_queens_came_off_before_move_20():
+    traded = white_positions("lichess:traded", QUEEN_TRADE)
+    kept = white_positions("lichess:kept", "e2e4 e7e5 g1f3")
+
+    queen_trades = fingerprint_of(traded + kept)["queen_trade_before_move_20"]
+
+    assert queen_trades == {"games": 2, "games_with_a_queen_trade": 1, "rate": 0.5}
+
+
+def test_counts_a_trade_completed_on_the_last_ply_before_move_20_but_not_one_completed_after():
+    # Knights shuffling back and forth push the same trade later: after 30
+    # plies of shuffling it completes at ply 38, after 32 plies at ply 40.
+    four_plies_of_shuffling = "g1f3 g8f6 f3g1 f6g8 "
+    completed_at_ply_38 = white_positions("lichess:a", four_plies_of_shuffling * 7 + "g1f3 g8f6 " + QUEEN_TRADE)
+    completed_at_ply_40 = white_positions("lichess:b", four_plies_of_shuffling * 8 + QUEEN_TRADE)
+
+    early = fingerprint_of(completed_at_ply_38)["queen_trade_before_move_20"]
+    late = fingerprint_of(completed_at_ply_40)["queen_trade_before_move_20"]
+
+    assert early["games_with_a_queen_trade"] == 1
+    assert late["games_with_a_queen_trade"] == 0
+
+
+def test_sees_a_queen_trade_from_black_s_side_of_the_board():
+    positions = black_positions("lichess:a", QUEEN_TRADE)
+
+    queen_trades = fingerprint_of(positions)["queen_trade_before_move_20"]
+
+    assert queen_trades["games_with_a_queen_trade"] == 1
