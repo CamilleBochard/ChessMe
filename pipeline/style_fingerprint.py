@@ -158,14 +158,19 @@ def _queens_on(board: chess.Board) -> int:
 def _material_at_move_30(positions: list[Position]) -> dict:
     """The material left on the board, both sides together, as move 30 begins.
 
-    Only games that reach move 30 have a board to measure, so how many do is
+    Only games in which the player moves in move 30 have a board to measure, so how many do is
     reported beside the distribution: a player whose games end early leaves
     only his long games in it.
     """
     games = _boards_by_game(positions)
     materials = []
     for boards in games.values():
-        if PLIES_BEFORE_MOVE_30 not in boards:
+        # A game counts once the player has moved in move 30. Whether the
+        # board after ply 58 is known depends on who played that ply, so
+        # testing for it would let a game that stops there count for Black
+        # but not for White.
+        last_ply_seen = max(boards)
+        if last_ply_seen <= PLIES_BEFORE_MOVE_30:
             continue
         materials.append(_material_on(boards[PLIES_BEFORE_MOVE_30]))
 

@@ -129,3 +129,15 @@ def test_describes_the_shape_of_the_centipawn_losses_by_phase():
     assert centipawn_loss["phases"]["opening"]["mean"] == 150
     assert centipawn_loss["phases"]["opening"]["percentiles"]["95"] == 300
     assert centipawn_loss["all_phases"]["moves"] == 2
+
+
+def test_counts_a_game_as_reaching_move_30_only_if_the_player_moves_in_it_whatever_his_colour():
+    # 58 plies of shuffling: Black plays ply 58, the last ply of move 29,
+    # and the game stops there. Black never moves in move 30, just as White
+    # would not if the game stopped on the same ply.
+    fifty_eight_plies = ("g1f3 g8f6 f3g1 f6g8 " * 15).split()[:58]
+    stops_before_move_30 = black_positions("lichess:a", " ".join(fifty_eight_plies))
+
+    material = fingerprint_of(stops_before_move_30)["material_at_move_30"]
+
+    assert material["games_reaching_move_30"] == 0
