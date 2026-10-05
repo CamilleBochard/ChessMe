@@ -29,6 +29,10 @@ CREATE TABLE IF NOT EXISTS session_games (
 """
 
 
+class RejectedGame(ValueError):
+    """The page's report is not a finished game that can be stored."""
+
+
 def open_store(path: Path) -> sqlite3.Connection:
     """Opens the database at path, creating it and its tables if needed."""
     connection = sqlite3.connect(path)
@@ -40,7 +44,21 @@ def record_session_game(connection: sqlite3.Connection, report: dict, played_on:
     """Stores the game the page reported and returns the id it was stored under."""
     board = chess.Board()
     for reported_move in report["moves"]:
-        board.push(chess.Move.from_uci(reported_move["uci"]))
+        uci = reported_move["uci"]
+        try:
+            move = chess.Move.from_uci(uci)
+        except ValueError:
+            raise RejectedGame(f"unreadable move {uci}")
+        if not board.is_legal(move):
+            raise RejectedGame(f"illegal move {uci}")
+        board.push(move)
+
+    # The page ends a game at the fifty-move rule and at threefold repetition
+    # without waiting for a claim, so a claimable draw counts as an ending.
+    # A game the visitor walked away from never reaches its end, and is
+    # refused here rather than stored half-played.
+    if not board.is_game_over(claim_draw=True):
+        raise RejectedGame("the game has not ended")
 
     bot_colour = report["botColour"]
     if bot_colour == "white":
