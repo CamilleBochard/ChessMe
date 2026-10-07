@@ -3,7 +3,7 @@
 // writes.
 
 import { describe, expect, it } from 'vitest';
-import { compareStyles, type FingerprintRecord, type StyleFingerprint } from './style-comparison';
+import { compareFingerprints, type FingerprintRecord, type StyleFingerprint } from './fingerprint-comparison';
 
 const NO_PIECE = { pawn: 0, knight: 0, bishop: 0, rook: 0, queen: 0, king: 0 };
 
@@ -59,9 +59,9 @@ describe('the Style Fingerprint comparison shown on the write-up', () => {
       camille_test_set: middlegameLoss(105.0),
     });
 
-    const rows = compareStyles(fingerprints);
+    const rows = compareFingerprints(fingerprints);
 
-    const row = rows.find((candidate) => candidate.statistic === 'Average loss per move, middlegame');
+    const row = rows.find((comparison) => comparison.statistic === 'Average loss per move, middlegame');
     expect(row).toMatchObject({ camille: '103.1', bot: '54.9', camilleAgainstHimself: '2.4' });
   });
 
@@ -77,14 +77,14 @@ describe('the Style Fingerprint comparison shown on the write-up', () => {
       camille_test_set: middlegameBlunders(12),
     });
 
-    const rows = compareStyles(fingerprints);
+    const rows = compareFingerprints(fingerprints);
 
-    const row = rows.find((candidate) => candidate.statistic === 'Moves losing three pawns or more, middlegame');
+    const row = rows.find((comparison) => comparison.statistic === 'Moves losing three pawns or more, middlegame');
     expect(row).toMatchObject({ camille: '11.0%', bot: '4.0%', camilleAgainstHimself: '2.0%' });
   });
 
   it('shows Level first, then what Camille plays, then how he castles', () => {
-    const rows = compareStyles(record());
+    const rows = compareFingerprints(record());
 
     expect(rows.map((row) => row.statistic)).toEqual([
       'Average loss per move, middlegame',
@@ -108,9 +108,9 @@ describe('the Style Fingerprint comparison shown on the write-up', () => {
       bot: fingerprint({ castling: { kingside: 0.84, queenside: 0.065, never: 0.095 } }),
     });
 
-    const rows = compareStyles(fingerprints);
+    const rows = compareFingerprints(fingerprints);
 
-    const row = rows.find((candidate) => candidate.statistic === 'Never castled');
+    const row = rows.find((comparison) => comparison.statistic === 'Never castled');
     expect(row).toMatchObject({ camille: '31.3%', bot: '9.5%' });
   });
 });

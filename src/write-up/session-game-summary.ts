@@ -1,4 +1,4 @@
-// The Session Game record on the write-up page: how many games visitors have
+// The Session Game summary on the write-up page: how many games visitors have
 // played against the Bot and how it fared, read from the Session Game service
 // when the page is read, so the figures are current rather than those of the
 // last build.
@@ -30,8 +30,8 @@ const COUNT_NAMES: (keyof SessionGameCounts)[] = [
   'impression_not_given',
 ];
 
-/** The record as the page shows it, each figure already written out. */
-export interface SessionGameRecord {
+/** The summary as the page shows it, each figure already written out. */
+export interface SessionGameSummary {
   games: string;
   /** Such as "7 wins, 2 draws, 3 losses", counted from the Bot's side. */
   botRecord: string;
@@ -53,11 +53,11 @@ export interface SessionGameRecord {
 const COUNTS_URL = '/api/session-games/counts';
 
 /**
- * Asks the service for the counts and writes out the record they make.
+ * Asks the service for the counts and writes out the summary they make.
  * Undefined when no counts come back, so that the page says they are
  * unavailable rather than showing zeros.
  */
-export async function readSessionGameRecord(fetchFromService: typeof fetch): Promise<SessionGameRecord | undefined> {
+export async function readSessionGameSummary(fetchFromService: typeof fetch): Promise<SessionGameSummary | undefined> {
   let response: Response;
   try {
     response = await fetchFromService(COUNTS_URL);
@@ -80,7 +80,7 @@ export async function readSessionGameRecord(fetchFromService: typeof fetch): Pro
   }
   const counts = body;
 
-  const record: SessionGameRecord = {
+  const summary: SessionGameSummary = {
     games: `${counts.games}`,
     botRecord: [
       counted(counts.bot_wins, 'win', 'wins'),
@@ -90,19 +90,19 @@ export async function readSessionGameRecord(fetchFromService: typeof fetch): Pro
   };
   if (counts.games > 0) {
     const points = counts.bot_wins + counts.draws / 2;
-    record.botScore = asPercent(points / counts.games);
+    summary.botScore = asPercent(points / counts.games);
   }
 
   const botMoves = counts.bot_moves_from_opening_book + counts.bot_moves_from_base_model;
   if (botMoves > 0) {
-    record.fromOpeningBook = asPercent(counts.bot_moves_from_opening_book / botMoves);
+    summary.fromOpeningBook = asPercent(counts.bot_moves_from_opening_book / botMoves);
   }
 
   const answered = counts.felt_like_a_real_player + counts.did_not_feel_like_a_real_player;
   if (answered > 0) {
-    record.feltLikeARealPlayer = `${counts.felt_like_a_real_player} of ${answered} who answered`;
+    summary.feltLikeARealPlayer = `${counts.felt_like_a_real_player} of ${answered} who answered`;
   }
-  return record;
+  return summary;
 }
 
 /** A number followed by its noun, such as "1 win" or "3 wins". */

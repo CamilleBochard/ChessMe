@@ -13,7 +13,7 @@ import { PHASES, type Phase } from '../evaluation/move-matching';
 import type { OpeningBookRecord } from '../evaluation/opening-book-coverage';
 import { describeSweep, SWEEP_SLICES } from '../write-up/base-model-choice';
 import { describeOpeningBook } from '../write-up/opening-book-effect';
-import { compareStyles, type ComparisonRow, type FingerprintRecord } from '../write-up/style-comparison';
+import { compareFingerprints, type FingerprintRecord, type FingerprintRow } from '../write-up/fingerprint-comparison';
 
 const RESULTS_DIRECTORY = 'docs/experiments/results';
 const REPOSITORY = 'https://github.com/CamilleBochard/ChessMe';
@@ -33,7 +33,7 @@ const fingerprintRecord = readResult<FingerprintRecord>('style-fingerprint.json'
 
 const sweep = describeSweep(sweepRecord);
 const openingBook = describeOpeningBook(openingBookRecord);
-const styles = compareStyles(fingerprintRecord);
+const fingerprintRows = compareFingerprints(fingerprintRecord);
 
 const allPositions = sweep.slices[SWEEP_SLICES.indexOf('All')];
 const endgameSlice = sweep.slices[SWEEP_SLICES.indexOf('Endgame')];
@@ -68,8 +68,8 @@ function listed(names: string[]): string {
 }
 
 /** One row of the Style Fingerprint comparison, for quoting its figures in the prose. */
-function style(statistic: string): ComparisonRow {
-  const row = styles.find((comparison) => comparison.statistic === statistic);
+function fingerprintRow(statistic: string): FingerprintRow {
+  const row = fingerprintRows.find((comparison) => comparison.statistic === statistic);
   if (row === undefined) {
     throw new Error(`The Style Fingerprint comparison has no row named "${statistic}"`);
   }
@@ -271,7 +271,7 @@ function style(statistic: string): ComparisonRow {
         </thead>
         <tbody>
           {
-            styles.map((row) => (
+            fingerprintRows.map((row) => (
               <tr>
                 <th scope="row">{row.statistic}</th>
                 <td>{row.camille}</td>
@@ -286,39 +286,39 @@ function style(statistic: string): ComparisonRow {
 
     <h3>Where the imitation holds</h3>
     <p>
-      What Camille moves, and when: pawn moves make up {style('Pawn moves, middlegame').camille} of his middlegame moves
-      and {style('Pawn moves, middlegame').bot} of the Bot's. Both trade queens off before move 20 about as often ({
-        style('Queens traded off before move 20').camille
-      } against {style('Queens traded off before move 20').bot}). In the endgame the Bot takes an offered capture only a
-      little more often than he does ({style('Capture taken when one is offered, endgame').bot} against {
-        style('Capture taken when one is offered, endgame').camille
+      What Camille moves, and when: pawn moves make up {fingerprintRow('Pawn moves, middlegame').camille} of his middlegame moves
+      and {fingerprintRow('Pawn moves, middlegame').bot} of the Bot's. Both trade queens off before move 20 about as often ({
+        fingerprintRow('Queens traded off before move 20').camille
+      } against {fingerprintRow('Queens traded off before move 20').bot}). In the endgame the Bot takes an offered capture only a
+      little more often than he does ({fingerprintRow('Capture taken when one is offered, endgame').bot} against {
+        fingerprintRow('Capture taken when one is offered, endgame').camille
       }): a real difference, since his own halves agree to within {
-        style('Capture taken when one is offered, endgame').camilleAgainstHimself
+        fingerprintRow('Capture taken when one is offered, endgame').camilleAgainstHimself
       }, but a small one.
     </p>
 
     <h3>Where it breaks</h3>
     <p>
-      <strong>Level.</strong> The Bot loses on average {style('Average loss per move, middlegame').bot} hundredths of a
-      pawn per middlegame move, Camille {style('Average loss per move, middlegame').camille}; it blunders on {
-        style('Moves losing three pawns or more, middlegame').bot
-      } of its middlegame moves, he on {style('Moves losing three pawns or more, middlegame').camille}. His two halves
-      differ by {style('Average loss per move, middlegame').camilleAgainstHimself}, so this is not chance: the Bot makes
+      <strong>Level.</strong> The Bot loses on average {fingerprintRow('Average loss per move, middlegame').bot} hundredths of a
+      pawn per middlegame move, Camille {fingerprintRow('Average loss per move, middlegame').camille}; it blunders on {
+        fingerprintRow('Moves losing three pawns or more, middlegame').bot
+      } of its middlegame moves, he on {fingerprintRow('Moves losing three pawns or more, middlegame').camille}. His two halves
+      differ by {fingerprintRow('Average loss per move, middlegame').camilleAgainstHimself}, so this is not chance: the Bot makes
       fewer and smaller mistakes than the player it imitates. It always plays the Base Model's single most likely move, and the most
       likely move of a crowd of players at his rating is rarely the mistake any one of them makes.
     </p>
     <p>
-      <strong>Castling.</strong> The Bot castles kingside in {style('Castled kingside').bot} of its games, Camille in {
-        style('Castled kingside').camille
-      }. He castles queenside or leaves his king in the centre far more often ({style('Castled queenside').camille} and {
-        style('Never castled').camille
-      }, against {style('Castled queenside').bot} and {style('Never castled').bot}).
+      <strong>Castling.</strong> The Bot castles kingside in {fingerprintRow('Castled kingside').bot} of its games, Camille in {
+        fingerprintRow('Castled kingside').camille
+      }. He castles queenside or leaves his king in the centre far more often ({fingerprintRow('Castled queenside').camille} and {
+        fingerprintRow('Never castled').camille
+      }, against {fingerprintRow('Castled queenside').bot} and {fingerprintRow('Never castled').bot}).
     </p>
     <p>
-      <strong>Early habits.</strong> He brings his queen out early ({style('Queen moves, opening').camille} of his
-      opening moves against {style('Queen moves, opening').bot}) and takes an offered capture in the opening less often
-      ({style('Capture taken when one is offered, opening').camille} against {
-        style('Capture taken when one is offered, opening').bot
+      <strong>Early habits.</strong> He brings his queen out early ({fingerprintRow('Queen moves, opening').camille} of his
+      opening moves against {fingerprintRow('Queen moves, opening').bot}) and takes an offered capture in the opening less often
+      ({fingerprintRow('Capture taken when one is offered, opening').camille} against {
+        fingerprintRow('Capture taken when one is offered, opening').bot
       }). Club players' habits like these are exactly what the most likely move of a crowd smooths away.
     </p>
   </section>
@@ -329,7 +329,7 @@ function style(statistic: string): ComparisonRow {
       Every finished game played on this site is recorded, without any account or address, along with whether each of
       the Bot's moves came from the Opening Book or the Base Model. These counts are read as you open the page.
     </p>
-    <div class="live" data-session-games>
+    <div class="session-games" data-session-games>
       <p data-session-games-status>Reading the counts…</p>
       <dl hidden data-session-games-counts>
         <dt>Games finished</dt>
@@ -413,11 +413,11 @@ function style(statistic: string): ComparisonRow {
 </Page>
 
 <script>
-  import { readSessionGameRecord, type SessionGameRecord } from '../write-up/session-game-record';
+  import { readSessionGameSummary, type SessionGameSummary } from '../write-up/session-game-summary';
 
-  const live = document.querySelector<HTMLElement>('[data-session-games]');
-  if (live !== null) {
-    showSessionGames(live);
+  const sessionGames = document.querySelector<HTMLElement>('[data-session-games]');
+  if (sessionGames !== null) {
+    showSessionGames(sessionGames);
   }
 
   async function showSessionGames(container: HTMLElement): Promise<void> {
@@ -427,17 +427,17 @@ function style(statistic: string): ComparisonRow {
       return;
     }
 
-    const record = await readSessionGameRecord(fetch);
-    if (record === undefined) {
+    const summary = await readSessionGameSummary(fetch);
+    if (summary === undefined) {
       status.textContent = 'The counts could not be read just now. Try again in a minute.';
       return;
     }
 
-    // A figure the record leaves out, such as the score before any game, keeps
+    // A figure the summary leaves out, such as the score before any game, keeps
     // the wording already on the page.
     for (const figure of counts.querySelectorAll<HTMLElement>('[data-figure]')) {
-      const name = figure.dataset.figure as keyof SessionGameRecord;
-      const value = record[name];
+      const name = figure.dataset.figure as keyof SessionGameSummary;
+      const value = summary[name];
       if (value !== undefined) {
         figure.textContent = value;
       }
@@ -532,18 +532,18 @@ function style(statistic: string): ComparisonRow {
     opacity: 0.75;
   }
 
-  .live dl {
+  .session-games dl {
     display: grid;
     grid-template-columns: auto 1fr;
     gap: 0.25rem 1rem;
     margin: 1rem 0;
   }
 
-  .live dt {
+  .session-games dt {
     opacity: 0.75;
   }
 
-  .live dd {
+  .session-games dd {
     margin: 0;
     font-variant-numeric: tabular-nums;
   }

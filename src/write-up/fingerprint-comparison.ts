@@ -37,7 +37,7 @@ export interface FingerprintRecord {
   camille_test_set: StyleFingerprint;
 }
 
-export interface ComparisonRow {
+export interface FingerprintRow {
   statistic: string;
   camille: string;
   bot: string;
@@ -122,8 +122,8 @@ const STATISTICS: Statistic[] = [
 ];
 
 /** The statistics the page shows, for Camille, for the Bot, and for Camille against himself. */
-export function compareStyles(record: FingerprintRecord): ComparisonRow[] {
-  const rows: ComparisonRow[] = [];
+export function compareFingerprints(record: FingerprintRecord): FingerprintRow[] {
+  const rows: FingerprintRow[] = [];
   for (const statistic of STATISTICS) {
     const drift = Math.abs(statistic.read(record.camille_training_games) - statistic.read(record.camille_test_set));
     rows.push({
