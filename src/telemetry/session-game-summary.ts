@@ -1,11 +1,10 @@
-// The Session Game summary on the write-up page: how many games visitors have
-// played against the Bot and how it fared, read from the Session Game service
-// when the page is read, so the figures are current rather than those of the
-// last build.
+// The Session Game summary: how many games visitors have played against the
+// Bot and how it fared, read from the Session Game service when it is shown,
+// so the figures are current rather than those of the last build.
 // Free of anything DOM so that it is tested under Node; the page fills in the
 // text.
 
-import { wholePercent } from './figures';
+import { wholePercent } from '../write-up/figures';
 
 /** The counts as the service answers them (pipeline/session_games.py). */
 interface SessionGameCounts {
@@ -53,6 +52,13 @@ export interface SessionGameSummary {
 }
 
 const COUNTS_URL = '/api/session-games/counts';
+
+/**
+ * The event announced on the document when the stored games may have changed:
+ * a game was reported, or a visitor's impression recorded. Whatever shows the
+ * summary reads it again.
+ */
+export const SESSION_GAMES_CHANGED = 'chessme:session-games-changed';
 
 /**
  * Asks the service for the counts and writes out the summary they make.

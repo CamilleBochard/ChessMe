@@ -7,6 +7,7 @@
 // breaks) is written by hand and has to be checked again after a re-run. The
 // Session Game counts are read from the service when the page is read.
 import { readFileSync } from 'node:fs';
+import SessionGameSummary from '../components/SessionGameSummary.astro';
 import Page from '../layouts/Page.astro';
 import type { SweepRecord } from '../evaluation/base-model-sweep';
 import { PHASES, type Phase } from '../evaluation/move-matching';
@@ -329,20 +330,8 @@ function fingerprintRow(statistic: string): FingerprintRow {
       Every finished game played on this site is recorded, without any account or address, along with whether each of
       the Bot's moves came from the Opening Book or the Base Model. These counts are read as you open the page.
     </p>
-    <div class="session-games" data-session-games>
-      <p data-session-games-status>Reading the counts…</p>
-      <dl hidden data-session-games-counts>
-        <dt>Games finished</dt>
-        <dd data-figure="games"></dd>
-        <dt>The Bot's record</dt>
-        <dd data-figure="botRecord"></dd>
-        <dt>The Bot's score</dt>
-        <dd data-figure="botScore">no game yet</dd>
-        <dt>Its moves from the Opening Book</dt>
-        <dd data-figure="fromOpeningBook">no move yet</dd>
-        <dt>Felt like a real player at that level</dt>
-        <dd data-figure="feltLikeARealPlayer">no answer yet</dd>
-      </dl>
+    <div class="visitor-figures">
+      <SessionGameSummary readOn="page-load" />
     </div>
     <p>
       A score counts a win as one point and a draw as half. The people who play here chose to, and anyone can report a
@@ -411,41 +400,6 @@ function fingerprintRow(statistic: string): FingerprintRow {
     </p>
   </section>
 </Page>
-
-<script>
-  import { readSessionGameSummary, type SessionGameSummary } from '../write-up/session-game-summary';
-
-  const sessionGames = document.querySelector<HTMLElement>('[data-session-games]');
-  if (sessionGames !== null) {
-    showSessionGames(sessionGames);
-  }
-
-  async function showSessionGames(container: HTMLElement): Promise<void> {
-    const status = container.querySelector<HTMLElement>('[data-session-games-status]');
-    const counts = container.querySelector<HTMLElement>('[data-session-games-counts]');
-    if (status === null || counts === null) {
-      return;
-    }
-
-    const summary = await readSessionGameSummary(fetch);
-    if (summary === undefined) {
-      status.textContent = 'The counts could not be read just now. Try again in a minute.';
-      return;
-    }
-
-    // A figure the summary leaves out, such as the score before any game, keeps
-    // the wording already on the page.
-    for (const figure of counts.querySelectorAll<HTMLElement>('[data-figure]')) {
-      const name = figure.dataset.figure as keyof SessionGameSummary;
-      const value = summary[name];
-      if (value !== undefined) {
-        figure.textContent = value;
-      }
-    }
-    status.hidden = true;
-    counts.hidden = false;
-  }
-</script>
 
 <style>
   .back {
@@ -532,19 +486,7 @@ function fingerprintRow(statistic: string): FingerprintRow {
     opacity: 0.75;
   }
 
-  .session-games dl {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 0.25rem 1rem;
+  .visitor-figures {
     margin: 1rem 0;
-  }
-
-  .session-games dt {
-    opacity: 0.75;
-  }
-
-  .session-games dd {
-    margin: 0;
-    font-variant-numeric: tabular-nums;
   }
 </style>

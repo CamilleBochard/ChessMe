@@ -1,0 +1,108 @@
+---
+// The Session Game summary: how many games visitors have finished on the site,
+// the Bot's record in them, and what visitors made of it. The figures are read
+// from the Session Game service; this component only places them on the page.
+interface Props {
+  /**
+   * When the counts are read: as the page opens, or each time a game on the
+   * page ends, when the summary first appears and the counts have just changed.
+   */
+  readOn: 'page-load' | 'game-end';
+  /** A heading for the summary, for a page that does not introduce it in its own words. */
+  title?: string;
+}
+
+const { readOn, title } = Astro.props;
+const hiddenUntilAGameEnds = readOn === 'game-end';
+---
+
+<section class="session-game-summary" data-session-game-summary data-read-on={readOn} hidden={hiddenUntilAGameEnds}>
+  {title !== undefined && <h2>{title}</h2>}
+  <p data-summary-status>Reading the counts…</p>
+  <dl hidden data-summary-figures>
+    <dt>Games finished</dt>
+    <dd data-figure="games"></dd>
+    <dt>The Bot's record</dt>
+    <dd data-figure="botRecord"></dd>
+    <dt>The Bot's score</dt>
+    <dd data-figure="botScore">no game yet</dd>
+    <dt>Its moves from the Opening Book</dt>
+    <dd data-figure="fromOpeningBook">no move yet</dd>
+    <dt>Felt like a real player at that level</dt>
+    <dd data-figure="feltLikeARealPlayer">no answer yet</dd>
+  </dl>
+</section>
+
+<script>
+  import {
+    readSessionGameSummary,
+    SESSION_GAMES_CHANGED,
+    type SessionGameSummary,
+  } from '../telemetry/session-game-summary';
+
+  const summaries = document.querySelectorAll<HTMLElement>('[data-session-game-summary]');
+  for (const summary of summaries) {
+    if (summary.dataset.readOn === 'game-end') {
+      document.addEventListener(SESSION_GAMES_CHANGED, () => {
+        summary.hidden = false;
+        void showSummary(summary);
+      });
+    } else {
+      void showSummary(summary);
+    }
+  }
+
+  async function showSummary(container: HTMLElement): Promise<void> {
+    const status = container.querySelector<HTMLElement>('[data-summary-status]')!;
+    const figures = container.querySelector<HTMLElement>('[data-summary-figures]')!;
+
+    const summary = await readSessionGameSummary(fetch);
+    if (summary === undefined) {
+      status.textContent = 'The counts could not be read just now. Try again in a minute.';
+      status.hidden = false;
+      figures.hidden = true;
+      return;
+    }
+
+    // A figure the summary leaves out, such as the score before any game, keeps
+    // the wording already on the page.
+    for (const figure of figures.querySelectorAll<HTMLElement>('[data-figure]')) {
+      const name = figure.dataset.figure as keyof SessionGameSummary;
+      const value = summary[name];
+      if (value !== undefined) {
+        figure.textContent = value;
+      }
+    }
+    status.hidden = true;
+    figures.hidden = false;
+  }
+</script>
+
+<style>
+  h2 {
+    font-size: 1rem;
+    margin: 0 0 0.5rem;
+  }
+
+  p {
+    margin: 0;
+  }
+
+  /* Only a shown list is laid out as a grid: a display set here would
+     otherwise override the hidden attribute and show an empty list. */
+  dl:not([hidden]) {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.25rem 1rem;
+    margin: 0;
+  }
+
+  dt {
+    opacity: 0.75;
+  }
+
+  dd {
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+  }
+</style>
