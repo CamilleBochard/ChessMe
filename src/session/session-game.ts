@@ -16,9 +16,10 @@ import {
   type MoveRequest,
 } from '../game/game';
 import { describeTurn, gameStatus } from '../game/game-status';
+import type { BotMove } from '../engine/move-selection';
 
-/** How the Bot chooses its move: a position as FEN in, one move out. */
-export type ChooseMove = (fen: string) => Promise<MoveRequest>;
+/** How the Bot chooses its move: a position as FEN in, one move out, with where it came from. */
+export type ChooseMove = (fen: string) => Promise<BotMove>;
 
 export interface SessionGameOptions {
   chooseMove: ChooseMove;
@@ -148,9 +149,10 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
       return;
     }
 
-    const next = playMove(game, reply);
+    const next = playMove(game, reply.move);
     if (next === null) {
-      throw new Error(`The Bot chose an illegal move: ${reply.from}-${reply.to} in ${currentFen(game)}`);
+      const move = reply.move;
+      throw new Error(`The Bot chose an illegal move: ${move.from}-${move.to} in ${currentFen(game)}`);
     }
     setGame(next);
   }

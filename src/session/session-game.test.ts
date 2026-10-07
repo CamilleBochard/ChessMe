@@ -3,19 +3,20 @@
 // reply comes and, when it matters, exactly when it arrives.
 
 import { describe, expect, it } from 'vitest';
+import type { BotMove, MoveSource } from '../engine/move-selection';
 import { currentFen, moveList, type MoveRequest } from '../game/game';
 import { gameStatus } from '../game/game-status';
 import { createSessionGame } from './session-game';
 
-/** A Bot that plays the given moves in order, whatever the position. */
-function scriptedBot(replies: MoveRequest[]): (fen: string) => Promise<MoveRequest> {
+/** A Bot that plays the given moves in order, whatever the position, all from the given source. */
+function scriptedBot(replies: MoveRequest[], source: MoveSource = 'base-model'): (fen: string) => Promise<BotMove> {
   const remaining = [...replies];
   return async () => {
     const reply = remaining.shift();
     if (reply === undefined) {
       throw new Error('The scripted Bot ran out of replies');
     }
-    return reply;
+    return { move: reply, source: source };
   };
 }
 
@@ -24,19 +25,19 @@ function scriptedBot(replies: MoveRequest[]): (fen: string) => Promise<MoveReque
  * the Bot is still choosing.
  */
 function slowBot(): {
-  chooseMove: (fen: string) => Promise<MoveRequest>;
+  chooseMove: (fen: string) => Promise<BotMove>;
   reply: (move: MoveRequest) => void;
 } {
-  let sendReply: (move: MoveRequest) => void = () => {
+  let sendReply: (botMove: BotMove) => void = () => {
     throw new Error('The slow Bot has not been asked for a move yet');
   };
-  const chooseMove = (): Promise<MoveRequest> => {
+  const chooseMove = (): Promise<BotMove> => {
     return new Promise((resolve) => {
       sendReply = resolve;
     });
   };
   const reply = (move: MoveRequest): void => {
-    sendReply(move);
+    sendReply({ move: move, source: 'base-model' });
   };
   return { chooseMove: chooseMove, reply: reply };
 }

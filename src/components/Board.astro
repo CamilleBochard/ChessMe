@@ -100,6 +100,7 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
   import { gameStatus } from '../game/game-status';
   import { connectBot, type Bot } from '../engine/bot-client';
   import type { BotStatus } from '../engine/bot-protocol';
+  import type { BotMove } from '../engine/move-selection';
   import type { DownloadProgress } from '../engine/model-download';
   import { createSessionGame } from '../session/session-game';
 
@@ -223,10 +224,10 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
      * Book answers the positions it holds at once, and any other request waits
      * in the worker, so a visitor can play during the download.
      */
-    async function askBot(fen: string): Promise<MoveRequest> {
+    async function askBot(fen: string): Promise<BotMove> {
       try {
         const reply = await bot.requestMove(fen);
-        return reply.move;
+        return reply;
       } catch (error) {
         // A model that failed to load has already been reported as the Bot's
         // status. A move that failed after loading has not, and without this
