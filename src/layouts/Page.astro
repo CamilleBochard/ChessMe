@@ -1,0 +1,60 @@
+---
+// The frame every page of the site shares: the document head, the colours
+// for light and dark mode, and a column narrow enough to read on a desktop
+// and with a gutter on a phone.
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+  </head>
+  <body>
+    <main>
+      <slot />
+    </main>
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    color-scheme: light dark;
+    --page-background: #f4f1ea;
+    --page-text: #2a2722;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page-background: #1c1a17;
+      --page-text: #e8e3d9;
+    }
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    background: var(--page-background);
+    color: var(--page-text);
+    font-family: system-ui, sans-serif;
+  }
+
+  main {
+    /* 1rem of gutter keeps the content clear of the screen edge on a phone,
+       and the max-width stops the text sprawling on a desktop. */
+    max-width: 48rem;
+    margin-inline: auto;
+    padding: 1.5rem 1rem;
+  }
+</style>
