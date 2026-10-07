@@ -1,10 +1,11 @@
 ---
 // The write-up: how the Bot was built, how well it imitates Camille, and why
-// no network was trained. Every measured figure is computed at build time
-// from the records the measurement commands write into
-// docs/experiments/results/; re-running a measurement and rebuilding updates
-// the page. The Session Game counts are read from the service when the page
-// is read.
+// no network was trained. Every measured figure, in the tables and in the
+// prose, is computed at build time from the records the measurement commands
+// write into docs/experiments/results/, so re-running a measurement and
+// rebuilding updates the figures. The reading of them (what holds, what
+// breaks) is written by hand and has to be checked again after a re-run. The
+// Session Game counts are read from the service when the page is read.
 import { readFileSync } from 'node:fs';
 import Page from '../layouts/Page.astro';
 import type { SweepRecord } from '../evaluation/base-model-sweep';
@@ -68,7 +69,7 @@ function listed(names: string[]): string {
 
 /** One row of the Style Fingerprint comparison, for quoting its figures in the prose. */
 function style(statistic: string): ComparisonRow {
-  const row = styles.find((candidate) => candidate.statistic === statistic);
+  const row = styles.find((comparison) => comparison.statistic === statistic);
   if (row === undefined) {
     throw new Error(`The Style Fingerprint comparison has no row named "${statistic}"`);
   }
@@ -108,6 +109,13 @@ function style(statistic: string): ComparisonRow {
       A move's <em>loss</em> is how much worse it left the position than the engine's best move, counted in hundredths
       of a pawn. A loss of 300 means giving away three pawns' worth, roughly a whole piece: a blunder.
     </p>
+    <p>
+      A few more words come up. <em>Castling</em> is a once-a-game move that tucks the king into a corner behind its
+      pawns, on the <em>kingside</em> or the <em>queenside</em>; a king left in the centre is usually more exposed. The
+      queen is the strongest piece, and <em>trading queens</em> means both are captured, usually one for the other,
+      which tends to calm a game down. A capture is <em>on offer</em> when a move can take an opposing piece; the
+      player may take it or play something else.
+    </p>
   </section>
 
   <section>
@@ -121,8 +129,8 @@ function style(statistic: string): ComparisonRow {
       human of a given rating would play, mistakes included, rather than the best move.
     </p>
     <p>
-      The Base Model runs in your browser, so the site only serves files. No network was trained or adjusted for this
-      project; why is explained <a href="#why-nothing-was-trained">further down</a>.
+      The Base Model runs in your browser, so no server computes the Bot's moves. No network was trained or adjusted
+      for this project; why is explained <a href="#why-nothing-was-trained">further down</a>.
     </p>
   </section>
 
@@ -138,6 +146,11 @@ function style(statistic: string): ComparisonRow {
       plays the move he played. Every candidate saw the same {allPositions.positions} positions from {
         allPositions.games
       } of his games. None of them was trained on his games, so all of them can be used.
+    </p>
+    <p>
+      Each figure carries a <em>±</em>, one standard error: the true figure lies within that margin of the one shown
+      about two times in three. Two figures several margins apart are really different; two within one margin of each
+      other may not be.
     </p>
 
     <div class="table-frame">
@@ -274,10 +287,14 @@ function style(statistic: string): ComparisonRow {
     <h3>Where the imitation holds</h3>
     <p>
       What Camille moves, and when: pawn moves make up {style('Pawn moves, middlegame').camille} of his middlegame moves
-      and {style('Pawn moves, middlegame').bot} of the Bot's. Both trade queens off before move 20 in about one game in
-      five ({style('Queens traded off before move 20').camille} against {
-        style('Queens traded off before move 20').bot
-      }). In the endgame both take an offered capture at similar rates.
+      and {style('Pawn moves, middlegame').bot} of the Bot's. Both trade queens off before move 20 about as often ({
+        style('Queens traded off before move 20').camille
+      } against {style('Queens traded off before move 20').bot}). In the endgame the Bot takes an offered capture only a
+      little more often than he does ({style('Capture taken when one is offered, endgame').bot} against {
+        style('Capture taken when one is offered, endgame').camille
+      }): a real difference, since his own halves agree to within {
+        style('Capture taken when one is offered, endgame').camilleAgainstHimself
+      }, but a small one.
     </p>
 
     <h3>Where it breaks</h3>
@@ -286,8 +303,8 @@ function style(statistic: string): ComparisonRow {
       pawn per middlegame move, Camille {style('Average loss per move, middlegame').camille}; it blunders on {
         style('Moves losing three pawns or more, middlegame').bot
       } of its middlegame moves, he on {style('Moves losing three pawns or more, middlegame').camille}. His two halves
-      differ by {style('Average loss per move, middlegame').camilleAgainstHimself}, so this is not chance: the Bot plays
-      about twice as accurately as he does. It always plays the Base Model's single most likely move, and the most
+      differ by {style('Average loss per move, middlegame').camilleAgainstHimself}, so this is not chance: the Bot makes
+      fewer and smaller mistakes than the player it imitates. It always plays the Base Model's single most likely move, and the most
       likely move of a crowd of players at his rating is rarely the mistake any one of them makes.
     </p>
     <p>
@@ -329,7 +346,8 @@ function style(statistic: string): ComparisonRow {
     </div>
     <p>
       A score counts a win as one point and a draw as half. The people who play here chose to, and anyone can report a
-      game, so these figures describe the Bot's games on this site, not its strength against a fair sample of players.
+      game, so these figures describe the Bot's games on this site, not how it would fare against a fair sample of
+      players.
     </p>
   </section>
 
