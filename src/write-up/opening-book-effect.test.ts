@@ -39,7 +39,7 @@ describe('the Opening Book shown on the write-up', () => {
   it("compares the opening Move-Matching of the Base Model alone with the Bot's, which consults the book first", () => {
     const effect = describeOpeningBook(MEASUREMENT);
 
-    expect(effect.opening).toEqual({ baseline: '50.00 ± 1.50', bot: '60.00 ± 1.60' });
+    expect(effect.byPhase.opening).toEqual({ baseline: '50.00 ± 1.50', bot: '60.00 ± 1.60' });
   });
 
   it('compares the two over every Test Set position, where the book weighs far less', () => {
@@ -60,5 +60,23 @@ describe('the Opening Book shown on the write-up', () => {
 
     // 40 of 51 against 25 of 51
     expect(effect.whereTheBookAnswers).toEqual({ baseline: '49.02 ± 2.00', bot: '78.43 ± 2.00' });
+  });
+
+  it('compares the two in every Phase, so a reader sees where the book stops making a difference', () => {
+    const later = score(476, 1000, 1.06);
+    const withLaterPhases = (report: MoveMatchingReport): MoveMatchingReport => ({
+      ...report,
+      byPhase: { opening: report.byPhase.opening, middlegame: later, endgame: later },
+    });
+    const measurement: OpeningBookRecord = {
+      ...MEASUREMENT,
+      baseModelAlone: withLaterPhases(MEASUREMENT.baseModelAlone),
+      bookThenBaseModel: withLaterPhases(MEASUREMENT.bookThenBaseModel),
+    };
+
+    const effect = describeOpeningBook(measurement);
+
+    expect(effect.byPhase.middlegame).toEqual({ baseline: '47.60 ± 1.06', bot: '47.60 ± 1.06' });
+    expect(effect.byPhase.endgame).toEqual({ baseline: '47.60 ± 1.06', bot: '47.60 ± 1.06' });
   });
 });

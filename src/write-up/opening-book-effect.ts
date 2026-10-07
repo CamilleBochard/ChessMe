@@ -5,6 +5,7 @@
 // Free of anything DOM so that it is tested under Node.
 
 import type { OpeningBookRecord } from '../evaluation/opening-book-coverage';
+import { PHASES, type MoveMatchingScore, type Phase } from '../evaluation/move-matching';
 import { percentWithError } from './figures';
 
 /** One slice's Move-Matching for the Baseline and for the Bot. */
@@ -14,8 +15,8 @@ export interface Comparison {
 }
 
 export interface OpeningBookEffect {
-  /** Every Test Set position in the opening. */
-  opening: Comparison;
+  /** Every Test Set position of each Phase. The two differ only where the book answers, mostly the opening. */
+  byPhase: Record<Phase, Comparison>;
   /** Every Test Set position, over whole games. */
   overall: Comparison;
   /** Only the positions the book answers: its move against the Base Model's, the one place the two differ. */
@@ -29,19 +30,19 @@ export function describeOpeningBook(record: OpeningBookRecord): OpeningBookEffec
   const openingCoverage = record.coverage.opening;
   const percentAnswered = Math.round((100 * openingCoverage.answered) / openingCoverage.positions);
 
+  const byPhase = {} as Record<Phase, Comparison>;
+  for (const phase of PHASES) {
+    byPhase[phase] = compare(record.baseModelAlone.byPhase[phase], record.bookThenBaseModel.byPhase[phase]);
+  }
+
   return {
-    opening: {
-      baseline: percentWithError(record.baseModelAlone.byPhase.opening),
-      bot: percentWithError(record.bookThenBaseModel.byPhase.opening),
-    },
-    overall: {
-      baseline: percentWithError(record.baseModelAlone.overall),
-      bot: percentWithError(record.bookThenBaseModel.overall),
-    },
-    whereTheBookAnswers: {
-      baseline: percentWithError(record.answeredByBook.baseModelAlone.overall),
-      bot: percentWithError(record.answeredByBook.bookThenBaseModel.overall),
-    },
+    byPhase: byPhase,
+    overall: compare(record.baseModelAlone.overall, record.bookThenBaseModel.overall),
+    whereTheBookAnswers: compare(record.answeredByBook.baseModelAlone.overall, record.answeredByBook.bookThenBaseModel.overall),
     openingAnswered: `${percentAnswered}%`,
   };
+}
+
+function compare(baseline: MoveMatchingScore, bot: MoveMatchingScore): Comparison {
+  return { baseline: percentWithError(baseline), bot: percentWithError(bot) };
 }

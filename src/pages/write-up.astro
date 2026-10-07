@@ -8,6 +8,7 @@
 import { readFileSync } from 'node:fs';
 import Page from '../layouts/Page.astro';
 import type { SweepRecord } from '../evaluation/base-model-sweep';
+import { PHASES, type Phase } from '../evaluation/move-matching';
 import type { OpeningBookRecord } from '../evaluation/opening-book-coverage';
 import { describeSweep, SWEEP_SLICES } from '../write-up/base-model-choice';
 import { describeOpeningBook } from '../write-up/opening-book-effect';
@@ -17,6 +18,8 @@ const RESULTS_DIRECTORY = 'docs/experiments/results';
 const REPOSITORY = 'https://github.com/CamilleBochard/ChessMe';
 const EXPERIMENTS = `${REPOSITORY}/tree/master/docs/experiments`;
 const ADR_0001 = `${REPOSITORY}/blob/master/docs/adr/0001-base-model-chosen-by-measurement.md`;
+
+const PHASE_NAMES: Record<Phase, string> = { opening: 'Opening', middlegame: 'Middlegame', endgame: 'Endgame' };
 
 function readResult<T>(fileName: string): T {
   const text = readFileSync(`${RESULTS_DIRECTORY}/${fileName}`, 'utf-8');
@@ -199,11 +202,15 @@ function style(statistic: string): ComparisonRow {
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <th scope="row">Opening</th>
-            <td>{openingBook.opening.baseline}</td>
-            <td>{openingBook.opening.bot}</td>
-          </tr>
+          {
+            PHASES.map((phase) => (
+              <tr>
+                <th scope="row">{PHASE_NAMES[phase]}</th>
+                <td>{openingBook.byPhase[phase].baseline}</td>
+                <td>{openingBook.byPhase[phase].bot}</td>
+              </tr>
+            ))
+          }
           <tr>
             <th scope="row">Positions the book answers</th>
             <td>{openingBook.whereTheBookAnswers.baseline}</td>
@@ -220,8 +227,8 @@ function style(statistic: string): ComparisonRow {
 
     <p>
       The book answers {openingBook.openingAnswered} of opening positions and, where it does, plays Camille's move far
-      more often than the Base Model would. Over whole games the gain shrinks, because the book runs out after the first
-      few moves. It changes which opening the Bot plays, not how well it plays afterwards.
+      more often than the Base Model would. Past the opening it almost never answers, so the two columns agree there,
+      and over whole games the gain shrinks. It changes which opening the Bot plays, not how well it plays afterwards.
     </p>
   </section>
 
