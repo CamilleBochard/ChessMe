@@ -6,6 +6,10 @@
 // rebuilding updates the figures. The reading of them (what holds, what
 // breaks) is written by hand and has to be checked again after a re-run. The
 // Session Game counts are read from the service when the page is read.
+//
+// The leading underscore in the file name keeps Astro from publishing the
+// page while its text is rewritten; renaming the file to write-up.astro
+// publishes it at /write-up/.
 import { readFileSync } from 'node:fs';
 import SessionGameSummary from '../components/SessionGameSummary.astro';
 import Page from '../layouts/Page.astro';
