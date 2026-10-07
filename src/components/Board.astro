@@ -51,6 +51,15 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
       <button type="button" data-resign>Resign</button>
       <button type="button" data-new-game>New game</button>
     </div>
+
+    <div class="impression" data-impression hidden>
+      <p>Did the Bot feel like a real player of about {SERVED_MODEL_RATING} on Lichess?</p>
+      <div class="buttons" data-impression-choices>
+        <button type="button" data-felt-real="yes">Yes</button>
+        <button type="button" data-felt-real="no">No</button>
+      </div>
+      <p class="impression-thanks" data-impression-thanks hidden></p>
+    </div>
   </div>
 
   <aside class="moves">
@@ -102,7 +111,8 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
   import type { BotStatus } from '../engine/bot-protocol';
   import type { BotMove } from '../engine/move-selection';
   import type { DownloadProgress } from '../engine/model-download';
-  import { createSessionGame } from '../session/session-game';
+  import { createSessionGame, type FinishedGame } from '../session/session-game';
+  import { connectTelemetry, sessionGameReport } from '../telemetry/session-game';
 
   /**
    * Remembered once the model has reached the browser's cache, so that a
@@ -140,6 +150,16 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
     const viewBackButton = frame.querySelector<HTMLButtonElement>('[data-view-back]')!;
     const viewForwardButton = frame.querySelector<HTMLButtonElement>('[data-view-forward]')!;
     const promotionDialog = frame.querySelector<HTMLDialogElement>('[data-promotion]')!;
+    const impression = frame.querySelector<HTMLElement>('[data-impression]')!;
+    const impressionChoices = impression.querySelector<HTMLElement>('[data-impression-choices]')!;
+    const impressionButtons = impressionChoices.querySelectorAll<HTMLButtonElement>('button');
+    const impressionThanks = impression.querySelector<HTMLElement>('[data-impression-thanks]')!;
+
+    const telemetry = connectTelemetry((input, init) => window.fetch(input, init));
+    const servedModel = { baseModel: frame.dataset.baseModel!, rating: Number(frame.dataset.modelRating) };
+    // The id the service stored the game on the board under, once it has
+    // ended and been stored: the game the end-of-game question is about.
+    let storedGameId: string | undefined = undefined;
 
     let botStatus: BotStatus = { kind: 'downloading', progress: { receivedBytes: 0, totalBytes: undefined } };
 
@@ -154,6 +174,7 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
       onChange: () => {
         showGame();
       },
+      onGameEnd: reportFinishedGame,
     });
 
     const board = Chessground(boardElement, {
@@ -176,6 +197,7 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
       button.addEventListener('click', () => {
         const colour = button.dataset.playAs as Colour;
         board.set({ orientation: colour });
+        forgetEndedGame();
         session.start(colour).catch(() => {
           // The Bot failed while choosing its first move; its status already
           // says so, and the board only needs redrawing.
@@ -185,6 +207,9 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
     }
 
     takeBackButton.addEventListener('click', () => {
+      // A takeback after the end resumes the game; the stored game stays
+      // stored, but the question about it is no longer asked.
+      forgetEndedGame();
       session.takeBack();
     });
 
@@ -193,8 +218,15 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
     });
 
     newGameButton.addEventListener('click', () => {
+      forgetEndedGame();
       session.startOver();
     });
+
+    for (const button of impressionButtons) {
+      button.addEventListener('click', () => {
+        void sendImpression(button.dataset.feltReal === 'yes');
+      });
+    }
 
     viewBackButton.addEventListener('click', () => {
       session.viewBack();
@@ -218,6 +250,62 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
         session.viewForward();
       }
     });
+
+    /**
+     * Reports the finished game and, once it is stored, asks the visitor what
+     * they made of the Bot. A game left unfinished is never reported. The
+     * question is only asked if the game is still the one on the board: the
+     * visitor may have started another while the report was on its way.
+     */
+    function reportFinishedGame(finished: FinishedGame): void {
+      const endedGame = session.game();
+      const report = sessionGameReport(servedModel, finished);
+      void telemetry.reportGame(report).then((gameId) => {
+        const isStillOnTheBoard = session.game() === endedGame;
+        if (gameId !== undefined && isStillOnTheBoard) {
+          storedGameId = gameId;
+          askImpression();
+        }
+      });
+    }
+
+    /**
+     * Shows the end-of-game question. It only appears for a game the service
+     * stored, since an answer needs a game to be attached to.
+     */
+    function askImpression(): void {
+      for (const button of impressionButtons) {
+        button.disabled = false;
+      }
+      impressionChoices.hidden = false;
+      impressionThanks.hidden = true;
+      impression.hidden = false;
+    }
+
+    async function sendImpression(feltLikeARealPlayer: boolean): Promise<void> {
+      const gameId = storedGameId;
+      if (gameId === undefined) {
+        return;
+      }
+      for (const button of impressionButtons) {
+        button.disabled = true;
+      }
+      const recorded = await telemetry.reportImpression(gameId, feltLikeARealPlayer);
+
+      impressionChoices.hidden = true;
+      impressionThanks.hidden = false;
+      if (recorded) {
+        impressionThanks.textContent = 'Thank you, your answer has been recorded.';
+      } else {
+        impressionThanks.textContent = 'Your answer could not be recorded.';
+      }
+    }
+
+    /** Hides the question about a game that is over, as the visitor moves on from it. */
+    function forgetEndedGame(): void {
+      storedGameId = undefined;
+      impression.hidden = true;
+    }
 
     /**
      * The Bot's move for a position. Before the model has arrived the Opening
@@ -694,6 +782,22 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
   .buttons button:disabled {
     opacity: 0.4;
     cursor: default;
+  }
+
+  .impression {
+    width: 100%;
+    max-width: 24rem;
+    text-align: center;
+  }
+
+  .impression[hidden] {
+    display: none;
+  }
+
+  .impression p {
+    margin: 0 0 0.5rem;
+    font-size: 0.875rem;
+    color: var(--text-2);
   }
 
   .moves {
