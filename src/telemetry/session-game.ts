@@ -1,13 +1,14 @@
-// The Session Game as the page records it, and the reporting of it to the
-// service that stores finished games (pipeline/serve_session_games.py). The
-// page sends the moves rather than a PGN: the service replays them and writes
-// the PGN itself.
+// The report of a finished Session Game, and the sending of it to the service
+// that stores finished games (pipeline/serve_session_games.py). The page
+// sends the moves rather than a PGN: the service replays them and writes the
+// PGN itself.
 // Free of anything DOM, and handed fetch by the caller, so the tests can
 // replace the network.
 
 import type { Colour } from '../board/starting-position';
-import { uciName, type MoveRequest } from '../game/game';
-import type { BotMove, MoveSource } from '../engine/move-selection';
+import { uciName } from '../game/game';
+import type { MoveSource } from '../engine/move-selection';
+import type { FinishedGame } from '../session/session-game';
 
 /** Where the service listens, behind the same web server as the page. */
 const SESSION_GAMES_URL = '/api/session-games';
@@ -26,27 +27,37 @@ export interface PlayedModel {
   readonly rating: number;
 }
 
-/** A game in progress or finished, in the shape the service stores. */
-export interface SessionGame extends PlayedModel {
+/** A finished game, in the shape the service stores. */
+export interface SessionGameReport extends PlayedModel {
   readonly botColour: Colour;
   readonly moves: readonly ReportedMove[];
+  /** True when the game ended with the visitor resigning rather than on the board. */
+  readonly visitorResigned: boolean;
 }
 
-/** A Session Game with no move played yet. */
-export function startSessionGame(botColour: Colour, model: PlayedModel): SessionGame {
-  return { botColour: botColour, baseModel: model.baseModel, rating: model.rating, moves: [] };
-}
+/** The report of a finished game, the Bot playing the side the visitor did not take. */
+export function sessionGameReport(model: PlayedModel, finished: FinishedGame): SessionGameReport {
+  let botColour: Colour = 'white';
+  if (finished.visitor === 'white') {
+    botColour = 'black';
+  }
 
-/** The game with the visitor's move added. */
-export function recordVisitorMove(sessionGame: SessionGame, move: MoveRequest): SessionGame {
-  const reported: ReportedMove = { uci: uciName(move) };
-  return { ...sessionGame, moves: [...sessionGame.moves, reported] };
-}
+  const moves: ReportedMove[] = [];
+  for (const played of finished.moves) {
+    const reported: ReportedMove = { uci: uciName(played.move) };
+    if (played.source !== undefined) {
+      reported.source = played.source;
+    }
+    moves.push(reported);
+  }
 
-/** The game with the Bot's move added, marked with where it came from. */
-export function recordBotMove(sessionGame: SessionGame, botMove: BotMove): SessionGame {
-  const reported: ReportedMove = { uci: uciName(botMove.move), source: botMove.source };
-  return { ...sessionGame, moves: [...sessionGame.moves, reported] };
+  return {
+    botColour: botColour,
+    baseModel: model.baseModel,
+    rating: model.rating,
+    moves: moves,
+    visitorResigned: finished.visitorResigned,
+  };
 }
 
 /** The page's way of reporting to the service. */
@@ -55,7 +66,7 @@ export interface Telemetry {
    * Sends a finished game, resolving with the id the service stored it under,
    * or with no id when the service refused it or could not be reached.
    */
-  reportGame(sessionGame: SessionGame): Promise<string | undefined>;
+  reportGame(report: SessionGameReport): Promise<string | undefined>;
   /**
    * Sends the visitor's answer to whether the Bot felt like a real player at
    * that level, resolving with whether the service recorded it.
@@ -66,7 +77,7 @@ export interface Telemetry {
 /** Reports through the fetch given, which the page passes as the browser's own. */
 export function connectTelemetry(fetchFunction: typeof fetch): Telemetry {
   return {
-    reportGame: async (sessionGame) => {
+    reportGame: async (report) => {
       // The game has already been played and shown to the visitor. A report
       // that fails costs one game in the counts and nothing more, so no
       // failure reaches the page.
@@ -74,7 +85,7 @@ export function connectTelemetry(fetchFunction: typeof fetch): Telemetry {
         const response = await fetchFunction(SESSION_GAMES_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(sessionGame),
+          body: JSON.stringify(report),
         });
         if (!response.ok) {
           return undefined;
