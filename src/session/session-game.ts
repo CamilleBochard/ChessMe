@@ -16,10 +16,25 @@ import {
   type MoveRequest,
 } from '../game/game';
 import { describeTurn, gameStatus } from '../game/game-status';
-import type { BotMove } from '../engine/move-selection';
+import type { BotMove, MoveSource } from '../engine/move-selection';
 
 /** How the Bot chooses its move: a position as FEN in, one move out, with where it came from. */
 export type ChooseMove = (fen: string) => Promise<BotMove>;
+
+/** One move of a finished game. The Bot's moves also say where they came from. */
+export interface PlayedMove {
+  move: MoveRequest;
+  source?: MoveSource;
+}
+
+/** A game that has ended, as the page reports it. */
+export interface FinishedGame {
+  visitor: Colour;
+  /** Every move of the game, oldest first. Moves taken back are not among them. */
+  moves: PlayedMove[];
+  /** True when the visitor resigned, rather than the game ending on the board. */
+  visitorResigned: boolean;
+}
 
 export interface SessionGameOptions {
   chooseMove: ChooseMove;
@@ -29,6 +44,8 @@ export interface SessionGameOptions {
    * can redraw.
    */
   onChange?: () => void;
+  /** Called once when a game ends, by the rules of chess or by the visitor resigning. */
+  onGameEnd?: (finished: FinishedGame) => void;
 }
 
 export interface SessionGame {
@@ -81,6 +98,10 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
   // How many moves before the current position the visitor is looking.
   // Zero means the current position.
   let stepsBack = 0;
+  // Where each of the Bot's moves came from, by the ply it was played at. A
+  // move taken back leaves its entry behind, but the Bot's next move at that
+  // ply replaces it, and only the plies of the game as it stands are read.
+  const botMoveSources = new Map<number, MoveSource>();
 
   /**
    * The only place the game is replaced, so the page never misses a change.
@@ -88,9 +109,35 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
    * at an earlier move should see the Bot's reply, a takeback or a new game.
    */
   function setGame(next: Game): void {
+    const wasOngoing = gameStatus(game).kind === 'ongoing';
     game = next;
     stepsBack = 0;
     notifyPage();
+
+    const hasEnded = gameStatus(game).kind !== 'ongoing';
+    if (wasOngoing && hasEnded) {
+      announceGameEnd();
+    }
+  }
+
+  function announceGameEnd(): void {
+    if (options.onGameEnd === undefined || visitor === null) {
+      return;
+    }
+
+    const moves: PlayedMove[] = [];
+    for (const [index, move] of movesOf(game).entries()) {
+      const ply = index + 1;
+      const source = botMoveSources.get(ply);
+      if (source === undefined) {
+        moves.push({ move: move });
+      } else {
+        moves.push({ move: move, source: source });
+      }
+    }
+
+    const visitorResigned = game.resignedBy !== undefined;
+    options.onGameEnd({ visitor: visitor, moves: moves, visitorResigned: visitorResigned });
   }
 
   function notifyPage(): void {
@@ -154,6 +201,8 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
       const move = reply.move;
       throw new Error(`The Bot chose an illegal move: ${move.from}-${move.to} in ${currentFen(game)}`);
     }
+    const ply = movesOf(next).length;
+    botMoveSources.set(ply, reply.source);
     setGame(next);
   }
 
@@ -250,4 +299,16 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
       setGame(newGame());
     },
   };
+}
+
+/** The moves that led to the game, oldest first. */
+function movesOf(game: Game): MoveRequest[] {
+  const moves: MoveRequest[] = [];
+  let moment = game;
+  while (moment.previous !== undefined && moment.lastMove !== undefined) {
+    moves.push(moment.lastMove);
+    moment = moment.previous;
+  }
+  moves.reverse();
+  return moves;
 }

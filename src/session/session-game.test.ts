@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import type { BotMove, MoveSource } from '../engine/move-selection';
 import { currentFen, moveList, type MoveRequest } from '../game/game';
 import { gameStatus } from '../game/game-status';
-import { createSessionGame } from './session-game';
+import { createSessionGame, type FinishedGame } from './session-game';
 
 /** A Bot that plays the given moves in order, whatever the position, all from the given source. */
 function scriptedBot(replies: MoveRequest[], source: MoveSource = 'base-model'): (fen: string) => Promise<BotMove> {
@@ -299,5 +299,89 @@ describe('browsing earlier positions', () => {
 
     expect(accepted).toBe(false);
     expect(moveList(session.game())).toEqual([{ moveNumber: 1, white: 'e4', black: 'e5' }]);
+  });
+});
+
+describe('the finished game', () => {
+  /** A Bot that plays the given answers in order, each with its own source. */
+  function botAnswering(answers: BotMove[]): (fen: string) => Promise<BotMove> {
+    const remaining = [...answers];
+    return async () => remaining.shift()!;
+  }
+
+  it("hands over every move once the game ends, the Bot's marked with where they came from", async () => {
+    const finishedGames: FinishedGame[] = [];
+    const session = createSessionGame({
+      chooseMove: botAnswering([
+        { move: { from: 'e7', to: 'e5' }, source: 'opening-book' },
+        { move: { from: 'd8', to: 'h4' }, source: 'base-model' },
+      ]),
+      onGameEnd: (finished) => {
+        finishedGames.push(finished);
+      },
+    });
+    await session.start('white');
+
+    await session.playVisitorMove({ from: 'f2', to: 'f3' });
+    await session.playVisitorMove({ from: 'g2', to: 'g4' });
+
+    expect(finishedGames).toEqual([
+      {
+        visitor: 'white',
+        moves: [
+          { move: { from: 'f2', to: 'f3' } },
+          { move: { from: 'e7', to: 'e5' }, source: 'opening-book' },
+          { move: { from: 'g2', to: 'g4' } },
+          { move: { from: 'd8', to: 'h4' }, source: 'base-model' },
+        ],
+        visitorResigned: false,
+      },
+    ]);
+  });
+
+  it('hands over a resigned game as resigned, with the moves played until then', async () => {
+    const finishedGames: FinishedGame[] = [];
+    const session = createSessionGame({
+      chooseMove: botAnswering([{ move: { from: 'e7', to: 'e5' }, source: 'opening-book' }]),
+      onGameEnd: (finished) => {
+        finishedGames.push(finished);
+      },
+    });
+    await session.start('white');
+    await session.playVisitorMove({ from: 'e2', to: 'e4' });
+
+    session.resign();
+
+    expect(finishedGames).toEqual([
+      {
+        visitor: 'white',
+        moves: [{ move: { from: 'e2', to: 'e4' } }, { move: { from: 'e7', to: 'e5' }, source: 'opening-book' }],
+        visitorResigned: true,
+      },
+    ]);
+  });
+
+  it('leaves out the moves taken back, and marks a Bot move played again with its new source', async () => {
+    const finishedGames: FinishedGame[] = [];
+    const session = createSessionGame({
+      chooseMove: botAnswering([
+        { move: { from: 'e7', to: 'e5' }, source: 'opening-book' },
+        { move: { from: 'c7', to: 'c5' }, source: 'base-model' },
+      ]),
+      onGameEnd: (finished) => {
+        finishedGames.push(finished);
+      },
+    });
+    await session.start('white');
+    await session.playVisitorMove({ from: 'f2', to: 'f3' });
+    session.takeBack();
+    await session.playVisitorMove({ from: 'e2', to: 'e4' });
+
+    session.resign();
+
+    expect(finishedGames[0].moves).toEqual([
+      { move: { from: 'e2', to: 'e4' } },
+      { move: { from: 'c7', to: 'c5' }, source: 'base-model' },
+    ]);
   });
 });
