@@ -27,6 +27,7 @@ from pipeline.session_games import (
     open_store,
     record_impression,
     record_session_game,
+    session_game_counts,
 )
 
 SESSION_GAMES_PATH = "/api/session-games"
@@ -34,6 +35,10 @@ SESSION_GAMES_PATH = "/api/session-games"
 # Where the visitor's end-of-game answer is sent, naming the game by the id
 # the service gave it when it was stored.
 IMPRESSION_PATH = re.compile(r"/api/session-games/(?P<game_id>[0-9a-f-]{36})/impression")
+
+# What the write-up page reads to show how many games have been played and
+# how the Bot fared, as they stand when the page is read.
+COUNTS_PATH = "/api/session-games/counts"
 
 DEFAULT_PORT = 8787
 
@@ -56,6 +61,13 @@ def make_server(database: Path, host: str, port: int) -> ThreadingHTTPServer:
     """A server, not yet serving, that stores what it receives in the database at that path."""
 
     class SessionGameHandler(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:
+            if self.path == COUNTS_PATH:
+                self.answer_counts()
+                return
+
+            self.reply(HTTPStatus.NOT_FOUND, {"error": "no such endpoint"})
+
         def do_POST(self) -> None:
             if self.path == SESSION_GAMES_PATH:
                 self.receive_game()
@@ -67,6 +79,15 @@ def make_server(database: Path, host: str, port: int) -> ThreadingHTTPServer:
                 return
 
             self.reply(HTTPStatus.NOT_FOUND, {"error": "no such endpoint"})
+
+        def answer_counts(self) -> None:
+            store = open_store(database)
+            try:
+                counts = session_game_counts(store)
+            finally:
+                store.close()
+
+            self.reply(HTTPStatus.OK, counts)
 
         def receive_game(self) -> None:
             try:

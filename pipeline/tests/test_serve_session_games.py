@@ -47,6 +47,15 @@ def post(url, body):
         return error.code, read_json(error.read())
 
 
+def get(url):
+    """Fetches url and returns the status and the decoded reply."""
+    try:
+        with urllib.request.urlopen(url) as response:
+            return response.status, read_json(response.read())
+    except urllib.error.HTTPError as error:
+        return error.code, read_json(error.read())
+
+
 def read_json(raw):
     if raw == b"":
         return None
@@ -61,6 +70,17 @@ def test_stores_a_finished_game_posted_to_it(service):
     pgns = session_game_pgns(open_store(service["database"]))
     assert len(pgns) == 1
     assert "1. f3 e5 2. g4 Qh4# 0-1" in pgns[0]
+
+
+def test_answers_the_counts_of_the_stored_games(service):
+    post(service["url"] + "/api/session-games", FOOLS_MATE)
+
+    status, reply = get(service["url"] + "/api/session-games/counts")
+
+    assert status == 200
+    assert reply["games"] == 1
+    assert reply["bot_wins"] == 1
+    assert reply["bot_moves_from_opening_book"] == 1
 
 
 def test_answers_a_refused_game_with_the_reason(service):

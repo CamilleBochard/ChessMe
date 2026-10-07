@@ -68,7 +68,13 @@ location /api/ {
 
 ## Reading the counts
 
-Copy the database off the VPS, then print the aggregate counts as JSON:
+The write-up page shows the aggregate counts as they stand, read from
+`GET /api/session-games/counts`, which answers them as JSON. The rate limit
+above covers it like the rest of `/api/`: a reader who reloads the page
+more than ten times a minute sees the counts as unavailable.
+
+To read them offline, copy the database off the VPS and print the same
+counts:
 
 ```sh
 python -m pipeline.report_session_games --database data/session-games.sqlite

@@ -8,8 +8,9 @@ receive anything, so something has to listen.
 The static site stays exactly as it is. Beside it runs one small Python
 service, `pipeline/serve_session_games.py`, listening on the local machine
 only; the web server passes requests under `/api/` to it. The service never
-computes a move. Its work is one write per finished game and one per answer
-to the end-of-game question, which is negligible next to serving the Base
+computes a move. Its work is one write per finished game, one per answer
+to the end-of-game question, and one count of the stored games each time
+the write-up page is read, which is negligible next to serving the Base
 Model's file, so the reason for the static-only rule still holds.
 
 ## Why Python, and why the standard library
