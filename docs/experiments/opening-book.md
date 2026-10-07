@@ -10,14 +10,15 @@ measured on the Test Set rather than assumed.
 ```sh
 python -m pipeline.build_dataset
 python -m pipeline.build_opening_book --min-occurrences 3
-npm run opening-book -- models/onnx/maia3-5m.onnx --rating 1100
+npm run opening-book -- models/onnx/maia3-5m.onnx --rating 1100 --record docs/experiments/results/opening-book.json
 ```
 
 The first command writes the dataset, the second builds the book from it
 into `data/dataset/opening-book.json`, and the third measures the chosen Base
 Model (see [Choosing the Base Model](base-model-sweep.md)) on the Test Set,
 alone and behind the book. `--book <file>` measures another book. The tables
-go to standard output as Markdown.
+go to standard output as Markdown; `--record` also keeps the raw counts in
+`docs/experiments/results/opening-book.json`, which the write-up page reads.
 
 ## How the book is built
 

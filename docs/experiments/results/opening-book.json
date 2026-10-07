@@ -1,0 +1,159 @@
+{
+ "measuredOn": "2026-10-07",
+ "baseModel": "maia3-5m",
+ "rating": 1100,
+ "bookPositions": 182,
+ "minOccurrences": 3,
+ "coverage": {
+  "opening": {
+   "answered": 645,
+   "positions": 1150
+  },
+  "middlegame": {
+   "answered": 12,
+   "positions": 2187
+  },
+  "endgame": {
+   "answered": 0,
+   "positions": 3755
+  }
+ },
+ "baseModelAlone": {
+  "overall": {
+   "matched": 3533,
+   "positions": 7092,
+   "games": 230,
+   "standardError": 0.005732000443445659
+  },
+  "afterPly10": {
+   "matched": 2943,
+   "positions": 5942,
+   "games": 230,
+   "standardError": 0.006679724897633969
+  },
+  "byPhase": {
+   "opening": {
+    "matched": 590,
+    "positions": 1150,
+    "games": 230,
+    "standardError": 0.014595924150522657
+   },
+   "middlegame": {
+    "matched": 1041,
+    "positions": 2187,
+    "games": 230,
+    "standardError": 0.010562173615081013
+   },
+   "endgame": {
+    "matched": 1902,
+    "positions": 3755,
+    "games": 205,
+    "standardError": 0.009448366843367001
+   }
+  }
+ },
+ "bookThenBaseModel": {
+  "overall": {
+   "matched": 3663,
+   "positions": 7092,
+   "games": 230,
+   "standardError": 0.006120268741604667
+  },
+  "afterPly10": {
+   "matched": 2943,
+   "positions": 5942,
+   "games": 230,
+   "standardError": 0.006688397040440101
+  },
+  "byPhase": {
+   "opening": {
+    "matched": 720,
+    "positions": 1150,
+    "games": 230,
+    "standardError": 0.015639933614449673
+   },
+   "middlegame": {
+    "matched": 1041,
+    "positions": 2187,
+    "games": 230,
+    "standardError": 0.01060186134956764
+   },
+   "endgame": {
+    "matched": 1902,
+    "positions": 3755,
+    "games": 205,
+    "standardError": 0.009448366843367001
+   }
+  }
+ },
+ "answeredByBook": {
+  "baseModelAlone": {
+   "overall": {
+    "matched": 343,
+    "positions": 657,
+    "games": 225,
+    "standardError": 0.017805384153583827
+   },
+   "afterPly10": {
+    "matched": 3,
+    "positions": 12,
+    "games": 11,
+    "standardError": 0.11967838846954226
+   },
+   "byPhase": {
+    "opening": {
+     "matched": 340,
+     "positions": 645,
+     "games": 225,
+     "standardError": 0.01844272793973934
+    },
+    "middlegame": {
+     "matched": 3,
+     "positions": 12,
+     "games": 11,
+     "standardError": 0.11967838846954226
+    },
+    "endgame": {
+     "matched": 0,
+     "positions": 0,
+     "games": 0,
+     "standardError": null
+    }
+   }
+  },
+  "bookThenBaseModel": {
+   "overall": {
+    "matched": 473,
+    "positions": 657,
+    "games": 225,
+    "standardError": 0.01577490826226821
+   },
+   "afterPly10": {
+    "matched": 3,
+    "positions": 12,
+    "games": 11,
+    "standardError": 0.11967838846954226
+   },
+   "byPhase": {
+    "opening": {
+     "matched": 470,
+     "positions": 645,
+     "games": 225,
+     "standardError": 0.016705766384296043
+    },
+    "middlegame": {
+     "matched": 3,
+     "positions": 12,
+     "games": 11,
+     "standardError": 0.11967838846954226
+    },
+    "endgame": {
+     "matched": 0,
+     "positions": 0,
+     "games": 0,
+     "standardError": null
+    }
+   }
+  }
+ }
+}
