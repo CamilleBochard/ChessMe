@@ -10,10 +10,28 @@ import {
   isPromotion,
   legalDestinations,
   legalMoves,
+  moveList,
   newGame,
   playMove,
+  resign,
   sideToMove,
+  takeBack,
+  type Game,
+  type MoveRequest,
 } from './game';
+
+/** Plays a sequence of moves, failing loudly if one is illegal. */
+function playMoves(moves: MoveRequest[], from: Game = newGame()): Game {
+  let game = from;
+  for (const move of moves) {
+    const next = playMove(game, move);
+    if (next === null) {
+      throw new Error(`Illegal move in test setup: ${move.from}-${move.to}`);
+    }
+    game = next;
+  }
+  return game;
+}
 
 describe('newGame', () => {
   it('starts from the standard position with white to move', () => {
@@ -245,5 +263,106 @@ describe('legalMoves', () => {
     expect(moves).toContainEqual({ from: 'g7', to: 'g8', promotion: 'rook' });
     expect(moves).toContainEqual({ from: 'g7', to: 'g8', promotion: 'bishop' });
     expect(moves).toContainEqual({ from: 'g7', to: 'g8', promotion: 'knight' });
+  });
+});
+
+describe('moveList', () => {
+  it('pairs the moves played so far into numbered rows, in algebraic notation', () => {
+    const italianOpening = playMoves([
+      { from: 'e2', to: 'e4' },
+      { from: 'e7', to: 'e5' },
+      { from: 'g1', to: 'f3' },
+      { from: 'b8', to: 'c6' },
+      { from: 'f1', to: 'c4' },
+    ]);
+
+    expect(moveList(italianOpening)).toEqual([
+      { moveNumber: 1, white: 'e4', black: 'e5' },
+      { moveNumber: 2, white: 'Nf3', black: 'Nc6' },
+      { moveNumber: 3, white: 'Bc4', black: null },
+    ]);
+  });
+
+  it('leaves the White half of the first row empty when the game starts with Black to move', () => {
+    const afterKingsPawn = gameFromFen('rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1');
+
+    const game = playMoves([{ from: 'c7', to: 'c5' }, { from: 'g1', to: 'f3' }], afterKingsPawn);
+
+    expect(moveList(game)).toEqual([
+      { moveNumber: 1, white: null, black: 'c5' },
+      { moveNumber: 2, white: 'Nf3', black: null },
+    ]);
+  });
+
+  it('is empty before any move', () => {
+    expect(moveList(newGame())).toEqual([]);
+  });
+});
+
+describe('takeBack', () => {
+  it("reverts the side's last move and the reply that followed it", () => {
+    const beforeWhitesMove = playMoves([
+      { from: 'e2', to: 'e4' },
+      { from: 'e7', to: 'e5' },
+    ]);
+    const afterBlacksReply = playMoves(
+      [
+        { from: 'g1', to: 'f3' },
+        { from: 'b8', to: 'c6' },
+      ],
+      beforeWhitesMove,
+    );
+
+    const restored = takeBack(afterBlacksReply, 'white');
+
+    expect(currentFen(restored!)).toBe(currentFen(beforeWhitesMove));
+    expect(moveList(restored!)).toEqual(moveList(beforeWhitesMove));
+  });
+
+  it('reverts only the side\'s move when no reply has been played yet', () => {
+    const start = newGame();
+    const afterWhitesMove = playMoves([{ from: 'e2', to: 'e4' }], start);
+
+    const restored = takeBack(afterWhitesMove, 'white');
+
+    expect(currentFen(restored!)).toBe(currentFen(start));
+  });
+
+  it('has nothing to take back when the side has not moved yet', () => {
+    const afterWhitesFirstMove = playMoves([{ from: 'e2', to: 'e4' }]);
+
+    expect(takeBack(newGame(), 'white')).toBeNull();
+    expect(takeBack(afterWhitesFirstMove, 'black')).toBeNull();
+  });
+
+  it('has nothing to take back once a side has resigned, since resigning is final', () => {
+    const afterOneMoveEach = playMoves([
+      { from: 'e2', to: 'e4' },
+      { from: 'e7', to: 'e5' },
+    ]);
+
+    expect(takeBack(resign(afterOneMoveEach, 'white'), 'white')).toBeNull();
+  });
+
+  it('can be repeated to go back several moves', () => {
+    const start = newGame();
+    const afterTwoMovesEach = playMoves(
+      [
+        { from: 'd2', to: 'd4' },
+        { from: 'd7', to: 'd5' },
+        { from: 'c2', to: 'c4' },
+        { from: 'e7', to: 'e6' },
+      ],
+      start,
+    );
+
+    const once = takeBack(afterTwoMovesEach, 'black')!;
+    const twice = takeBack(once, 'black')!;
+
+    expect(moveList(once)).toEqual([
+      { moveNumber: 1, white: 'd4', black: 'd5' },
+      { moveNumber: 2, white: 'c4', black: null },
+    ]);
+    expect(moveList(twice)).toEqual([{ moveNumber: 1, white: 'd4', black: null }]);
   });
 });

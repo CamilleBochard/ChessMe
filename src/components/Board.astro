@@ -1,19 +1,13 @@
 ---
-// A chessboard where the visitor plays one side and the Bot plays the other.
-// The rules live in src/game/ and the Bot's choice in src/engine/; this
-// component only translates between them and chessground, which draws the
-// board and handles dragging and clicking.
+// A chessboard where the visitor plays one side and the Bot plays the other,
+// with the controls around a game: choosing a side, taking back, resigning,
+// starting over, and the list of moves so far. The rules live in src/game/,
+// the Bot's choice in src/engine/ and what the visitor may do when in
+// src/session/; this component only translates between them, chessground
+// (which draws the board and handles dragging and clicking) and a few buttons.
 import { readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import type { Colour } from '../board/starting-position';
 import { SERVED_MODEL_DIRECTORY, SERVED_MODEL_RATING } from '../engine/served-model';
-
-interface Props {
-  /** The visitor's side, which also sits at the bottom of the board. */
-  orientation?: Colour;
-}
-
-const { orientation = 'white' } = Astro.props;
 
 // The model the page downloads, found where scripts/stage-model.ts put it. Its
 // size is read here, at build time, because the server sends it compressed and
@@ -37,21 +31,42 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
   data-model-rating={SERVED_MODEL_RATING}
   data-base-model={baseModelName}
 >
-  <div class="board" data-orientation={orientation}></div>
-  <p class="status" data-status aria-live="polite"></p>
-  <div class="model-status" data-model-status hidden>
-    <progress data-model-progress></progress>
-    <p data-model-message></p>
+  <div class="play">
+    <div class="board"></div>
+    <p class="status" data-status aria-live="polite"></p>
+
+    <div class="model-status" data-model-status hidden>
+      <progress data-model-progress></progress>
+      <p data-model-message></p>
+    </div>
+
+    <div class="buttons" data-setup>
+      <span class="buttons-label">Play as</span>
+      <button type="button" class="brand" data-play-as="white">White</button>
+      <button type="button" class="brand" data-play-as="black">Black</button>
+    </div>
+
+    <div class="buttons" data-controls hidden>
+      <button type="button" data-take-back>Take back</button>
+      <button type="button" data-resign>Resign</button>
+      <button type="button" data-new-game>New game</button>
+    </div>
   </div>
 
-  <div class="impression" data-impression hidden>
-    <p>Did the Bot feel like a real player of about {SERVED_MODEL_RATING} on Lichess?</p>
-    <div class="impression-choices" data-impression-choices>
-      <button type="button" data-felt-real="yes">Yes</button>
-      <button type="button" data-felt-real="no">No</button>
+  <aside class="moves">
+    <div class="moves-header">
+      <h2 id="moves-heading">Moves</h2>
+      <div class="browse">
+        <button type="button" data-view-back aria-label="Previous position" title="Previous position (←)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
+        </button>
+        <button type="button" data-view-forward aria-label="Next position" title="Next position (→)">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+        </button>
+      </div>
     </div>
-    <p class="impression-thanks" data-impression-thanks hidden></p>
-  </div>
+    <ol class="move-list" data-move-list aria-labelledby="moves-heading"></ol>
+  </aside>
 
   <dialog class="promotion" data-promotion aria-label="Choose a promotion piece">
     <form method="dialog">
@@ -68,7 +83,6 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
 
 <script>
   import { Chessground } from '@lichess-org/chessground';
-  import type { Api } from '@lichess-org/chessground/api';
   import type { Key } from '@lichess-org/chessground/types';
   import type { SquareName } from 'chessops/types';
   import type { Colour } from '../board/starting-position';
@@ -77,25 +91,17 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
     isInCheck,
     isPromotion,
     legalDestinations,
-    newGame,
-    playMove,
+    moveList,
     sideToMove,
-    type Game,
+    type MoveListRow,
     type MoveRequest,
     type PromotionPiece,
   } from '../game/game';
-  import { describeResult, gameStatus } from '../game/game-status';
+  import { gameStatus } from '../game/game-status';
   import { connectBot, type Bot } from '../engine/bot-client';
   import type { BotStatus } from '../engine/bot-protocol';
-  import type { BotMove } from '../engine/move-selection';
-  import {
-    connectTelemetry,
-    recordBotMove,
-    recordVisitorMove,
-    startSessionGame,
-    type Telemetry,
-  } from '../telemetry/session-game';
   import type { DownloadProgress } from '../engine/model-download';
+  import { createSessionGame } from '../session/session-game';
 
   /**
    * Remembered once the model has reached the browser's cache, so that a
@@ -116,34 +122,41 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
 
   /**
    * Starts the Bot's worker, which begins downloading the model at once so the
-   * wait overlaps with the visitor arriving, and starts a new game on one
-   * board, with the visitor on the side facing them.
+   * wait overlaps with the visitor arriving, and wires one board and its
+   * controls to a Session Game. The board opens on the starting position and
+   * waits for the visitor to pick a side; New game brings it back there.
    */
   function setUpBoard(frame: HTMLElement): void {
     const boardElement = frame.querySelector<HTMLElement>('.board')!;
     const statusElement = frame.querySelector<HTMLElement>('[data-status]')!;
-    const promotionDialog = frame.querySelector<HTMLDialogElement>('[data-promotion]')!;
     const modelStatus = frame.querySelector<HTMLElement>('[data-model-status]')!;
-    const playerColour = (boardElement.dataset.orientation ?? 'white') as Colour;
-    let botColour: Colour = 'black';
-    if (playerColour === 'black') {
-      botColour = 'white';
-    }
+    const setupElement = frame.querySelector<HTMLElement>('[data-setup]')!;
+    const controlsElement = frame.querySelector<HTMLElement>('[data-controls]')!;
+    const takeBackButton = frame.querySelector<HTMLButtonElement>('[data-take-back]')!;
+    const resignButton = frame.querySelector<HTMLButtonElement>('[data-resign]')!;
+    const newGameButton = frame.querySelector<HTMLButtonElement>('[data-new-game]')!;
+    const moveListElement = frame.querySelector<HTMLOListElement>('[data-move-list]')!;
+    const viewBackButton = frame.querySelector<HTMLButtonElement>('[data-view-back]')!;
+    const viewForwardButton = frame.querySelector<HTMLButtonElement>('[data-view-forward]')!;
+    const promotionDialog = frame.querySelector<HTMLDialogElement>('[data-promotion]')!;
 
-    let game = newGame();
-    let sessionGame = startSessionGame(botColour, {
-      baseModel: frame.dataset.baseModel!,
-      rating: Number(frame.dataset.modelRating),
-    });
-    const telemetry = connectTelemetry((input, init) => window.fetch(input, init));
     let botStatus: BotStatus = { kind: 'downloading', progress: { receivedBytes: 0, totalBytes: undefined } };
 
     if (isFirstVisit()) {
       playEntrance(frame);
     }
 
+    const bot = startBot(frame, showBotStatus);
+
+    const session = createSessionGame({
+      chooseMove: askBot,
+      onChange: () => {
+        showGame();
+      },
+    });
+
     const board = Chessground(boardElement, {
-      orientation: playerColour,
+      orientation: 'white',
       coordinates: true,
       premovable: { enabled: false },
       movable: {
@@ -151,21 +164,78 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
         showDests: true,
         events: {
           after: (from, to) => {
-            void onPlayerMove(from, to);
+            void onVisitorMove(from, to);
           },
         },
       },
     });
-    redraw();
+    showGame();
 
-    const bot = startBot(frame, showBotStatus);
-
-    if (sideToMove(game) !== playerColour) {
-      void playBotMove();
+    for (const button of frame.querySelectorAll<HTMLButtonElement>('[data-play-as]')) {
+      button.addEventListener('click', () => {
+        const colour = button.dataset.playAs as Colour;
+        board.set({ orientation: colour });
+        session.start(colour).catch(() => {
+          // The Bot failed while choosing its first move; its status already
+          // says so, and the board only needs redrawing.
+          showGame();
+        });
+      });
     }
 
-    function redraw(): void {
-      showGame(board, statusElement, game, playerColour, botStatus);
+    takeBackButton.addEventListener('click', () => {
+      session.takeBack();
+    });
+
+    resignButton.addEventListener('click', () => {
+      session.resign();
+    });
+
+    newGameButton.addEventListener('click', () => {
+      session.startOver();
+    });
+
+    viewBackButton.addEventListener('click', () => {
+      session.viewBack();
+    });
+
+    viewForwardButton.addEventListener('click', () => {
+      session.viewForward();
+    });
+
+    // The arrow keys step through positions too, as on Lichess and Chess.com.
+    // Left alone while the promotion dialog is open, where they belong to it.
+    document.addEventListener('keydown', (event) => {
+      if (promotionDialog.open) {
+        return;
+      }
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        session.viewBack();
+      } else if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        session.viewForward();
+      }
+    });
+
+    /**
+     * The Bot's move for a position. Before the model has arrived the Opening
+     * Book answers the positions it holds at once, and any other request waits
+     * in the worker, so a visitor can play during the download.
+     */
+    async function askBot(fen: string): Promise<MoveRequest> {
+      try {
+        const reply = await bot.requestMove(fen);
+        return reply.move;
+      } catch (error) {
+        // A model that failed to load has already been reported as the Bot's
+        // status. A move that failed after loading has not, and without this
+        // the page would say the Bot is thinking forever.
+        if (botStatus.kind !== 'failed') {
+          showBotStatus({ kind: 'failed', reason: (error as Error).message });
+        }
+        throw error;
+      }
     }
 
     function showBotStatus(status: BotStatus): void {
@@ -177,10 +247,10 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
         rememberModelCached();
       }
       showModelStatus(modelStatus, status);
-      redraw();
+      showGame();
     }
 
-    async function onPlayerMove(from: Key, to: Key): Promise<void> {
+    async function onVisitorMove(from: Key, to: Key): Promise<void> {
       // Chessground only lets a piece go to a square from legalDestinations,
       // which never contains its 'a0' placeholder, so both keys are real squares.
       const move: MoveRequest = {
@@ -188,117 +258,89 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
         to: to as SquareName,
       };
 
-      if (isPromotion(game, move.from, move.to)) {
+      if (isPromotion(session.game(), move.from, move.to)) {
         const piece = await askPromotionPiece(promotionDialog);
         if (piece === null) {
-          // The player closed the dialog: take the pawn back to its square.
-          redraw();
+          // The visitor closed the dialog: take the pawn back to its square.
+          showGame();
           return;
         }
         move.promotion = piece;
       }
 
-      const next = playMove(game, move);
-      if (next === null) {
-        // Refused: redraw the current game, which puts the piece back.
-        redraw();
-        return;
-      }
-
-      game = next;
-      sessionGame = recordVisitorMove(sessionGame, move);
-      // Redraw from the game even after a legal move: chessground moved only
-      // the piece that was dragged, so a pawn taken en passant or a promoted
-      // pawn would otherwise still show its old state.
-      redraw();
-
-      if (gameStatus(game).kind === 'ongoing') {
-        await playBotMove();
-      } else {
-        reportFinishedGame();
-      }
-    }
-
-    /**
-     * Asks the Bot for its reply and plays it. Before the model has arrived
-     * the Opening Book answers the positions it holds at once, and any other
-     * request waits in the worker, so a visitor can play during the download.
-     */
-    async function playBotMove(): Promise<void> {
-      let reply: BotMove;
+      let accepted = false;
       try {
-        reply = await bot.requestMove(currentFen(game));
-      } catch (error) {
-        // A model that failed to load has already been reported as the Bot's
-        // status. A move that failed after loading has not, and without this
-        // the page would say the Bot is thinking forever.
-        if (botStatus.kind !== 'failed') {
-          showBotStatus({ kind: 'failed', reason: (error as Error).message });
-        }
+        accepted = await session.playVisitorMove(move);
+      } catch {
+        // The Bot failed while choosing its reply; its status already says so.
+        showGame();
         return;
       }
-
-      const next = playMove(game, reply.move);
-      if (next === null) {
-        const move = reply.move;
-        throw new Error(`The engine chose an illegal move: ${move.from}-${move.to} in ${currentFen(game)}`);
-      }
-
-      game = next;
-      sessionGame = recordBotMove(sessionGame, reply);
-      redraw();
-
-      if (gameStatus(game).kind !== 'ongoing') {
-        reportFinishedGame();
+      if (!accepted) {
+        // Refused: redraw the current game, which puts the piece back.
+        showGame();
       }
     }
 
     /**
-     * Reports the finished game and, once it is stored, asks the visitor what
-     * they made of the Bot. A game left unfinished is never reported.
+     * Draws the position on display, states whose turn it is or how the game
+     * ended, and enables only the controls the session allows right now.
+     * Redrawing after every move matters even for a legal one: chessground
+     * moved only the piece that was dragged, so a pawn taken en passant or a
+     * promoted pawn would otherwise still show its old state.
      */
-    function reportFinishedGame(): void {
-      void telemetry.reportGame(sessionGame).then((gameId) => {
-        if (gameId !== undefined) {
-          askImpression(frame, telemetry, gameId);
-        }
-      });
-    }
-  }
+    function showGame(): void {
+      const game = session.game();
+      const shown = session.viewedGame();
+      const visitor = session.visitor();
+      const isOngoing = gameStatus(game).kind === 'ongoing';
+      const isVisitorsTurn = sideToMove(game) === visitor;
+      const isShowingCurrent = shown === game;
+      const botFailed = botStatus.kind === 'failed';
+      const isModelLoading = botStatus.kind === 'downloading' || botStatus.kind === 'preparing';
 
-  /**
-   * Shows the end-of-game question and sends the visitor's answer. The
-   * question only appears for a game the service stored, since an answer
-   * needs a game to be attached to.
-   */
-  function askImpression(frame: HTMLElement, telemetry: Telemetry, gameId: string): void {
-    const container = frame.querySelector<HTMLElement>('[data-impression]')!;
-    const choices = container.querySelector<HTMLElement>('[data-impression-choices]')!;
-    const thanks = container.querySelector<HTMLElement>('[data-impression-thanks]')!;
-    const buttons = choices.querySelectorAll<HTMLButtonElement>('button');
+      let lastMove: Key[] | undefined = undefined;
+      if (shown.lastMove !== undefined) {
+        lastMove = [shown.lastMove.from, shown.lastMove.to];
+      }
 
-    for (const button of buttons) {
-      button.addEventListener(
-        'click',
-        async () => {
-          for (const each of buttons) {
-            each.disabled = true;
-          }
-          const feltLikeARealPlayer = button.dataset.feltReal === 'yes';
-          const recorded = await telemetry.reportImpression(gameId, feltLikeARealPlayer);
+      // Only the visitor's pieces can be moved, only on the visitor's turn,
+      // only on the current position, not while looking back, and not at all
+      // once the Bot has failed, since the game cannot go on.
+      let movableColour: Colour | undefined = undefined;
+      if (visitor !== null && isOngoing && isVisitorsTurn && isShowingCurrent && !botFailed) {
+        movableColour = visitor;
+      }
 
-          choices.hidden = true;
-          thanks.hidden = false;
-          if (recorded) {
-            thanks.textContent = 'Thank you, your answer has been recorded.';
-          } else {
-            thanks.textContent = 'Your answer could not be recorded.';
-          }
+      board.set({
+        fen: currentFen(shown),
+        turnColor: sideToMove(shown),
+        lastMove: lastMove,
+        check: isInCheck(shown),
+        movable: {
+          color: movableColour,
+          dests: legalDestinations(shown),
         },
-        { once: true },
-      );
+      });
+
+      let statusText = session.status();
+      if (isOngoing && botFailed) {
+        statusText = 'The game cannot continue without the Bot.';
+      } else if (visitor !== null && isOngoing && !isVisitorsTurn && isModelLoading) {
+        statusText = 'The Bot will reply once its model has loaded.';
+      }
+      statusElement.textContent = statusText;
+
+      const hasStarted = visitor !== null;
+      setupElement.hidden = hasStarted;
+      controlsElement.hidden = !hasStarted;
+      takeBackButton.disabled = !session.canTakeBack();
+      resignButton.disabled = !session.canResign();
+      viewBackButton.disabled = !session.canViewBack();
+      viewForwardButton.disabled = !session.canViewForward();
+
+      showMoveList(moveListElement, moveList(game), moveList(shown));
     }
-    container.hidden = false;
   }
 
   /** Starts the Bot in its own Web Worker, so its thinking never blocks the board. */
@@ -323,52 +365,6 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
       },
       { onStatus: onStatus },
     );
-  }
-
-  /**
-   * Draws the game on the board and states whose turn it is or how it ended.
-   * Only the visitor's pieces can be moved, only on the visitor's turn, and
-   * not at all once the Bot has failed to load, since the game cannot go on.
-   */
-  function showGame(board: Api, statusElement: HTMLElement, game: Game, playerColour: Colour, botStatus: BotStatus): void {
-    const status = gameStatus(game);
-    const result = describeResult(status);
-    const isOver = result !== null;
-    const isPlayersTurn = sideToMove(game) === playerColour;
-    const botFailed = botStatus.kind === 'failed';
-
-    let lastMove: Key[] | undefined = undefined;
-    if (game.lastMove !== undefined) {
-      lastMove = [game.lastMove.from, game.lastMove.to];
-    }
-
-    let movableColour: Colour | undefined = undefined;
-    if (!isOver && isPlayersTurn && !botFailed) {
-      movableColour = playerColour;
-    }
-
-    board.set({
-      fen: currentFen(game),
-      turnColor: sideToMove(game),
-      lastMove: lastMove,
-      check: isInCheck(game),
-      movable: {
-        color: movableColour,
-        dests: legalDestinations(game),
-      },
-    });
-
-    if (isOver) {
-      statusElement.textContent = result;
-    } else if (botFailed) {
-      statusElement.textContent = 'The game cannot continue without the Bot.';
-    } else if (isPlayersTurn) {
-      statusElement.textContent = 'Your move.';
-    } else if (botStatus.kind === 'downloading' || botStatus.kind === 'preparing') {
-      statusElement.textContent = 'The Bot will reply once its model has loaded.';
-    } else {
-      statusElement.textContent = 'The Bot is thinking…';
-    }
   }
 
   /** Shows the model's download, hides it once the Bot is ready, and explains a failure. */
@@ -454,6 +450,69 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
     }, ENTRANCE_MILLISECONDS);
   }
 
+  /**
+   * Writes the moves so far as numbered rows and marks the move that led to
+   * the position on display, so the eye finds it, keeping it in view. The
+   * shown rows are the list up to that position: its last move is the one to
+   * mark, and none is marked at the starting position.
+   */
+  function showMoveList(listElement: HTMLOListElement, rows: MoveListRow[], shownRows: MoveListRow[]): void {
+    const markedRowIndex = shownRows.length - 1;
+    let isBlackMoveMarked = false;
+    if (markedRowIndex >= 0) {
+      isBlackMoveMarked = shownRows[markedRowIndex].black !== null;
+    }
+
+    const items: HTMLLIElement[] = [];
+    let markedMove: HTMLSpanElement | null = null;
+
+    for (const [rowIndex, row] of rows.entries()) {
+      const whiteMove = moveListCell('move', row.white ?? '…');
+      const blackMove = moveListCell('move', row.black ?? '');
+
+      const item = document.createElement('li');
+      item.append(moveListCell('move-number', `${row.moveNumber}.`), whiteMove, blackMove);
+      items.push(item);
+
+      if (rowIndex === markedRowIndex) {
+        if (isBlackMoveMarked) {
+          markedMove = blackMove;
+        } else {
+          markedMove = whiteMove;
+        }
+      }
+    }
+
+    listElement.replaceChildren(...items);
+    if (markedMove !== null) {
+      markedMove.classList.add('latest');
+      scrollListTo(listElement, markedMove);
+    }
+  }
+
+  /**
+   * Scrolls the list, and only the list, just enough to show the element.
+   * scrollIntoView would also scroll the page, which on a phone would jump
+   * from the board down to the list after every move.
+   */
+  function scrollListTo(listElement: HTMLElement, element: HTMLElement): void {
+    const listBox = listElement.getBoundingClientRect();
+    const elementBox = element.getBoundingClientRect();
+
+    if (elementBox.top < listBox.top) {
+      listElement.scrollTop -= listBox.top - elementBox.top;
+    } else if (elementBox.bottom > listBox.bottom) {
+      listElement.scrollTop += elementBox.bottom - listBox.bottom;
+    }
+  }
+
+  function moveListCell(className: string, text: string): HTMLSpanElement {
+    const cell = document.createElement('span');
+    cell.className = className;
+    cell.textContent = text;
+    return cell;
+  }
+
   /** Opens the promotion dialog and resolves with the chosen piece, or null if it was dismissed. */
   function askPromotionPiece(dialog: HTMLDialogElement): Promise<PromotionPiece | null> {
     return new Promise((resolve) => {
@@ -529,31 +588,45 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
 </style>
 
 <style>
-  /* The frame caps the board on wide screens and lets it shrink on a phone.
-     Chessground sizes itself to its container, so the container is where the
-     responsive behaviour belongs. */
+  /* On a phone everything stacks: board, controls, then the moves. From
+     960px the moves move into their own column on the right, behind a divider
+     line, and the whole thing fits the screen height without scrolling. */
   .board-frame {
-    width: 100%;
-    max-width: min(90vh, 40rem);
-    margin-inline: auto;
+    display: grid;
+    gap: 1.5rem;
   }
 
+  .play {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  /* Chessground sizes itself to its container, so the container is where the
+     responsive behaviour belongs. */
   .board {
     width: 100%;
+    max-width: 40rem;
     aspect-ratio: 1;
   }
 
   .status {
-    margin: 0.75rem 0 0;
+    margin: 0;
     min-height: 1.5em;
     text-align: center;
     font-weight: 600;
+    color: var(--text-1);
   }
 
   .model-status {
-    margin: 0.5rem auto 0;
+    width: 100%;
     max-width: 24rem;
     text-align: center;
+  }
+
+  .model-status[hidden] {
+    display: none;
   }
 
   .model-status progress {
@@ -563,69 +636,216 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
   .model-status p {
     margin: 0.25rem 0 0;
     font-size: 0.875rem;
+    color: var(--text-2);
   }
 
   .model-status.failed p {
     font-weight: 600;
+    color: var(--text-1);
   }
 
-  .impression {
-    margin: 0.75rem auto 0;
-    max-width: 24rem;
-    text-align: center;
-  }
-
-  .impression p {
-    margin: 0 0 0.5rem;
-  }
-
-  .impression-choices {
+  .buttons {
     display: flex;
+    flex-wrap: wrap;
+    align-items: center;
     justify-content: center;
     gap: 0.5rem;
   }
 
-  .impression-choices button {
+  .buttons[hidden] {
+    display: none;
+  }
+
+  .buttons-label {
+    margin-right: 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--text-2);
+  }
+
+  /* Pill buttons on a soft grey, with the brand colour kept for the one
+     choice that starts a game. */
+  .buttons button,
+  .promotion-choices button {
     font: inherit;
-    min-width: 5rem;
-    padding: 0.5rem 0.75rem;
-    border: 1px solid currentColor;
-    border-radius: 0.375rem;
-    background: transparent;
-    color: inherit;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 2.25rem;
+    padding: 0 1.25rem;
+    border: 1px solid transparent;
+    border-radius: 1.25rem;
+    background: var(--default-soft);
+    color: var(--text-1);
     cursor: pointer;
+    transition: border-color 0.2s, background-color 0.2s;
+  }
+
+  .buttons button:hover:not(:disabled),
+  .promotion-choices button:hover {
+    border-color: var(--brand);
+  }
+
+  .buttons button.brand {
+    background: var(--brand);
+    color: var(--brand-contrast);
+  }
+
+  .buttons button:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  .moves {
+    border-top: 1px solid var(--divider);
+    padding-top: 1.25rem;
+  }
+
+  .moves-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+  }
+
+  .browse {
+    display: flex;
+    gap: 0.25rem;
+  }
+
+  .browse button {
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2rem;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 0.5rem;
+    background: var(--default-soft);
+    color: var(--text-1);
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+
+  .browse button:hover:not(:disabled) {
+    border-color: var(--brand);
+  }
+
+  .browse button:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  .browse svg {
+    width: 1.125rem;
+    height: 1.125rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.25;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .moves h2 {
+    margin: 0;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-1);
+  }
+
+  /* Three columns, number then White then Black, like a scoresheet. Its rows
+     are created by the script, which Astro's scoping cannot see, hence
+     :global for everything inside the list. */
+  .move-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 12rem;
+    overflow-y: auto;
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-2);
+  }
+
+  .move-list :global(li) {
+    display: grid;
+    grid-template-columns: 2.5rem 1fr 1fr;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+  }
+
+  .move-list :global(li:nth-child(odd)) {
+    background: var(--bg-soft);
+  }
+
+  .move-list :global(.move-number) {
+    color: var(--text-3);
+  }
+
+  .move-list :global(.latest) {
+    color: var(--brand);
+    font-weight: 600;
+  }
+
+  @media (min-width: 960px) {
+    /* The play area and the moves become columns of the page's own grid, so
+       the page can set the title right against the board's left edge. */
+    .board-frame {
+      display: contents;
+    }
+
+    .play {
+      padding: 2rem 2rem 2rem 0;
+      min-height: 0;
+    }
+
+    /* As large as the screen height allows while leaving room under the board
+       for the status line and one row of buttons, so the controls never fall
+       below the fold. On a wide but short screen the width caps it instead,
+       keeping room for the title column (14rem), the moves column (17rem) and
+       the padding around the board. */
+    .board {
+      width: min(calc(100dvh - 9.5rem), calc(100vw - 17rem - 14rem - 2rem));
+      max-width: none;
+    }
+
+    .moves {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      border-top: none;
+      border-left: 1px solid var(--divider);
+      padding: 2rem 1.5rem;
+    }
+
+    .move-list {
+      flex: 1;
+      max-height: none;
+    }
   }
 
   .promotion {
-    border: none;
-    border-radius: 0.5rem;
-    padding: 1rem 1.25rem;
-    background: var(--page-background);
-    color: var(--page-text);
+    border: 1px solid var(--divider);
+    border-radius: 0.75rem;
+    padding: 1.25rem 1.5rem;
+    background: var(--bg);
+    color: var(--text-1);
   }
 
   .promotion::backdrop {
-    background: rgb(0 0 0 / 0.4);
+    background: rgb(0 0 0 / 0.5);
   }
 
   .promotion p {
     margin: 0 0 0.75rem;
     text-align: center;
+    font-weight: 600;
   }
 
   .promotion-choices {
     display: grid;
     grid-template-columns: repeat(2, minmax(6rem, 1fr));
     gap: 0.5rem;
-  }
-
-  .promotion-choices button {
-    font: inherit;
-    padding: 0.6rem 0.75rem;
-    border: 1px solid currentColor;
-    border-radius: 0.375rem;
-    background: transparent;
-    color: inherit;
-    cursor: pointer;
   }
 </style>
