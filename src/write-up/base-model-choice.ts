@@ -9,7 +9,7 @@ import { share, type MoveMatchingReport, type MoveMatchingScore } from '../evalu
 import { percentWithError } from './figures';
 
 /** The slices of the table, in the order of its columns. */
-export const SWEEP_SLICES = ['Opening', 'Middlegame', 'Endgame', 'After ply 10', 'All'];
+export const SWEEP_SLICES = ['Opening', 'Middlegame', 'Endgame', 'After ply 10', 'All'] as const;
 
 /** One candidate's line of the table. */
 export interface SweepRow {

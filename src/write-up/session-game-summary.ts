@@ -5,6 +5,8 @@
 // Free of anything DOM so that it is tested under Node; the page fills in the
 // text.
 
+import { wholePercent } from './figures';
+
 /** The counts as the service answers them (pipeline/session_games.py). */
 interface SessionGameCounts {
   games: number;
@@ -90,12 +92,12 @@ export async function readSessionGameSummary(fetchFromService: typeof fetch): Pr
   };
   if (counts.games > 0) {
     const points = counts.bot_wins + counts.draws / 2;
-    summary.botScore = asPercent(points / counts.games);
+    summary.botScore = wholePercent(points / counts.games);
   }
 
   const botMoves = counts.bot_moves_from_opening_book + counts.bot_moves_from_base_model;
   if (botMoves > 0) {
-    summary.fromOpeningBook = asPercent(counts.bot_moves_from_opening_book / botMoves);
+    summary.fromOpeningBook = wholePercent(counts.bot_moves_from_opening_book / botMoves);
   }
 
   const answered = counts.felt_like_a_real_player + counts.did_not_feel_like_a_real_player;
@@ -113,11 +115,6 @@ function counted(count: number, singular: string, plural: string): string {
   return `${count} ${plural}`;
 }
 
-/** A share written as a whole percentage, such as 67%. */
-function asPercent(fraction: number): string {
-  const percent = Math.round(100 * fraction);
-  return `${percent}%`;
-}
 
 /** Whether the reply holds every count, each a number. */
 function isSessionGameCounts(body: unknown): body is SessionGameCounts {

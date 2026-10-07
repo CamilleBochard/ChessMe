@@ -7,6 +7,7 @@
 // Free of anything DOM so that it is tested under Node.
 
 import type { Phase } from '../evaluation/move-matching';
+import { percentToOneDecimal } from './figures';
 
 /** How much evaluation a player's moves gave up, in one Phase. */
 interface LossDistribution {
@@ -72,52 +73,52 @@ const STATISTICS: Statistic[] = [
   {
     name: 'Moves losing three pawns or more, middlegame',
     read: (fingerprint) => shareLosingAtLeast(fingerprint.centipawn_loss.phases.middlegame, BLUNDER_CENTIPAWNS),
-    writeOut: percent,
+    writeOut: percentToOneDecimal,
   },
   {
     name: 'Moves losing three pawns or more, endgame',
     read: (fingerprint) => shareLosingAtLeast(fingerprint.centipawn_loss.phases.endgame, BLUNDER_CENTIPAWNS),
-    writeOut: percent,
+    writeOut: percentToOneDecimal,
   },
   {
     name: 'Pawn moves, middlegame',
     read: (fingerprint) => fingerprint.piece_share.phases.middlegame.pawn,
-    writeOut: percent,
+    writeOut: percentToOneDecimal,
   },
   {
     name: 'Queen moves, opening',
     read: (fingerprint) => fingerprint.piece_share.phases.opening.queen,
-    writeOut: percent,
+    writeOut: percentToOneDecimal,
   },
   {
     name: 'Capture taken when one is offered, opening',
     read: (fingerprint) => fingerprint.capture_taken_rate.phases.opening.rate,
-    writeOut: percent,
+    writeOut: percentToOneDecimal,
   },
   {
     name: 'Capture taken when one is offered, endgame',
     read: (fingerprint) => fingerprint.capture_taken_rate.phases.endgame.rate,
-    writeOut: percent,
+    writeOut: percentToOneDecimal,
   },
   {
     name: 'Queens traded off before move 20',
     read: (fingerprint) => fingerprint.queen_trade_before_move_20.rate,
-    writeOut: percent,
+    writeOut: percentToOneDecimal,
   },
   {
     name: 'Castled kingside',
     read: (fingerprint) => fingerprint.castling.kingside,
-    writeOut: percent,
+    writeOut: percentToOneDecimal,
   },
   {
     name: 'Castled queenside',
     read: (fingerprint) => fingerprint.castling.queenside,
-    writeOut: percent,
+    writeOut: percentToOneDecimal,
   },
   {
     name: 'Never castled',
     read: (fingerprint) => fingerprint.castling.never,
-    writeOut: percent,
+    writeOut: percentToOneDecimal,
   },
 ];
 
@@ -125,11 +126,15 @@ const STATISTICS: Statistic[] = [
 export function compareFingerprints(record: FingerprintRecord): FingerprintRow[] {
   const rows: FingerprintRow[] = [];
   for (const statistic of STATISTICS) {
-    const drift = Math.abs(statistic.read(record.camille_training_games) - statistic.read(record.camille_test_set));
+    const camille = statistic.read(record.camille);
+    const bot = statistic.read(record.bot);
+    const trainingGames = statistic.read(record.camille_training_games);
+    const testSet = statistic.read(record.camille_test_set);
+    const drift = Math.abs(trainingGames - testSet);
     rows.push({
       statistic: statistic.name,
-      camille: statistic.writeOut(statistic.read(record.camille)),
-      bot: statistic.writeOut(statistic.read(record.bot)),
+      camille: statistic.writeOut(camille),
+      bot: statistic.writeOut(bot),
       camilleAgainstHimself: statistic.writeOut(drift),
     });
   }
@@ -141,10 +146,6 @@ function centipawns(value: number): string {
   return value.toFixed(1);
 }
 
-/** A share written as a percentage to one decimal, such as 10.6%. */
-function percent(fraction: number): string {
-  return `${(100 * fraction).toFixed(1)}%`;
-}
 
 /**
  * The share of a distribution's moves that lost at least this many

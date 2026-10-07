@@ -9,3 +9,15 @@ export function percentWithError(score: MoveMatchingScore): string {
   const error = 100 * score.standardError;
   return `${percentMatched.toFixed(2)} ± ${error.toFixed(2)}`;
 }
+
+/** A share written as a whole percentage, such as 56%, where a decimal would claim more than the count supports. */
+export function wholePercent(fraction: number): string {
+  const percent = Math.round(100 * fraction);
+  return `${percent}%`;
+}
+
+/** A share written as a percentage to one decimal, such as 10.6%. */
+export function percentToOneDecimal(fraction: number): string {
+  const percent = 100 * fraction;
+  return `${percent.toFixed(1)}%`;
+}

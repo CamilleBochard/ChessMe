@@ -29,6 +29,7 @@ from pipeline.bot_games import read_bot_games
 from pipeline.dataset import PHASE_LABELS, PHASES, Position, read_dataset
 from pipeline.extract_blunder_profile import (
     DATASET_DIR,
+    REPOSITORY_ROOT,
     ProgressPrinter,
     add_stockfish_arguments,
     measure_move_losses,
@@ -44,7 +45,7 @@ FORMAT_VERSION = 1
 BOT_GAMES_PATH = DATASET_DIR / "bot-games.jsonl"
 # Kept beside the experiment's write-up rather than in the dataset directory:
 # it is a published result, and the write-up page is built from it.
-FINGERPRINT_PATH = Path("docs/experiments/results/style-fingerprint.json")
+FINGERPRINT_PATH = REPOSITORY_ROOT / "docs" / "experiments" / "results" / "style-fingerprint.json"
 
 
 def extract(

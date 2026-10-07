@@ -118,8 +118,9 @@ console.log();
 console.log(decisionTable(decision));
 
 if (flags.record !== undefined) {
+  const today = new Date().toISOString().slice(0, 10);
   const record: SweepRecord = {
-    measuredOn: new Date().toISOString().slice(0, 10),
+    measuredOn: today,
     runtime: `Node ${process.versions.node}`,
     lichessRating: LICHESS_RATING,
     candidates: results,

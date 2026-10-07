@@ -15,7 +15,7 @@ import { basename } from 'node:path';
 import { parseArgs } from 'node:util';
 import { loadBaseModel } from '../src/engine/base-model';
 import { selectMove } from '../src/engine/move-selection';
-import { readOpeningBook } from '../src/engine/opening-book';
+import { openingBookFrom, type OpeningBookFile } from '../src/engine/opening-book';
 import { gameFromFen } from '../src/game/game';
 import {
   measureMoveMatching,
@@ -61,7 +61,8 @@ if (flags.rating !== undefined) {
 
 const baseModel = await loadBaseModel(await readFile(modelPath), { rating: rating });
 const bookText = await readFile(flags.book, 'utf-8');
-const openingBook = readOpeningBook(bookText);
+const bookFile = JSON.parse(bookText) as OpeningBookFile;
+const openingBook = openingBookFrom(bookFile);
 const testSet = readPositions(await readFile(testSetPath, 'utf-8'));
 
 const coverage = measureBookCoverage(testSet, openingBook);
@@ -93,9 +94,10 @@ console.log('');
 console.log(comparisonTable('Positions the book answers', answeredBaseModel, answeredBook));
 
 if (flags.record !== undefined) {
-  const bookPositions = Object.keys(JSON.parse(bookText).positions).length;
+  const bookPositions = Object.keys(bookFile.positions).length;
+  const today = new Date().toISOString().slice(0, 10);
   const record: OpeningBookRecord = {
-    measuredOn: new Date().toISOString().slice(0, 10),
+    measuredOn: today,
     baseModel: basename(modelPath, '.onnx'),
     rating: rating ?? null,
     bookPositions: bookPositions,

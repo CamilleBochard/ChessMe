@@ -6,7 +6,7 @@
 
 import type { OpeningBookRecord } from '../evaluation/opening-book-coverage';
 import { PHASES, type MoveMatchingScore, type Phase } from '../evaluation/move-matching';
-import { percentWithError } from './figures';
+import { percentWithError, wholePercent } from './figures';
 
 /** One slice's Move-Matching for the Baseline and for the Bot. */
 export interface Comparison {
@@ -28,7 +28,7 @@ export interface OpeningBookEffect {
 /** The Baseline against the Bot, from the record of one Opening Book measurement. */
 export function describeOpeningBook(record: OpeningBookRecord): OpeningBookEffect {
   const openingCoverage = record.coverage.opening;
-  const percentAnswered = Math.round((100 * openingCoverage.answered) / openingCoverage.positions);
+  const shareAnswered = openingCoverage.answered / openingCoverage.positions;
 
   const byPhase = {} as Record<Phase, Comparison>;
   for (const phase of PHASES) {
@@ -39,7 +39,7 @@ export function describeOpeningBook(record: OpeningBookRecord): OpeningBookEffec
     byPhase: byPhase,
     overall: compare(record.baseModelAlone.overall, record.bookThenBaseModel.overall),
     whereTheBookAnswers: compare(record.answeredByBook.baseModelAlone.overall, record.answeredByBook.bookThenBaseModel.overall),
-    openingAnswered: `${percentAnswered}%`,
+    openingAnswered: wholePercent(shareAnswered),
   };
 }
 
