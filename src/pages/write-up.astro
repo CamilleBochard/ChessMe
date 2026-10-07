@@ -1,0 +1,524 @@
+---
+// The write-up: how the Bot was built, how well it imitates Camille, and why
+// no network was trained. Every measured figure is computed at build time
+// from the records the measurement commands write into
+// docs/experiments/results/; re-running a measurement and rebuilding updates
+// the page. The Session Game counts are read from the service when the page
+// is read.
+import { readFileSync } from 'node:fs';
+import Page from '../layouts/Page.astro';
+import type { SweepRecord } from '../evaluation/base-model-sweep';
+import type { OpeningBookRecord } from '../evaluation/opening-book-coverage';
+import { describeSweep, SWEEP_SLICES } from '../write-up/base-model-choice';
+import { describeOpeningBook } from '../write-up/opening-book-effect';
+import { compareStyles, type ComparisonRow, type FingerprintRecord } from '../write-up/style-comparison';
+
+const RESULTS_DIRECTORY = 'docs/experiments/results';
+const REPOSITORY = 'https://github.com/CamilleBochard/ChessMe';
+const EXPERIMENTS = `${REPOSITORY}/tree/master/docs/experiments`;
+const ADR_0001 = `${REPOSITORY}/blob/master/docs/adr/0001-base-model-chosen-by-measurement.md`;
+
+function readResult<T>(fileName: string): T {
+  const text = readFileSync(`${RESULTS_DIRECTORY}/${fileName}`, 'utf-8');
+  return JSON.parse(text) as T;
+}
+
+const sweepRecord = readResult<SweepRecord>('base-model-sweep.json');
+const openingBookRecord = readResult<OpeningBookRecord>('opening-book.json');
+const fingerprintRecord = readResult<FingerprintRecord>('style-fingerprint.json');
+
+const sweep = describeSweep(sweepRecord);
+const openingBook = describeOpeningBook(openingBookRecord);
+const styles = compareStyles(fingerprintRecord);
+
+const allPositions = sweep.slices[SWEEP_SLICES.indexOf('All')];
+const endgameSlice = sweep.slices[SWEEP_SLICES.indexOf('Endgame')];
+const tiedCandidates = sweep.rows.filter((row) => row.standing === 'tied').map((row) => row.candidate);
+
+const testSetPositions = openingBookRecord.baseModelAlone.overall.positions.toLocaleString('en');
+const testSetGames = openingBookRecord.baseModelAlone.overall.games.toLocaleString('en');
+const testSetOpeningPositions = openingBookRecord.coverage.opening.positions.toLocaleString('en');
+const bookMiddlegameAnswers = openingBookRecord.coverage.middlegame.answered;
+const trainingGames = fingerprintRecord.camille_training_games.games.toLocaleString('en');
+const testSetFingerprintGames = fingerprintRecord.camille_test_set.games.toLocaleString('en');
+const botGames = fingerprintRecord.bot.games.toLocaleString('en');
+
+let tieSentence = '';
+if (tiedCandidates.length > 0) {
+  const tiedNames = listed(tiedCandidates);
+  tieSentence = `Within half a point of the best, and so counted as tied: ${tiedNames}. A tie goes to the smaller download.`;
+}
+let leadSentence = '';
+if (sweep.leadOverOtherFamilies !== undefined) {
+  const lead = sweep.leadOverOtherFamilies;
+  leadSentence = `The best candidate leads the best of the other family, ${lead.runnerUp}, by ${lead.points} points.`;
+}
+
+/** Names joined as a sentence would list them: "a", "a and b", "a, b and c". */
+function listed(names: string[]): string {
+  if (names.length === 1) {
+    return names[0];
+  }
+  const allButLast = names.slice(0, -1).join(', ');
+  return `${allButLast} and ${names[names.length - 1]}`;
+}
+
+/** One row of the Style Fingerprint comparison, for quoting its figures in the prose. */
+function style(statistic: string): ComparisonRow {
+  const row = styles.find((candidate) => candidate.statistic === statistic);
+  if (row === undefined) {
+    throw new Error(`The Style Fingerprint comparison has no row named "${statistic}"`);
+  }
+  return row;
+}
+---
+
+<Page
+  title="ChessMe: how the Bot was built"
+  description="How a bot that imitates one chess player was built from a published model, and how well it works, in measured numbers."
+>
+  <p class="back"><a href="/">Play the Bot</a></p>
+  <h1>How the Bot was built, and how well it works</h1>
+
+  <p>
+    The page beside this one lets you play chess against a Bot that imitates Camille, a club player. This page
+    explains how the Bot was put together and measures how closely it plays like him. Every figure measured for this
+    project is computed from the measurements' own output when the site is built, except the counts of games played
+    on the site, which are read when you open the page.
+  </p>
+
+  <section>
+    <h2>Enough chess to follow along</h2>
+    <p>
+      Players take turns; one turn by one side is a <em>ply</em>, so a move by White and Black's reply are two plies.
+      Each game is cut into three stretches by ply: the <em>opening</em> (plies 1 to 10), the <em>middlegame</em> (11
+      to 30) and the <em>endgame</em> (31 on). Openings are well-trodden and easy to predict; what follows is not, so
+      every measurement is reported for each stretch separately.
+    </p>
+    <p>
+      Online chess sites give each player a <em>rating</em>: the higher, the stronger. Each site has its own scale.
+      Camille is rated about 750 on Chess.com and about {sweepRecord.lichessRating} on Lichess: the same player on two
+      scales.
+    </p>
+    <p>
+      A chess engine such as Stockfish plays far better than any human and can judge every move.
+      A move's <em>loss</em> is how much worse it left the position than the engine's best move, counted in hundredths
+      of a pawn. A loss of 300 means giving away three pawns' worth, roughly a whole piece: a blunder.
+    </p>
+  </section>
+
+  <section>
+    <h2>What the Bot is</h2>
+    <p>
+      The Bot has two parts, consulted in order. The <strong>Opening Book</strong> holds the {
+        openingBookRecord.bookPositions
+      } positions Camille reached at least {openingBookRecord.minOccurrences} times in his own games, each mapped to the
+      move he played there most often. When the position is not in the book, the <strong>Base Model</strong> decides: a
+      neural network called Maia, published by researchers, trained on millions of online games to predict the move a
+      human of a given rating would play, mistakes included, rather than the best move.
+    </p>
+    <p>
+      The Base Model runs in your browser, so the site only serves files. No network was trained or adjusted for this
+      project; why is explained <a href="#why-nothing-was-trained">further down</a>.
+    </p>
+  </section>
+
+  <section>
+    <h2>Choosing the Base Model</h2>
+    <p>
+      Maia comes in versions playing at different ratings. The obvious choice would convert Camille's rating to
+      Lichess's scale, on which Maia was trained, and pick that version. An early plan did that with his Chess.com
+      rating and would have picked a model several hundred points too weak. Instead, every candidate was measured.
+    </p>
+    <p>
+      The measure is <strong>Move-Matching</strong>: show the candidate a position Camille faced and check whether it
+      plays the move he played. Every candidate saw the same {allPositions.positions} positions from {
+        allPositions.games
+      } of his games. None of them was trained on his games, so all of them can be used.
+    </p>
+
+    <div class="table-frame">
+      <table>
+        <caption>
+          Move-Matching in percent, ± one standard error. Measured on {sweepRecord.measuredOn}.
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Candidate</th>
+            {SWEEP_SLICES.map((slice) => <th scope="col">{slice}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {
+            sweep.rows.map((row) => (
+              <tr class={row.standing}>
+                <th scope="row">
+                  {row.candidate}{' '}
+                  {row.standing === 'chosen' && <span class="tag">chosen</span>}
+                  {row.standing === 'tied' && <span class="tag">tied</span>}
+                </th>
+                {row.cells.map((cell) => (
+                  <td>{cell}</td>
+                ))}
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      Maia-1 is one network per rating; Maia-3 is a single network told the rating to play at, so it is measured at
+      several. Candidates are ranked on the positions after ply 10, where the opening no longer flatters them and the
+      Opening Book rarely answers. The Base Model chosen is <strong>{sweep.chosen.candidate}</strong>, which plays
+      Camille's move in {sweep.chosen.afterPly10}% of those positions. {tieSentence} {leadSentence}
+    </p>
+    <p>
+      The rating of the candidate that matches him best is Camille's <strong>Maia-Equivalent Rating</strong>: {
+        sweep.maiaEquivalentRating
+      }, {sweep.againstLichessRating}. Neither site's rating would have given it.
+    </p>
+  </section>
+
+  <section>
+    <h2>What the Opening Book adds</h2>
+    <p>
+      The Bot is compared with the Base Model alone, the <em>Baseline</em>, on the Test Set: {testSetGames} of Camille's
+      games, {testSetPositions} positions, kept out of everything else, the Opening Book included, so that the book
+      cannot have seen the answers it is scored on.
+    </p>
+
+    <div class="table-frame">
+      <table>
+        <caption>Move-Matching on the Test Set in percent, ± one standard error.</caption>
+        <thead>
+          <tr>
+            <th scope="col"></th>
+            <th scope="col">Base Model alone</th>
+            <th scope="col">The Bot</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Opening</th>
+            <td>{openingBook.opening.baseline}</td>
+            <td>{openingBook.opening.bot}</td>
+          </tr>
+          <tr>
+            <th scope="row">Positions the book answers</th>
+            <td>{openingBook.whereTheBookAnswers.baseline}</td>
+            <td>{openingBook.whereTheBookAnswers.bot}</td>
+          </tr>
+          <tr>
+            <th scope="row">Whole games</th>
+            <td>{openingBook.overall.baseline}</td>
+            <td>{openingBook.overall.bot}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p>
+      The book answers {openingBook.openingAnswered} of opening positions and, where it does, plays Camille's move far
+      more often than the Base Model would. Over whole games the gain shrinks, because the book runs out after the first
+      few moves. It changes which opening the Bot plays, not how well it plays afterwards.
+    </p>
+  </section>
+
+  <section>
+    <h2>Does it play like him?</h2>
+    <p>
+      Move-Matching needs a position Camille faced. Once the Bot plays its own games it reaches positions he never saw,
+      so it is compared another way: the <strong>Style Fingerprint</strong>, a set of statistics computed the same way
+      over any player's games. The Bot played {botGames} games for this, against an opponent tuned so that it wins
+      about as often as Camille does. Beside each statistic, the gap between two halves of Camille's own games (his {
+        trainingGames
+      } training games and his {testSetFingerprintGames} Test Set games) shows how much a figure moves by chance alone.
+    </p>
+
+    <div class="table-frame">
+      <table>
+        <caption>
+          Losses measured by {fingerprintRecord.engine} at depth {fingerprintRecord.depth}, in hundredths of a pawn.
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Statistic</th>
+            <th scope="col">Camille</th>
+            <th scope="col">The Bot</th>
+            <th scope="col">Camille against himself</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            styles.map((row) => (
+              <tr>
+                <th scope="row">{row.statistic}</th>
+                <td>{row.camille}</td>
+                <td>{row.bot}</td>
+                <td>{row.camilleAgainstHimself}</td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Where the imitation holds</h3>
+    <p>
+      What Camille moves, and when: pawn moves make up {style('Pawn moves, middlegame').camille} of his middlegame moves
+      and {style('Pawn moves, middlegame').bot} of the Bot's. Both trade queens off before move 20 in about one game in
+      five ({style('Queens traded off before move 20').camille} against {
+        style('Queens traded off before move 20').bot
+      }). In the endgame both take an offered capture at similar rates.
+    </p>
+
+    <h3>Where it breaks</h3>
+    <p>
+      <strong>Level.</strong> The Bot loses on average {style('Average loss per move, middlegame').bot} hundredths of a
+      pawn per middlegame move, Camille {style('Average loss per move, middlegame').camille}; it blunders on {
+        style('Moves losing three pawns or more, middlegame').bot
+      } of its middlegame moves, he on {style('Moves losing three pawns or more, middlegame').camille}. His two halves
+      differ by {style('Average loss per move, middlegame').camilleAgainstHimself}, so this is not chance: the Bot plays
+      about twice as accurately as he does. It always plays the Base Model's single most likely move, and the most
+      likely move of a crowd of players at his rating is rarely the mistake any one of them makes.
+    </p>
+    <p>
+      <strong>Castling.</strong> The Bot castles kingside in {style('Castled kingside').bot} of its games, Camille in {
+        style('Castled kingside').camille
+      }. He castles queenside or leaves his king in the centre far more often ({style('Castled queenside').camille} and {
+        style('Never castled').camille
+      }, against {style('Castled queenside').bot} and {style('Never castled').bot}).
+    </p>
+    <p>
+      <strong>Early habits.</strong> He brings his queen out early ({style('Queen moves, opening').camille} of his
+      opening moves against {style('Queen moves, opening').bot}) and takes an offered capture in the opening less often
+      ({style('Capture taken when one is offered, opening').camille} against {
+        style('Capture taken when one is offered, opening').bot
+      }). Club players' habits like these are exactly what the most likely move of a crowd smooths away.
+    </p>
+  </section>
+
+  <section>
+    <h2>Against visitors</h2>
+    <p>
+      Every finished game played on this site is recorded, without any account or address, along with whether each of
+      the Bot's moves came from the Opening Book or the Base Model. These counts are read as you open the page.
+    </p>
+    <div class="live" data-session-games>
+      <p data-session-games-status>Reading the counts…</p>
+      <dl hidden data-session-games-counts>
+        <dt>Games finished</dt>
+        <dd data-figure="games"></dd>
+        <dt>The Bot's record</dt>
+        <dd data-figure="botRecord"></dd>
+        <dt>The Bot's score</dt>
+        <dd data-figure="botScore">no game yet</dd>
+        <dt>Its moves from the Opening Book</dt>
+        <dd data-figure="fromOpeningBook">no move yet</dd>
+        <dt>Felt like a real player at that level</dt>
+        <dd data-figure="feltLikeARealPlayer">no answer yet</dd>
+      </dl>
+    </div>
+    <p>
+      A score counts a win as one point and a draw as half. The people who play here chose to, and anyone can report a
+      game, so these figures describe the Bot's games on this site, not its strength against a fair sample of players.
+    </p>
+  </section>
+
+  <section>
+    <h2 id="why-nothing-was-trained">Why nothing was trained</h2>
+    <p>
+      The natural next step would be to fine-tune the Base Model on Camille's games, adjusting the network until it
+      predicts his moves better. It was decided against, on a measurement rather than as a shortcut. The researchers
+      behind Maia measured exactly this in their paper on individual players (KDD 2022): with too few games,
+      fine-tuning makes the model <em>worse</em> at predicting the player than leaving it alone. In their group of
+      players with about 1,000 games each, the fine-tuned models matched 49.7% of moves against 52.7% for the untouched
+      model. Camille has {trainingGames} games to train on, fewer than that. The decision and its sources are recorded
+      in <a href={ADR_0001}>ADR-0001</a>.
+    </p>
+    <p>
+      Fine-tuning stays planned as a separate experiment whose expected result is negative, kept because measuring it
+      is the point.
+    </p>
+  </section>
+
+  <section>
+    <h2>Limits</h2>
+    <ul>
+      <li>
+        <strong>Positions within a game are not independent.</strong> They share an opening, a plan and an opponent.
+        Every ± above treats each game, not each position, as one sample, which makes the error bars wider than a naive
+        count of {allPositions.positions} positions would suggest. The effective sample is closer to the {
+          allPositions.games
+        } games.
+      </li>
+      <li>
+        <strong>Slices thin out.</strong> The Test Set holds only {testSetOpeningPositions} opening positions, and the
+        Opening Book answers {bookMiddlegameAnswers} middlegame positions in it, too few to say anything about. Not every
+        game reaches the endgame ({endgameSlice.games} of {allPositions.games} do). The per-game statistics of the
+        fingerprint, castling for instance, rest on {testSetFingerprintGames} Test Set games, which is why Camille's two
+        halves differ by several points there.
+      </li>
+      <li>
+        <strong>Ties use a fixed threshold</strong> of half a point, not a statistical test. The choice between Maia's
+        two versions does not depend on it; the choice between neighbouring ratings does, which is why those are
+        reported as tied.
+      </li>
+      <li>
+        <strong>Only the single most likely move is compared,</strong> and the Base Model is given the current position
+        without the moves that led to it, exactly as the site uses it.
+      </li>
+      <li>
+        <strong>The Bot's fingerprint games are not Camille's kind of games.</strong> Its opponent is a model, there is
+        no clock and nobody resigns, so its games run longer and end differently, which colours the endgame figures.
+      </li>
+      <li>
+        <strong>The Maia-Equivalent Rating is a position on Maia's scale</strong>, learned from Lichess games at faster
+        time controls than Camille's, not a forecast of his rating on either site.
+      </li>
+    </ul>
+    <p>
+      The full tables and methods are in the <a href={EXPERIMENTS}>experiment write-ups</a> of the <a href={REPOSITORY}
+        >repository</a
+      >.
+    </p>
+  </section>
+</Page>
+
+<script>
+  import { readSessionGameRecord, type SessionGameRecord } from '../write-up/session-game-record';
+
+  const live = document.querySelector<HTMLElement>('[data-session-games]');
+  if (live !== null) {
+    showSessionGames(live);
+  }
+
+  async function showSessionGames(container: HTMLElement): Promise<void> {
+    const status = container.querySelector<HTMLElement>('[data-session-games-status]');
+    const counts = container.querySelector<HTMLElement>('[data-session-games-counts]');
+    if (status === null || counts === null) {
+      return;
+    }
+
+    const record = await readSessionGameRecord(fetch);
+    if (record === undefined) {
+      status.textContent = 'The counts could not be read just now. Try again in a minute.';
+      return;
+    }
+
+    // A figure the record leaves out, such as the score before any game, keeps
+    // the wording already on the page.
+    for (const figure of counts.querySelectorAll<HTMLElement>('[data-figure]')) {
+      const name = figure.dataset.figure as keyof SessionGameRecord;
+      const value = record[name];
+      if (value !== undefined) {
+        figure.textContent = value;
+      }
+    }
+    status.hidden = true;
+    counts.hidden = false;
+  }
+</script>
+
+<style>
+  .back {
+    margin: 0 0 1rem;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+    margin: 0 0 1rem;
+  }
+
+  h2 {
+    font-size: 1.2rem;
+    margin: 2rem 0 0.5rem;
+  }
+
+  h3 {
+    font-size: 1rem;
+    margin: 1.25rem 0 0.25rem;
+  }
+
+  p,
+  li {
+    line-height: 1.55;
+  }
+
+  a {
+    color: inherit;
+  }
+
+  /* Wide tables scroll inside their frame on a phone instead of widening the
+     page. */
+  .table-frame {
+    overflow-x: auto;
+    margin: 1rem 0;
+  }
+
+  table {
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    font-variant-numeric: tabular-nums;
+  }
+
+  caption {
+    text-align: left;
+    padding-bottom: 0.5rem;
+    opacity: 0.75;
+  }
+
+  th,
+  td {
+    padding: 0.3rem 0.6rem;
+    border-bottom: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  th[scope='row'],
+  thead th:first-child {
+    text-align: left;
+  }
+
+  thead th {
+    font-weight: 600;
+    vertical-align: bottom;
+  }
+
+  /* Statistic names wrap so that, on a phone, the figures beside them stay
+     on screen. */
+  th[scope='row'] {
+    font-weight: normal;
+    white-space: normal;
+    min-width: 9rem;
+  }
+
+  tr.chosen {
+    font-weight: 600;
+    background: color-mix(in srgb, currentColor 8%, transparent);
+  }
+
+  .tag {
+    margin-left: 0.5rem;
+    font-size: 0.75rem;
+    opacity: 0.75;
+  }
+
+  .live dl {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.25rem 1rem;
+    margin: 1rem 0;
+  }
+
+  .live dt {
+    opacity: 0.75;
+  }
+
+  .live dd {
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+  }
+</style>
