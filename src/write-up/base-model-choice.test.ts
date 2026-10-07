@@ -72,8 +72,9 @@ describe('the Base Model sweep shown on the write-up', () => {
   it('states how far the best candidate leads the best of every other family', () => {
     const sweep = describeSweep(SWEEP);
 
-    // 49.35 for maia3-5m at 1100 against 47.19 for maia1-1100
-    expect(sweep.leadOverOtherFamilies).toEqual({ points: '2.16', runnerUp: 'maia1-1100' });
+    // 49.35 for maia3-5m at 1100 against 47.19 for maia1-1100, a lead of 2.16
+    // written to one decimal
+    expect(sweep.leadOverOtherFamilies).toEqual({ points: '2.2', runnerUp: 'maia1-1100' });
   });
 
   it('states how many positions and games each slice holds', () => {

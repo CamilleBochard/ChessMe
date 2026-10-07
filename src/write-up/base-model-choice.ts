@@ -36,6 +36,9 @@ export interface SweepSummary {
   /**
    * How many points of Move-Matching after ply 10 the best candidate leads
    * the best candidate of any other family by, and which candidate that is.
+   * Written to one decimal: each figure carries an error of about a third of
+   * a point, and at two decimals the exact gap can differ from the gap
+   * between the two rounded figures in the table, which reads as a mistake.
    * Undefined when every candidate is of one family.
    */
   leadOverOtherFamilies?: { points: string; runnerUp: string };
@@ -81,7 +84,7 @@ export function describeSweep(record: SweepRecord): SweepSummary {
   let leadOverOtherFamilies: SweepSummary['leadOverOtherFamilies'] = undefined;
   if (runnerUp !== undefined) {
     const lead = 100 * (share(decision.best.report.afterPly10) - share(runnerUp.report.afterPly10));
-    leadOverOtherFamilies = { points: lead.toFixed(2), runnerUp: runnerUp.name };
+    leadOverOtherFamilies = { points: lead.toFixed(1), runnerUp: runnerUp.name };
   }
 
   // Every candidate is measured on the same positions, so any one of them
