@@ -95,6 +95,7 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
     startSessionGame,
     type Telemetry,
   } from '../telemetry/session-game';
+  import { SESSION_GAMES_CHANGED } from '../telemetry/session-game-summary';
   import type { DownloadProgress } from '../engine/model-download';
 
   /**
@@ -259,6 +260,9 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
      */
     function reportFinishedGame(): void {
       void telemetry.reportGame(sessionGame).then((gameId) => {
+        // Announced even when the report failed: the game has ended, so the
+        // page shows where the site's games stand, or that it cannot tell.
+        announceSessionGamesChanged();
         if (gameId !== undefined) {
           askImpression(frame, telemetry, gameId);
         }
@@ -291,6 +295,7 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
           thanks.hidden = false;
           if (recorded) {
             thanks.textContent = 'Thank you, your answer has been recorded.';
+            announceSessionGamesChanged();
           } else {
             thanks.textContent = 'Your answer could not be recorded.';
           }
@@ -299,6 +304,11 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
       );
     }
     container.hidden = false;
+  }
+
+  /** Tells whatever shows the Session Game summary on this page to read it again. */
+  function announceSessionGamesChanged(): void {
+    document.dispatchEvent(new Event(SESSION_GAMES_CHANGED));
   }
 
   /** Starts the Bot in its own Web Worker, so its thinking never blocks the board. */

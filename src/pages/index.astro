@@ -1,13 +1,18 @@
 ---
-// The page a visitor lands on to play the Bot.
+// The page a visitor lands on to play the Bot. Once a game has ended, the
+// summary of every game played on the site appears beside the board.
 import Board from '../components/Board.astro';
+import SessionGameSummary from '../components/SessionGameSummary.astro';
 import Page from '../layouts/Page.astro';
 ---
 
 <Page title="ChessMe" description="Play a game of chess against a bot that imitates Camille.">
   <h1>ChessMe</h1>
   <p>Play a game against a bot that imitates Camille.</p>
-  <Board orientation="white" />
+  <div class="play-area">
+    <Board orientation="white" />
+    <SessionGameSummary readOn="game-end" title="Games on this site" />
+  </div>
 </Page>
 
 <style>
@@ -19,5 +24,33 @@ import Page from '../layouts/Page.astro';
   p {
     margin: 0 0 1.5rem;
     opacity: 0.75;
+  }
+</style>
+
+<style is:global>
+  /* Until a game ends the board stands alone, centred as before. Once the
+     summary appears, a phone shows it below the board; a screen wide enough
+     for both puts it on the left and widens the page so the board keeps its
+     size. These rules name elements of other components, so they are global
+     and tied to this page's .play-area. */
+  .play-area {
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  @media (min-width: 60rem) {
+    main:has(.play-area [data-session-game-summary]:not([hidden])) {
+      max-width: 60rem;
+    }
+
+    .play-area:has([data-session-game-summary]:not([hidden])) {
+      grid-template-columns: 16rem minmax(0, 1fr);
+      align-items: start;
+    }
+
+    .play-area [data-session-game-summary] {
+      grid-column: 1;
+      grid-row: 1;
+    }
   }
 </style>
