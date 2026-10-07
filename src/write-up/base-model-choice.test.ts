@@ -83,4 +83,22 @@ describe('the Base Model sweep shown on the write-up', () => {
     expect(sweep.slices[0]).toEqual({ positions: '10,000', games: '400' });
     expect(sweep.slices).toHaveLength(5);
   });
+
+  it("compares the chosen candidate's errors with those of counting every position as independent", () => {
+    // Half of 10,000 positions matched: counted as independent, the standard
+    // error would be 0.50 points in every slice.
+    const halfMatched = (errorInPercent: number) => score(5000, errorInPercent);
+    const onlyCandidate: CandidateResult = {
+      ...candidate('maia3-5m at 1100', 'maia3', 1100, 19_000_000, 5000),
+      report: {
+        overall: halfMatched(0.51),
+        afterPly10: halfMatched(0.52),
+        byPhase: { opening: halfMatched(0.475), middlegame: halfMatched(0.5), endgame: halfMatched(0.55) },
+      },
+    };
+
+    const sweep = describeSweep({ ...SWEEP, candidates: [onlyCandidate] });
+
+    expect(sweep.errorAgainstIndependentPositions).toEqual({ lowest: '0.95', highest: '1.10' });
+  });
 });

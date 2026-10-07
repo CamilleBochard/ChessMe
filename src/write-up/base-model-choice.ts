@@ -42,6 +42,14 @@ export interface SweepSummary {
    * Undefined when every candidate is of one family.
    */
   leadOverOtherFamilies?: { points: string; runnerUp: string };
+  /**
+   * The chosen candidate's standard errors, which count each game as one
+   * sample, against those of counting every position as independent: the
+   * lowest and the highest ratio over its slices. Positions within a game
+   * are correlated, which should widen the errors; how much it does on
+   * Camille's games is a measurement, not an assumption.
+   */
+  errorAgainstIndependentPositions: { lowest: string; highest: string };
 }
 
 /** The table of every candidate and the choice made from it, from the record of one sweep. */
@@ -94,6 +102,10 @@ export function describeSweep(record: SweepRecord): SweepSummary {
     games: score.games.toLocaleString('en'),
   }));
 
+  const errorRatios = slicesOf(decision.chosen.report).map(errorAgainstIndependent);
+  const lowestRatio = Math.min(...errorRatios);
+  const highestRatio = Math.max(...errorRatios);
+
   return {
     rows: rows,
     slices: slices,
@@ -101,7 +113,18 @@ export function describeSweep(record: SweepRecord): SweepSummary {
     maiaEquivalentRating: maiaEquivalentRating,
     againstLichessRating: againstLichessRating,
     leadOverOtherFamilies: leadOverOtherFamilies,
+    errorAgainstIndependentPositions: { lowest: lowestRatio.toFixed(2), highest: highestRatio.toFixed(2) },
   };
+}
+
+/**
+ * A score's standard error divided by the one it would have if every
+ * position were an independent sample, the binomial sqrt(p(1 - p) / n).
+ */
+function errorAgainstIndependent(score: MoveMatchingScore): number {
+  const matchedShare = share(score);
+  const independentError = Math.sqrt((matchedShare * (1 - matchedShare)) / score.positions);
+  return score.standardError / independentError;
 }
 
 /** A report's scores in the order of SWEEP_SLICES. */

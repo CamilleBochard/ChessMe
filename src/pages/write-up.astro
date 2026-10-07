@@ -347,11 +347,12 @@ function style(statistic: string): ComparisonRow {
     <h2>Limits</h2>
     <ul>
       <li>
-        <strong>Positions within a game are not independent.</strong> They share an opening, a plan and an opponent.
-        Every ± above treats each game, not each position, as one sample, which makes the error bars wider than a naive
-        count of {allPositions.positions} positions would suggest. The effective sample is closer to the {
-          allPositions.games
-        } games.
+        <strong>Positions within a game are not independent.</strong> They share an opening, a plan and an opponent,
+        so every ± above treats each game, not each position, as one sample. On Camille's games this costs less
+        precision than one might fear: for the chosen Base Model, measured on all {allPositions.positions} positions,
+        the errors come out between {sweep.errorAgainstIndependentPositions.lowest} and {
+          sweep.errorAgainstIndependentPositions.highest
+        } times those of counting every position as independent.
       </li>
       <li>
         <strong>Slices thin out.</strong> The Test Set holds only {testSetOpeningPositions} opening positions, and the
