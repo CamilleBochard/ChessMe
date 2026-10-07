@@ -17,8 +17,8 @@ python -m pipeline.extract_style_fingerprint
 The first command plays 400 games of the Bot under Node and writes them to
 `data/dataset/bot-games.jsonl`. The second scores every move of Camille's and
 of the Bot's with Stockfish 19 at depth 18, the Blunder Profile's settings and
-cache, and writes `data/dataset/style-fingerprint.json` with a Markdown table
-of the results. Camille's moves are already in the cache once the Blunder
+cache, and writes `docs/experiments/results/style-fingerprint.json`, which the
+write-up page reads, with a Markdown table of the results. Camille's moves are already in the cache once the Blunder
 Profile has been extracted, so only the Bot's moves cost Stockfish time:
 about three hours on a four-core 2012 laptop.
 

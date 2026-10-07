@@ -14,7 +14,8 @@ cost Stockfish time.
 
 Camille's training games and Test Set are also measured apart: the same
 player on two sets of games shows how far fingerprints drift by chance.
-Written to data/dataset/style-fingerprint.json; a Markdown table of the
+Written to docs/experiments/results/style-fingerprint.json, which is kept in
+the repository because the write-up page reads it; a Markdown table of the
 fingerprints goes to standard output.
 """
 
@@ -41,7 +42,9 @@ from pipeline.style_fingerprint import PIECE_NAMES, build_style_fingerprint
 FORMAT_VERSION = 1
 
 BOT_GAMES_PATH = DATASET_DIR / "bot-games.jsonl"
-FINGERPRINT_PATH = DATASET_DIR / "style-fingerprint.json"
+# Kept beside the experiment's write-up rather than in the dataset directory:
+# it is a published result, and the write-up page is built from it.
+FINGERPRINT_PATH = Path("docs/experiments/results/style-fingerprint.json")
 
 
 def extract(
