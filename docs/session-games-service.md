@@ -13,7 +13,8 @@ moves, whether it came from the Opening Book or the Base Model. No account,
 cookie or address is stored, and the service's own output names no client.
 
 A game the visitor did not finish is never sent, and the service refuses
-one that has not ended.
+one that has not ended. A game the visitor resigned counts as finished: it
+is stored as the Bot's win, its PGN marked `[Termination "Visitor resigned"]`.
 
 ## On the VPS
 
@@ -52,7 +53,7 @@ In the nginx server block that serves the site:
 limit_req_zone $binary_remote_addr zone=session_games:1m rate=10r/m;
 
 # Reading the counts has a limit of its own, so that a reader who reloads
-# the write-up page cannot use up the limit their next game report needs.
+# a page showing them cannot use up the limit their next game report needs.
 limit_req_zone $binary_remote_addr zone=session_game_counts:1m rate=30r/m;
 
 location = /api/session-games/counts {
@@ -81,7 +82,8 @@ block. The exact-match location for the counts takes precedence over the
 
 ## Reading the counts
 
-The write-up page shows the aggregate counts as they stand, read from
+The game page shows the aggregate counts as they stand once a game ends,
+and the write-up page whenever it is read, both from
 `GET /api/session-games/counts`, which answers them as JSON. Its rate limit
 above is separate from the one on game reports: a reader who reloads the
 page more than thirty times a minute sees the counts as unavailable, and

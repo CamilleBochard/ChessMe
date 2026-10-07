@@ -6,10 +6,11 @@
 import type { Colour } from '../board/starting-position';
 import type { Game } from './game';
 
-/** Every way a game can stand. Only checkmate has a winner. */
+/** Every way a game can stand. Only checkmate and resignation have a winner. */
 export type GameStatus =
   | { kind: 'ongoing' }
   | { kind: 'checkmate'; winner: Colour }
+  | { kind: 'resignation'; winner: Colour }
   | { kind: 'stalemate' }
   | { kind: 'insufficient-material' }
   | { kind: 'fifty-move-rule' }
@@ -22,13 +23,13 @@ export type GameStatus =
 export function gameStatus(game: Game): GameStatus {
   const position = game.position;
 
+  if (game.resignedBy !== undefined) {
+    return { kind: 'resignation', winner: opponentOf(game.resignedBy) };
+  }
+
   if (position.isCheckmate()) {
     // The side to move is the side that has been mated.
-    let winner: Colour = 'white';
-    if (position.turn === 'white') {
-      winner = 'black';
-    }
-    return { kind: 'checkmate', winner: winner };
+    return { kind: 'checkmate', winner: opponentOf(position.turn) };
   }
 
   if (position.isStalemate()) {
@@ -62,6 +63,11 @@ export function describeResult(status: GameStatus): string | null {
         return 'Checkmate. White wins.';
       }
       return 'Checkmate. Black wins.';
+    case 'resignation':
+      if (status.winner === 'white') {
+        return 'Black resigns. White wins.';
+      }
+      return 'White resigns. Black wins.';
     case 'stalemate':
       return 'Draw by stalemate.';
     case 'insufficient-material':
@@ -71,6 +77,36 @@ export function describeResult(status: GameStatus): string | null {
     case 'threefold-repetition':
       return 'Draw by threefold repetition.';
   }
+}
+
+/**
+ * The line the page shows under the board, as seen by the visitor playing the
+ * given side: whose turn it is while the game goes on, how it ended once over.
+ */
+export function describeTurn(game: Game, visitor: Colour): string {
+  const result = describeResult(gameStatus(game));
+  if (result !== null) {
+    return result;
+  }
+
+  const toMove = game.position.turn;
+
+  let sideName = 'White';
+  if (toMove === 'black') {
+    sideName = 'Black';
+  }
+
+  if (toMove === visitor) {
+    return `${sideName} to move: your turn.`;
+  }
+  return `${sideName} to move: the Bot is thinking…`;
+}
+
+function opponentOf(side: Colour): Colour {
+  if (side === 'white') {
+    return 'black';
+  }
+  return 'white';
 }
 
 /** How many times the current position has occurred in this game, itself included. */

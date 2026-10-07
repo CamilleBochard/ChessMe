@@ -80,8 +80,9 @@ def open_store(path: Path) -> sqlite3.Connection:
 def record_session_game(connection: sqlite3.Connection, report: dict, played_on: date) -> str:
     """
     Stores the game the page reported and returns the id it was stored under.
-    Raises RejectedGame, storing nothing, when the report is not a finished,
-    legal game shaped as the page sends it.
+    A game is finished when it ended on the board or when the visitor resigned
+    it. Raises RejectedGame, storing nothing, when the report is not a
+    finished, legal game shaped as the page sends it.
     """
     check_shape(report)
 
@@ -110,10 +111,22 @@ def record_session_game(connection: sqlite3.Connection, report: dict, played_on:
             bot_moves.append((ply, uci, source))
         board.push(move)
 
-    # A game the visitor walked away from never reaches its end, and is
-    # refused here rather than stored half-played.
-    if not has_ended_as_the_page_ends_it(board):
-        raise RejectedGame("the game has not ended")
+    visitor_resigned = report.get("visitorResigned", False)
+    has_ended_on_the_board = has_ended_as_the_page_ends_it(board)
+    if visitor_resigned:
+        if has_ended_on_the_board:
+            raise RejectedGame("the game had already ended when the visitor resigned")
+        # The Bot never resigns, so a resignation is always the Bot's win.
+        if bot_plays_white:
+            result = "1-0"
+        else:
+            result = "0-1"
+    else:
+        # A game the visitor walked away from never reaches its end, and is
+        # refused here rather than stored half-played.
+        if not has_ended_on_the_board:
+            raise RejectedGame("the game has not ended")
+        result = board.result(claim_draw=True)
 
     if bot_plays_white:
         white_player = BOT_NAME
@@ -128,8 +141,9 @@ def record_session_game(connection: sqlite3.Connection, report: dict, played_on:
     game.headers["Date"] = played_on.strftime("%Y.%m.%d")
     game.headers["White"] = white_player
     game.headers["Black"] = black_player
-    result = board.result(claim_draw=True)
     game.headers["Result"] = result
+    if visitor_resigned:
+        game.headers["Termination"] = "Visitor resigned"
     # The served Base Model may change, and its games must not be mixed with
     # the next one's without anyone noticing.
     game.headers["BaseModel"] = report["baseModel"]
@@ -214,6 +228,12 @@ def check_shape(report: object) -> None:
             raise RejectedGame("a move is not an object")
         if not isinstance(reported_move.get("uci"), str):
             raise RejectedGame("a move has no UCI name")
+
+    # Absent from a game that ended on the board. Anything but true or false
+    # would let a truthy value end a game no one resigned.
+    visitor_resigned = report.get("visitorResigned", False)
+    if not isinstance(visitor_resigned, bool):
+        raise RejectedGame("the report says neither yes nor no about a resignation")
 
 
 def session_game_pgns(connection: sqlite3.Connection) -> list[str]:

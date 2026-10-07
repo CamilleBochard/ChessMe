@@ -3,8 +3,8 @@
 // game must still be going.
 
 import { describe, expect, it } from 'vitest';
-import { gameFromFen, newGame, playMove, type Game, type MoveRequest } from './game';
-import { describeResult, gameStatus } from './game-status';
+import { gameFromFen, newGame, playMove, resign, type Game, type MoveRequest } from './game';
+import { describeResult, describeTurn, gameStatus } from './game-status';
 
 /** Plays a sequence of moves, failing loudly if one is illegal. */
 function playMoves(moves: MoveRequest[], from: Game = newGame()): Game {
@@ -153,12 +153,24 @@ describe('gameStatus', () => {
       expect(gameStatus(game)).toEqual({ kind: 'ongoing' });
     });
   });
+
+  it('ends with the other side winning when a side resigns', () => {
+    const afterOneMove = playMoves([{ from: 'e2', to: 'e4' }]);
+
+    expect(gameStatus(resign(afterOneMove, 'white'))).toEqual({ kind: 'resignation', winner: 'black' });
+    expect(gameStatus(resign(afterOneMove, 'black'))).toEqual({ kind: 'resignation', winner: 'white' });
+  });
 });
 
 describe('describeResult', () => {
   it('names the winner on checkmate', () => {
     expect(describeResult({ kind: 'checkmate', winner: 'white' })).toBe('Checkmate. White wins.');
     expect(describeResult({ kind: 'checkmate', winner: 'black' })).toBe('Checkmate. Black wins.');
+  });
+
+  it('names who resigned and who won', () => {
+    expect(describeResult({ kind: 'resignation', winner: 'white' })).toBe('Black resigns. White wins.');
+    expect(describeResult({ kind: 'resignation', winner: 'black' })).toBe('White resigns. Black wins.');
   });
 
   it.each([
@@ -172,5 +184,27 @@ describe('describeResult', () => {
 
   it('is null while the game is ongoing', () => {
     expect(describeResult({ kind: 'ongoing' })).toBeNull();
+  });
+});
+
+describe('describeTurn', () => {
+  it("names the side to move and says it is the visitor's turn", () => {
+    expect(describeTurn(newGame(), 'white')).toBe('White to move: your turn.');
+  });
+
+  it("names the side to move and says the Bot is thinking when it is the Bot's turn", () => {
+    expect(describeTurn(newGame(), 'black')).toBe('White to move: the Bot is thinking…');
+  });
+
+  it('names Black when Black is to move', () => {
+    const afterKingsPawn = playMoves([{ from: 'e2', to: 'e4' }]);
+
+    expect(describeTurn(afterKingsPawn, 'black')).toBe('Black to move: your turn.');
+  });
+
+  it('states the result once the game is over', () => {
+    const afterOneMove = playMoves([{ from: 'e2', to: 'e4' }]);
+
+    expect(describeTurn(resign(afterOneMove, 'black'), 'black')).toBe('Black resigns. White wins.');
   });
 });
