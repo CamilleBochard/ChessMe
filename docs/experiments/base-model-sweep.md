@@ -8,7 +8,7 @@ This page records how every candidate was measured and which one was chosen.
 ## Reproducing
 
 ```sh
-npm run base-model-sweep > sweep.md
+npm run base-model-sweep -- --record docs/experiments/results/base-model-sweep.json > sweep.md
 ```
 
 The command reads the candidates from `pipeline/base_model_candidates.json`,
@@ -16,7 +16,9 @@ loads each converted file from `models/onnx` (see
 [Converting the candidate Base Models](onnx-conversion.md)), and measures
 Move-Matching through the Move-Selection Engine under Node, exactly as
 [Measuring Move-Matching](move-matching.md) describes. It prints the tables
-below as Markdown; progress goes to standard error.
+below as Markdown; progress goes to standard error. `--record` also keeps
+every candidate's raw counts in `docs/experiments/results/base-model-sweep.json`,
+from which the write-up page computes its table and the choice.
 
 ## Method
 
@@ -116,7 +118,8 @@ games of `data/raw/chesscom-2026-10-02.pgn`.
 
 The sweep was run twice, the second time with Maia-3 at 700 and 900 added.
 Every figure the two runs share is identical, so the measurement is
-repeatable on this machine.
+repeatable on this machine. A third run, on 2026-10-07 with `--record`,
+printed the same three tables to the last digit.
 
 ## Reading the results
 

@@ -1,0 +1,663 @@
+{
+ "measuredOn": "2026-10-07",
+ "runtime": "Node 22.12.0",
+ "lichessRating": 1331,
+ "candidates": [
+  {
+   "name": "maia1-1100",
+   "family": "maia1",
+   "rating": 1100,
+   "licence": "GPL-3.0",
+   "downloadBytes": 2372005,
+   "report": {
+    "overall": {
+     "matched": 14475,
+     "positions": 30860,
+     "games": 1046,
+     "standardError": 0.0030235996282374556
+    },
+    "afterPly10": {
+     "matched": 12096,
+     "positions": 25635,
+     "games": 1036,
+     "standardError": 0.0033519053829806486
+    },
+    "byPhase": {
+     "opening": {
+      "matched": 2379,
+      "positions": 5225,
+      "games": 1046,
+      "standardError": 0.006773161489572649
+     },
+     "middlegame": {
+      "matched": 4377,
+      "positions": 9822,
+      "games": 1036,
+      "standardError": 0.0050255466737262715
+     },
+     "endgame": {
+      "matched": 7719,
+      "positions": 15813,
+      "games": 887,
+      "standardError": 0.004408250422604934
+     }
+    }
+   }
+  },
+  {
+   "name": "maia1-1200",
+   "family": "maia1",
+   "rating": 1200,
+   "licence": "GPL-3.0",
+   "downloadBytes": 2281398,
+   "report": {
+    "overall": {
+     "matched": 14451,
+     "positions": 30860,
+     "games": 1046,
+     "standardError": 0.003106942229657741
+    },
+    "afterPly10": {
+     "matched": 11991,
+     "positions": 25635,
+     "games": 1036,
+     "standardError": 0.003449931483324514
+    },
+    "byPhase": {
+     "opening": {
+      "matched": 2460,
+      "positions": 5225,
+      "games": 1046,
+      "standardError": 0.006917420130950722
+     },
+     "middlegame": {
+      "matched": 4352,
+      "positions": 9822,
+      "games": 1036,
+      "standardError": 0.005022220151168801
+     },
+     "endgame": {
+      "matched": 7639,
+      "positions": 15813,
+      "games": 887,
+      "standardError": 0.004550122106690739
+     }
+    }
+   }
+  },
+  {
+   "name": "maia1-1300",
+   "family": "maia1",
+   "rating": 1300,
+   "licence": "GPL-3.0",
+   "downloadBytes": 2301860,
+   "report": {
+    "overall": {
+     "matched": 14433,
+     "positions": 30860,
+     "games": 1046,
+     "standardError": 0.003029825135527741
+    },
+    "afterPly10": {
+     "matched": 11990,
+     "positions": 25635,
+     "games": 1036,
+     "standardError": 0.0033893638139686527
+    },
+    "byPhase": {
+     "opening": {
+      "matched": 2443,
+      "positions": 5225,
+      "games": 1046,
+      "standardError": 0.006866277201157493
+     },
+     "middlegame": {
+      "matched": 4383,
+      "positions": 9822,
+      "games": 1036,
+      "standardError": 0.004921718807482178
+     },
+     "endgame": {
+      "matched": 7607,
+      "positions": 15813,
+      "games": 887,
+      "standardError": 0.004501916879595963
+     }
+    }
+   }
+  },
+  {
+   "name": "maia1-1400",
+   "family": "maia1",
+   "rating": 1400,
+   "licence": "GPL-3.0",
+   "downloadBytes": 2393578,
+   "report": {
+    "overall": {
+     "matched": 14366,
+     "positions": 30860,
+     "games": 1046,
+     "standardError": 0.0030838733396552093
+    },
+    "afterPly10": {
+     "matched": 11967,
+     "positions": 25635,
+     "games": 1036,
+     "standardError": 0.003388848720145315
+    },
+    "byPhase": {
+     "opening": {
+      "matched": 2399,
+      "positions": 5225,
+      "games": 1046,
+      "standardError": 0.006780039032562161
+     },
+     "middlegame": {
+      "matched": 4412,
+      "positions": 9822,
+      "games": 1036,
+      "standardError": 0.004907100648337045
+     },
+     "endgame": {
+      "matched": 7555,
+      "positions": 15813,
+      "games": 887,
+      "standardError": 0.004472725246859514
+     }
+    }
+   }
+  },
+  {
+   "name": "maia1-1500",
+   "family": "maia1",
+   "rating": 1500,
+   "licence": "GPL-3.0",
+   "downloadBytes": 2313752,
+   "report": {
+    "overall": {
+     "matched": 14440,
+     "positions": 30860,
+     "games": 1046,
+     "standardError": 0.002924561455728854
+    },
+    "afterPly10": {
+     "matched": 11995,
+     "positions": 25635,
+     "games": 1036,
+     "standardError": 0.00326084904209921
+    },
+    "byPhase": {
+     "opening": {
+      "matched": 2445,
+      "positions": 5225,
+      "games": 1046,
+      "standardError": 0.006926469141633657
+     },
+     "middlegame": {
+      "matched": 4444,
+      "positions": 9822,
+      "games": 1036,
+      "standardError": 0.0049478990064566845
+     },
+     "endgame": {
+      "matched": 7551,
+      "positions": 15813,
+      "games": 887,
+      "standardError": 0.004448874041500176
+     }
+    }
+   }
+  },
+  {
+   "name": "maia1-1600",
+   "family": "maia1",
+   "rating": 1600,
+   "licence": "GPL-3.0",
+   "downloadBytes": 2378113,
+   "report": {
+    "overall": {
+     "matched": 14659,
+     "positions": 30860,
+     "games": 1046,
+     "standardError": 0.0030660373002786025
+    },
+    "afterPly10": {
+     "matched": 11919,
+     "positions": 25635,
+     "games": 1036,
+     "standardError": 0.0033470735417001638
+    },
+    "byPhase": {
+     "opening": {
+      "matched": 2740,
+      "positions": 5225,
+      "games": 1046,
+      "standardError": 0.007739147476466997
+     },
+     "middlegame": {
+      "matched": 4409,
+      "positions": 9822,
+      "games": 1036,
+      "standardError": 0.00497938335867632
+     },
+     "endgame": {
+      "matched": 7510,
+      "positions": 15813,
+      "games": 887,
+      "standardError": 0.004437808651992531
+     }
+    }
+   }
+  },
+  {
+   "name": "maia1-1700",
+   "family": "maia1",
+   "rating": 1700,
+   "licence": "GPL-3.0",
+   "downloadBytes": 2371279,
+   "report": {
+    "overall": {
+     "matched": 14199,
+     "positions": 30860,
+     "games": 1046,
+     "standardError": 0.002920702831675604
+    },
+    "afterPly10": {
+     "matched": 11737,
+     "positions": 25635,
+     "games": 1036,
+     "standardError": 0.003315621580011844
+    },
+    "byPhase": {
+     "opening": {
+      "matched": 2462,
+      "positions": 5225,
+      "games": 1046,
+      "standardError": 0.006105575920013581
+     },
+     "middlegame": {
+      "matched": 4359,
+      "positions": 9822,
+      "games": 1036,
+      "standardError": 0.004877486108607874
+     },
+     "endgame": {
+      "matched": 7378,
+      "positions": 15813,
+      "games": 887,
+      "standardError": 0.004454569014059885
+     }
+    }
+   }
+  },
+  {
+   "name": "maia1-1800",
+   "family": "maia1",
+   "rating": 1800,
+   "licence": "GPL-3.0",
+   "downloadBytes": 2341446,
+   "report": {
+    "overall": {
+     "matched": 14026,
+     "positions": 30860,
+     "games": 1046,
+     "standardError": 0.0029544728429267866
+    },
+    "afterPly10": {
+     "matched": 11528,
+     "positions": 25635,
+     "games": 1036,
+     "standardError": 0.0032534064417934316
+    },
+    "byPhase": {
+     "opening": {
+      "matched": 2498,
+      "positions": 5225,
+      "games": 1046,
+      "standardError": 0.007192043395734412
+     },
+     "middlegame": {
+      "matched": 4308,
+      "positions": 9822,
+      "games": 1036,
+      "standardError": 0.0049673022619715745
+     },
+     "endgame": {
+      "matched": 7220,
+      "positions": 15813,
+      "games": 887,
+      "standardError": 0.004363173393801648
+     }
+    }
+   }
+  },
+  {
+   "name": "maia1-1900",
+   "family": "maia1",
+   "rating": 1900,
+   "licence": "GPL-3.0",
+   "downloadBytes": 2324913,
+   "report": {
+    "overall": {
+     "matched": 13938,
+     "positions": 30860,
+     "games": 1046,
+     "standardError": 0.0030260284874438453
+    },
+    "afterPly10": {
+     "matched": 11494,
+     "positions": 25635,
+     "games": 1036,
+     "standardError": 0.003415524906050604
+    },
+    "byPhase": {
+     "opening": {
+      "matched": 2444,
+      "positions": 5225,
+      "games": 1046,
+      "standardError": 0.006558727128782849
+     },
+     "middlegame": {
+      "matched": 4265,
+      "positions": 9822,
+      "games": 1036,
+      "standardError": 0.004922158805462632
+     },
+     "endgame": {
+      "matched": 7229,
+      "positions": 15813,
+      "games": 887,
+      "standardError": 0.004641774145607203
+     }
+    }
+   }
+  },
+  {
+   "name": "maia3-5m at 700",
+   "family": "maia3",
+   "rating": 700,
+   "licence": "AGPL-3.0 (the CSSLab/maia3 repository; the model card points there)",
+   "downloadBytes": 19167234,
+   "report": {
+    "overall": {
+     "matched": 14404,
+     "positions": 30860,
+     "games": 1046,
+     "standardError": 0.003013223737536042
+    },
+    "afterPly10": {
+     "matched": 11946,
+     "positions": 25635,
+     "games": 1036,
+     "standardError": 0.0033164223277234624
+    },
+    "byPhase": {
+     "opening": {
+      "matched": 2458,
+      "positions": 5225,
+      "games": 1046,
+      "standardError": 0.0068786560365780725
+     },
+     "middlegame": {
+      "matched": 4291,
+      "positions": 9822,
+      "games": 1036,
+      "standardError": 0.004981778330652315
+     },
+     "endgame": {
+      "matched": 7655,
+      "positions": 15813,
+      "games": 887,
+      "standardError": 0.0043454959059279884
+     }
+    }
+   }
+  },
+  {
+   "name": "maia3-5m at 900",
+   "family": "maia3",
+   "rating": 900,
+   "licence": "AGPL-3.0 (the CSSLab/maia3 repository; the model card points there)",
+   "downloadBytes": 19167234,
+   "report": {
+    "overall": {
+     "matched": 14989,
+     "positions": 30860,
+     "games": 1046,
+     "standardError": 0.003017091656750016
+    },
+    "afterPly10": {
+     "matched": 12486,
+     "positions": 25635,
+     "games": 1036,
+     "standardError": 0.003347710471271176
+    },
+    "byPhase": {
+     "opening": {
+      "matched": 2503,
+      "positions": 5225,
+      "games": 1046,
+      "standardError": 0.006839467637526515
+     },
+     "middlegame": {
+      "matched": 4523,
+      "positions": 9822,
+      "games": 1036,
+      "standardError": 0.005043998147219874
+     },
+     "endgame": {
+      "matched": 7963,
+      "positions": 15813,
+      "games": 887,
+      "standardError": 0.004383117392108675
+     }
+    }
+   }
+  },
+  {
+   "name": "maia3-5m at 1100",
+   "family": "maia3",
+   "rating": 1100,
+   "licence": "AGPL-3.0 (the CSSLab/maia3 repository; the model card points there)",
+   "downloadBytes": 19167234,
+   "report": {
+    "overall": {
+     "matched": 15186,
+     "positions": 30860,
+     "games": 1046,
+     "standardError": 0.002982956433389828
+    },
+    "afterPly10": {
+     "matched": 12651,
+     "positions": 25635,
+     "games": 1036,
+     "standardError": 0.0033565984199841544
+    },
+    "byPhase": {
+     "opening": {
+      "matched": 2535,
+      "positions": 5225,
+      "games": 1046,
+      "standardError": 0.006570719348120831
+     },
+     "middlegame": {
+      "matched": 4612,
+      "positions": 9822,
+      "games": 1036,
+      "standardError": 0.005103868812083386
+     },
+     "endgame": {
+      "matched": 8039,
+      "positions": 15813,
+      "games": 887,
+      "standardError": 0.004399578481724978
+     }
+    }
+   }
+  },
+  {
+   "name": "maia3-5m at 1300",
+   "family": "maia3",
+   "rating": 1300,
+   "licence": "AGPL-3.0 (the CSSLab/maia3 repository; the model card points there)",
+   "downloadBytes": 19167234,
+   "report": {
+    "overall": {
+     "matched": 15212,
+     "positions": 30860,
+     "games": 1046,
+     "standardError": 0.003070965510553073
+    },
+    "afterPly10": {
+     "matched": 12631,
+     "positions": 25635,
+     "games": 1036,
+     "standardError": 0.00346463772387101
+    },
+    "byPhase": {
+     "opening": {
+      "matched": 2581,
+      "positions": 5225,
+      "games": 1046,
+      "standardError": 0.006639451687116085
+     },
+     "middlegame": {
+      "matched": 4644,
+      "positions": 9822,
+      "games": 1036,
+      "standardError": 0.005081963282746012
+     },
+     "endgame": {
+      "matched": 7987,
+      "positions": 15813,
+      "games": 887,
+      "standardError": 0.004597938029976062
+     }
+    }
+   }
+  },
+  {
+   "name": "maia3-5m at 1500",
+   "family": "maia3",
+   "rating": 1500,
+   "licence": "AGPL-3.0 (the CSSLab/maia3 repository; the model card points there)",
+   "downloadBytes": 19167234,
+   "report": {
+    "overall": {
+     "matched": 15113,
+     "positions": 30860,
+     "games": 1046,
+     "standardError": 0.0030768788471641512
+    },
+    "afterPly10": {
+     "matched": 12508,
+     "positions": 25635,
+     "games": 1036,
+     "standardError": 0.003448356546651461
+    },
+    "byPhase": {
+     "opening": {
+      "matched": 2605,
+      "positions": 5225,
+      "games": 1046,
+      "standardError": 0.006586441380921191
+     },
+     "middlegame": {
+      "matched": 4601,
+      "positions": 9822,
+      "games": 1036,
+      "standardError": 0.005028081683908642
+     },
+     "endgame": {
+      "matched": 7907,
+      "positions": 15813,
+      "games": 887,
+      "standardError": 0.004608002789409367
+     }
+    }
+   }
+  },
+  {
+   "name": "maia3-5m at 1700",
+   "family": "maia3",
+   "rating": 1700,
+   "licence": "AGPL-3.0 (the CSSLab/maia3 repository; the model card points there)",
+   "downloadBytes": 19167234,
+   "report": {
+    "overall": {
+     "matched": 14947,
+     "positions": 30860,
+     "games": 1046,
+     "standardError": 0.0030430705973064124
+    },
+    "afterPly10": {
+     "matched": 12367,
+     "positions": 25635,
+     "games": 1036,
+     "standardError": 0.0034141554730408876
+    },
+    "byPhase": {
+     "opening": {
+      "matched": 2580,
+      "positions": 5225,
+      "games": 1046,
+      "standardError": 0.006522285038532893
+     },
+     "middlegame": {
+      "matched": 4551,
+      "positions": 9822,
+      "games": 1036,
+      "standardError": 0.005010733262320874
+     },
+     "endgame": {
+      "matched": 7816,
+      "positions": 15813,
+      "games": 887,
+      "standardError": 0.004563719905466914
+     }
+    }
+   }
+  },
+  {
+   "name": "maia3-5m at 1900",
+   "family": "maia3",
+   "rating": 1900,
+   "licence": "AGPL-3.0 (the CSSLab/maia3 repository; the model card points there)",
+   "downloadBytes": 19167234,
+   "report": {
+    "overall": {
+     "matched": 14748,
+     "positions": 30860,
+     "games": 1046,
+     "standardError": 0.003079950551937399
+    },
+    "afterPly10": {
+     "matched": 12173,
+     "positions": 25635,
+     "games": 1036,
+     "standardError": 0.003449321385486314
+    },
+    "byPhase": {
+     "opening": {
+      "matched": 2575,
+      "positions": 5225,
+      "games": 1046,
+      "standardError": 0.0065884748470916
+     },
+     "middlegame": {
+      "matched": 4500,
+      "positions": 9822,
+      "games": 1036,
+      "standardError": 0.004969917601810767
+     },
+     "endgame": {
+      "matched": 7673,
+      "positions": 15813,
+      "games": 887,
+      "standardError": 0.004585750800958
+     }
+    }
+   }
+  }
+ ]
+}
