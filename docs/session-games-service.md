@@ -51,6 +51,17 @@ In the nginx server block that serves the site:
 # written to disk.
 limit_req_zone $binary_remote_addr zone=session_games:1m rate=10r/m;
 
+# Reading the counts has a limit of its own, so that a reader who reloads
+# the write-up page cannot use up the limit their next game report needs.
+limit_req_zone $binary_remote_addr zone=session_game_counts:1m rate=30r/m;
+
+location = /api/session-games/counts {
+    access_log off;
+    error_log /dev/null;
+    limit_req zone=session_game_counts burst=10 nodelay;
+    proxy_pass http://127.0.0.1:8787;
+}
+
 location /api/ {
     # No access log, and no error log: both record the visitor's address,
     # the error log for each request the rate limit turns away and each one
@@ -64,14 +75,17 @@ location /api/ {
 }
 ```
 
-`limit_req_zone` belongs in the `http` block, outside the server block.
+Both `limit_req_zone` lines belong in the `http` block, outside the server
+block. The exact-match location for the counts takes precedence over the
+`/api/` prefix.
 
 ## Reading the counts
 
 The write-up page shows the aggregate counts as they stand, read from
-`GET /api/session-games/counts`, which answers them as JSON. The rate limit
-above covers it like the rest of `/api/`: a reader who reloads the page
-more than ten times a minute sees the counts as unavailable.
+`GET /api/session-games/counts`, which answers them as JSON. Its rate limit
+above is separate from the one on game reports: a reader who reloads the
+page more than thirty times a minute sees the counts as unavailable, and
+can still report the game they play next.
 
 To read them offline, copy the database off the VPS and print the same
 counts:
