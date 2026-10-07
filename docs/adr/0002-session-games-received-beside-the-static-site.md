@@ -28,8 +28,10 @@ of it handles TLS, request size limits and rate limiting.
 
 The page reports the moves played, not a PGN. The service replays them, so a
 game is stored only if it is legal and finished, and its result is the one
-the service computed. An abandoned game is never reported and would be
-refused if it were.
+the service computed. A game ends on the board or by the visitor resigning,
+which the report says; a resignation is the Bot's win, since the Bot never
+resigns, and is refused for a game that had already ended. An abandoned game
+is never reported and would be refused if it were.
 
 No account, cookie or address is stored. The service still logs each
 request, but without the client's address, which the standard library's

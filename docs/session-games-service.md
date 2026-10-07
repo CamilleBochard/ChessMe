@@ -13,7 +13,8 @@ moves, whether it came from the Opening Book or the Base Model. No account,
 cookie or address is stored, and the service's own output names no client.
 
 A game the visitor did not finish is never sent, and the service refuses
-one that has not ended.
+one that has not ended. A game the visitor resigned counts as finished: it
+is stored as the Bot's win, its PGN marked `[Termination "Visitor resigned"]`.
 
 ## On the VPS
 

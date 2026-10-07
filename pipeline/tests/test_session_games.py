@@ -173,6 +173,10 @@ def test_refuses_a_report_that_does_not_say_which_side_the_bot_played(tmp_path):
         {"botColour": "black", "baseModel": "maia3-5m", "moves": FOOLS_MATE_MOVES},
         {"botColour": "black", "baseModel": "maia3-5m", "rating": "1100", "moves": FOOLS_MATE_MOVES},
         {"botColour": "black", "baseModel": "maia3-5m", "rating": True, "moves": FOOLS_MATE_MOVES},
+        # An unfinished game, so that only a resignation that is not a plain
+        # true could let it through.
+        {"botColour": "black", "baseModel": "maia3-5m", "rating": 1100, "moves": [], "visitorResigned": "yes"},
+        {"botColour": "black", "baseModel": "maia3-5m", "rating": 1100, "moves": [], "visitorResigned": 1},
     ],
 )
 def test_refuses_a_report_that_is_not_shaped_like_the_pages(tmp_path, report):
@@ -260,3 +264,34 @@ def test_names_the_rating_the_base_model_played_at_in_the_pgn(tmp_path):
 
     pgn = session_game_pgns(store)[0]
     assert '[BaseModelRating "1100"]' in pgn
+
+
+def resigned_after_two_moves():
+    """The visitor, playing White, resigns after one move each: the Bot wins."""
+    return {
+        "botColour": "black",
+        "baseModel": "maia3-5m",
+        "rating": 1100,
+        "moves": [{"uci": "e2e4"}, {"uci": "e7e5", "source": "opening-book"}],
+        "visitorResigned": True,
+    }
+
+
+def test_stores_a_game_the_visitor_resigned_as_won_by_the_bot(tmp_path):
+    store = open_store(tmp_path / "session-games.sqlite")
+
+    record_session_game(store, resigned_after_two_moves(), played_on=PLAYED_ON)
+
+    pgn = session_game_pgns(store)[0]
+    assert '[Result "0-1"]' in pgn
+    assert '[Termination "Visitor resigned"]' in pgn
+    assert session_game_counts(store)["bot_wins"] == 1
+
+
+def test_refuses_a_resignation_after_the_game_ended_on_the_board(tmp_path):
+    store = open_store(tmp_path / "session-games.sqlite")
+    report = fools_mate_reported_by_the_page()
+    report["visitorResigned"] = True
+
+    with pytest.raises(RejectedGame, match="already ended"):
+        record_session_game(store, report, played_on=PLAYED_ON)
