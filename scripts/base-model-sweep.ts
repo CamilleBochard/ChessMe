@@ -6,8 +6,10 @@
 // Test Set: the candidates are pretrained on other players' games, so none of
 // Camille's games can have shaped them, and the larger sample narrows every
 // estimate. The tables go to standard output as Markdown; progress goes to
-// standard error. --positions <file> replaces the dataset with other JSON
-// Lines files, for a quick run on a few positions.
+// standard error. --record <file> also writes every candidate's raw counts
+// as JSON, the form the write-up page reads (docs/experiments/results/).
+// --positions <file> replaces the dataset with other JSON Lines files, for a
+// quick run on a few positions.
 //
 // Candidates are read from pipeline/base_model_candidates.json and their
 // converted files from models/onnx. Maia-3 takes its rating as an input, so
@@ -15,12 +17,17 @@
 // run one after another: ONNX Runtime already spreads one model over several
 // cores, and running two at once slows both.
 
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
 import { brotliCompressSync, constants as zlibConstants } from 'node:zlib';
 import { loadBaseModel } from '../src/engine/base-model';
 import { selectMove } from '../src/engine/move-selection';
-import { chooseBaseModel, type BaseModelDecision, type CandidateResult } from '../src/evaluation/base-model-sweep';
+import {
+  chooseBaseModel,
+  type BaseModelDecision,
+  type CandidateResult,
+  type SweepRecord,
+} from '../src/evaluation/base-model-sweep';
 import {
   measureMoveMatching,
   PHASES,
@@ -59,7 +66,10 @@ interface CandidateRun {
 }
 
 const { values: flags } = parseArgs({
-  options: { positions: { type: 'string', multiple: true } },
+  options: {
+    positions: { type: 'string', multiple: true },
+    record: { type: 'string' },
+  },
 });
 const datasetFiles = flags.positions ?? DATASET_FILES;
 
@@ -106,6 +116,17 @@ console.log();
 console.log(slicesTable(results[0]));
 console.log();
 console.log(decisionTable(decision));
+
+if (flags.record !== undefined) {
+  const record: SweepRecord = {
+    measuredOn: new Date().toISOString().slice(0, 10),
+    runtime: `Node ${process.versions.node}`,
+    lichessRating: LICHESS_RATING,
+    candidates: results,
+  };
+  await writeFile(flags.record, JSON.stringify(record, null, 1) + '\n');
+  progress(`Recorded in ${flags.record}`);
+}
 
 /** Every Maia-1 bin at its own rating, and every Maia-3 model at each swept rating. */
 function candidateRuns(candidateEntries: CandidateEntry[]): CandidateRun[] {

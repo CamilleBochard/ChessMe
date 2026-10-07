@@ -22,6 +22,21 @@ export interface CandidateResult {
   report: MoveMatchingReport;
 }
 
+/**
+ * What one run of the sweep measured, as it is kept for the write-up: every
+ * candidate's raw counts, so that anything shown from it, the choice of Base
+ * Model included, is computed again from the measurement.
+ */
+export interface SweepRecord {
+  /** The day the sweep ran, as YYYY-MM-DD. */
+  measuredOn: string;
+  /** The JavaScript runtime the engine ran on, such as Node 22.12.0. */
+  runtime: string;
+  /** Camille's Lichess rating, the scale Maia is trained on, which the Maia-Equivalent Rating is compared with. */
+  lichessRating: number;
+  candidates: CandidateResult[];
+}
+
 export interface BaseModelDecision {
   /** The candidate that matches most of Camille's moves after ply 10. */
   best: CandidateResult;

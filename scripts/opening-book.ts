@@ -7,9 +7,11 @@
 //
 // The book is the one pipeline/build_opening_book.py writes, built from the
 // training games only. The tables go to standard output as Markdown; progress
-// goes to standard error.
+// goes to standard error. --record <file> also writes the raw counts as JSON,
+// the form the write-up page reads (docs/experiments/results/).
 
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
+import { basename } from 'node:path';
 import { parseArgs } from 'node:util';
 import { loadBaseModel } from '../src/engine/base-model';
 import { selectMove } from '../src/engine/move-selection';
@@ -23,7 +25,11 @@ import {
   type MoveMatchingScore,
   type Phase,
 } from '../src/evaluation/move-matching';
-import { measureBookCoverage, type BookCoverage } from '../src/evaluation/opening-book-coverage';
+import {
+  measureBookCoverage,
+  type BookCoverage,
+  type OpeningBookRecord,
+} from '../src/evaluation/opening-book-coverage';
 
 const DEFAULT_TEST_SET = 'data/dataset/test.jsonl';
 const DEFAULT_BOOK = 'data/dataset/opening-book.json';
@@ -35,7 +41,11 @@ const PHASE_LABELS: Record<Phase, string> = {
 };
 
 const { values: flags, positionals } = parseArgs({
-  options: { rating: { type: 'string' }, book: { type: 'string', default: DEFAULT_BOOK } },
+  options: {
+    rating: { type: 'string' },
+    book: { type: 'string', default: DEFAULT_BOOK },
+    record: { type: 'string' },
+  },
   allowPositionals: true,
 });
 const [modelPath, testSetPath = DEFAULT_TEST_SET] = positionals;
@@ -50,7 +60,8 @@ if (flags.rating !== undefined) {
 }
 
 const baseModel = await loadBaseModel(await readFile(modelPath), { rating: rating });
-const openingBook = readOpeningBook(await readFile(flags.book, 'utf-8'));
+const bookText = await readFile(flags.book, 'utf-8');
+const openingBook = readOpeningBook(bookText);
 const testSet = readPositions(await readFile(testSetPath, 'utf-8'));
 
 const coverage = measureBookCoverage(testSet, openingBook);
@@ -80,6 +91,23 @@ console.log('');
 console.log(comparisonTable('Every Test Set position', baseModelAlone, withBook));
 console.log('');
 console.log(comparisonTable('Positions the book answers', answeredBaseModel, answeredBook));
+
+if (flags.record !== undefined) {
+  const bookPositions = Object.keys(JSON.parse(bookText).positions).length;
+  const record: OpeningBookRecord = {
+    measuredOn: new Date().toISOString().slice(0, 10),
+    baseModel: basename(modelPath, '.onnx'),
+    rating: rating ?? null,
+    bookPositions: bookPositions,
+    minOccurrences: openingBook.minOccurrences,
+    coverage: coverage,
+    baseModelAlone: baseModelAlone,
+    bookThenBaseModel: withBook,
+    answeredByBook: { baseModelAlone: answeredBaseModel, bookThenBaseModel: answeredBook },
+  };
+  await writeFile(flags.record, JSON.stringify(record, null, 1) + '\n');
+  progress(`Recorded in ${flags.record}`);
+}
 
 function progress(message: string): void {
   console.error(message);
