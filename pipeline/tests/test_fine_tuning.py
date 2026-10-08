@@ -95,6 +95,9 @@ def test_fine_tuning_an_adapter_changes_the_moves_but_none_of_the_base_model_s_w
     fine_tune(adapted, training=[rook_pawn] * 4, validation=[rook_pawn], settings=settings)
 
     assert top_moves(adapted, [SICILIAN_PLY_12], rating=1100) == ["h7h5"]
+    # A frozen Base Model is what defines this variant, and no move can show
+    # it, so the weights themselves are compared. The adapter's module sits
+    # where the trunk was, so the trunk's weights are found one level down.
     base_weights = base_model.state_dict()
     for name, weight in adapted.state_dict().items():
         base_name = name.replace("transformer.trunk.", "transformer.")

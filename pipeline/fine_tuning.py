@@ -22,9 +22,10 @@ from pipeline.dataset import Position, is_held_back
 from pipeline.move_matching import move_matching_report
 from pipeline.verify_maia3 import ALL_MOVES, MOVE_INDEX, encode
 
-# Positions run through the network at once. Large enough to keep a CPU or GPU
-# busy, small enough to fit an ordinary GPU's memory while training.
-BATCH_SIZE = 256
+# Positions run through the network at once when only its moves are wanted.
+# Large enough to keep a CPU or GPU busy, small enough for an ordinary GPU's
+# memory. Training sets its own batch size in TrainingSettings.
+INFERENCE_BATCH_SIZE = 256
 
 
 @dataclass(frozen=True)
@@ -93,7 +94,8 @@ def with_adapter(model: torch.nn.Module, width: int) -> torch.nn.Module:
     adapted = copy.deepcopy(model)
     for parameter in adapted.parameters():
         parameter.requires_grad = False
-    adapter = Adapter(model_width=adapted.cfg.dim_vit, width=width).to(next(adapted.parameters()).device)
+    device = next(adapted.parameters()).device
+    adapter = Adapter(model_width=adapted.cfg.dim_vit, width=width).to(device)
     adapted.transformer = AdaptedTrunk(adapted.transformer, adapter)
     return adapted
 
@@ -212,8 +214,8 @@ def top_moves(model: torch.nn.Module, fens: list[str], rating: int) -> list[str]
 
     moves = []
     with torch.no_grad():
-        for start in range(0, len(fens), BATCH_SIZE):
-            batch_fens = fens[start : start + BATCH_SIZE]
+        for start in range(0, len(fens), INFERENCE_BATCH_SIZE):
+            batch_fens = fens[start : start + INFERENCE_BATCH_SIZE]
             tokens, legal = encode_positions(batch_fens, model.cfg)
             logits = legal_move_logits(model, tokens.to(device), legal.to(device), rating)
             best_indices = logits.argmax(dim=1).tolist()
@@ -238,15 +240,21 @@ def legal_move_logits(model: torch.nn.Module, tokens: torch.Tensor, legal: torch
 
 
 def _move_index(fen: str, move: str) -> int:
-    """Where the network scores a move, named as it names moves: from the side to move."""
-    if chess.Board(fen).turn == chess.BLACK:
-        move = mirror_move(move)
-    return MOVE_INDEX[move]
+    """Where the network scores a move played in the position."""
+    return MOVE_INDEX[_mirrored_for_black(fen, move)]
 
 
 def _move_name(fen: str, move_index: int) -> str:
-    """Maia-3 sees every position from the side to move, so Black's moves are named mirrored."""
-    move = ALL_MOVES[move_index]
+    """The move the network scores at move_index, as it is played in the position."""
+    return _mirrored_for_black(fen, ALL_MOVES[move_index])
+
+
+def _mirrored_for_black(fen: str, move: str) -> str:
+    """The network sees every position from the side to move, so it names Black's moves mirrored.
+
+    Mirroring twice gives the move back, so this turns a played move into the
+    network's name for it and the network's name back into the played move.
+    """
     if chess.Board(fen).turn == chess.BLACK:
-        move = mirror_move(move)
+        return mirror_move(move)
     return move
