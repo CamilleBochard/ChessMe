@@ -70,3 +70,29 @@ def test_keeps_only_the_games_with_ten_moves_to_read_from_ply_11_on():
     kept = games_long_enough(ten_moves_read + nine_moves_read)
 
     assert kept == [ten_moves_read]
+
+
+def test_names_the_statistic_that_gives_camille_away():
+    camille = games("camille", CASTLES_QUEENSIDE + KNIGHTS_SHUFFLE, 5)
+    others = games("other", CASTLES_KINGSIDE + KNIGHTS_SHUFFLE, 5)
+
+    weights = train_discriminator(camille, others).weights()
+
+    strongest_for_camille = max(weights, key=weights.get)
+    strongest_against = min(weights, key=weights.get)
+    assert {strongest_for_camille, strongest_against} == {"castled queenside", "castled kingside"}
+    assert weights["castled queenside"] > 0
+
+
+def test_keeps_each_weight_on_its_own_statistic_when_no_game_reaches_the_endgame():
+    # Castling at ply 11 and sixteen plies of shuffling end the games at
+    # ply 27: every endgame statistic is missing from every game.
+    short_shuffle = " c6b8 c3b1 b8c6 b1c3" * 4
+    camille = games("camille", CASTLES_QUEENSIDE + short_shuffle, 5)
+    others = games("other", CASTLES_KINGSIDE + short_shuffle, 5)
+
+    weights = train_discriminator(camille, others).weights()
+
+    assert weights["castled queenside"] > 0
+    assert weights["castled kingside"] < 0
+    assert weights["king moves, endgame"] == 0

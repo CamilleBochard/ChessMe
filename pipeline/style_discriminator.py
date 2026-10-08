@@ -86,6 +86,20 @@ class StyleDiscriminator:
         # Camille's games were labelled 1, so his probability is the second column.
         return float(probabilities[1])
 
+    def weights(self) -> dict[str, float]:
+        """How strongly each statistic pushes a game towards Camille (positive) or away from him (negative).
+
+        Statistics are rescaled before they are weighed, so a weight is the
+        push of one standard deviation and the weights compare with one
+        another.
+        """
+        regression = self._model[-1]
+        coefficients = regression.coef_[0]
+        weights = {}
+        for name, coefficient in zip(feature_names(), coefficients, strict=True):
+            weights[name] = float(coefficient)
+        return weights
+
 
 def train_discriminator(camille_games: list[list[Position]], other_games: list[list[Position]]) -> StyleDiscriminator:
     """Trains the discriminator on Camille's games against other players' games, one list of positions per game."""
@@ -100,8 +114,10 @@ def train_discriminator(camille_games: list[list[Position]], other_games: list[l
 
     model = make_pipeline(
         # A statistic a game gives no evidence on is taken as the average
-        # game's, so that it pushes the answer neither way.
-        SimpleImputer(strategy="mean"),
+        # game's, so that it pushes the answer neither way. One that no game
+        # gives evidence on is kept, as a column of zeros, so that every
+        # weight stays on the statistic it is named after.
+        SimpleImputer(strategy="mean", keep_empty_features=True),
         # Every statistic on the same scale, so that their weights compare.
         StandardScaler(),
         # The two classes weigh the same however many games each holds, so
