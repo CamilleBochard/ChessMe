@@ -97,6 +97,7 @@ def measure(dataset_dir: Path, other_players_path: Path, bot_games_path: Path, b
         # from Chess.com. Separation on his Lichess games alone shows
         # whether the discriminator learnt the site rather than the player.
         "validation_lichess_only": _separation(_from_source(scores["camille_test_set"], "lichess"), scores["other_players_held_out"]),
+        "validation_chesscom_only": _separation(_from_source(scores["camille_test_set"], "chesscom"), scores["other_players_held_out"]),
         # The Bot and the Baseline measured as Camille's Test Set is: a
         # group that plays like him stands out from the other players as
         # much as his own games do.
@@ -187,6 +188,7 @@ def tables(results: dict) -> str:
     separations = [
         ("Camille's Test Set against held-out players", results["validation"]),
         ("Camille's Lichess Test Set games against held-out players", results["validation_lichess_only"]),
+        ("Camille's Chess.com Test Set games against held-out players", results["validation_chesscom_only"]),
         ("Training games, for comparison", results["training_separation"]),
         ("Bot against held-out players", results["bot_against_other_players"]),
         ("Baseline against held-out players", results["baseline_against_other_players"]),
