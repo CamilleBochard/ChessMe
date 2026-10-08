@@ -84,8 +84,14 @@ class AdaptedTrunk(torch.nn.Module):
 
 
 def with_adapter(model: torch.nn.Module, width: int) -> torch.nn.Module:
-    """A copy of the model with an adapter between its trunk and the heads that read it."""
+    """A copy of the model with an adapter between its trunk and the heads that read it.
+
+    Every weight of the copy is frozen except the adapter's, so fine-tuning it
+    trains the adapter alone.
+    """
     adapted = copy.deepcopy(model)
+    for parameter in adapted.parameters():
+        parameter.requires_grad = False
     adapter = Adapter(model_width=adapted.cfg.dim_vit, width=width).to(next(adapted.parameters()).device)
     adapted.transformer = AdaptedTrunk(adapted.transformer, adapter)
     return adapted

@@ -82,3 +82,21 @@ def test_an_untrained_adapter_leaves_every_move_of_the_base_model_unchanged(base
     adapted = with_adapter(base_model, width=16)
 
     assert top_moves(adapted, fens, rating=reference["rating"]) == expected_moves
+
+
+@needs_weights
+def test_fine_tuning_an_adapter_changes_the_moves_but_none_of_the_base_model_s_weights(base_model):
+    adapted = with_adapter(base_model, width=16)
+    rook_pawn = Position(
+        game_id="lichess:g", source="lichess", ply=12, phase="middlegame", fen=SICILIAN_PLY_12, move="h7h5"
+    )
+
+    settings = TrainingSettings(learning_rate=1e-2, epochs=3, batch_size=1, rating=1100)
+    fine_tune(adapted, training=[rook_pawn] * 4, validation=[rook_pawn], settings=settings)
+
+    assert top_moves(adapted, [SICILIAN_PLY_12], rating=1100) == ["h7h5"]
+    base_weights = base_model.state_dict()
+    for name, weight in adapted.state_dict().items():
+        base_name = name.replace("transformer.trunk.", "transformer.")
+        if base_name in base_weights:
+            assert torch.equal(weight, base_weights[base_name]), f"{name} was trained"
