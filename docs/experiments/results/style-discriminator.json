@@ -1,0 +1,145 @@
+{
+ "format_version": 1,
+ "min_moves_read": 10,
+ "groups": {
+  "camille_test_set": {
+   "games": 207,
+   "mean_score": 0.506418506339332,
+   "mean_score_interval": [
+    0.4933215860821629,
+    0.51999215113516
+   ],
+   "share_scored_as_camille": 0.5507246376811594
+  },
+  "other_players_held_out": {
+   "games": 522,
+   "mean_score": 0.4796341361001623,
+   "mean_score_interval": [
+    0.4711842647749789,
+    0.4881381967758308
+   ],
+   "share_scored_as_camille": 0.43103448275862066
+  },
+  "bot": {
+   "games": 395,
+   "mean_score": 0.4867573599592212,
+   "mean_score_interval": [
+    0.47731576945958976,
+    0.49640621141027164
+   ],
+   "share_scored_as_camille": 0.46835443037974683
+  },
+  "baseline": {
+   "games": 378,
+   "mean_score": 0.48452066649623016,
+   "mean_score_interval": [
+    0.4753848965077815,
+    0.49343791977049084
+   ],
+   "share_scored_as_camille": 0.47354497354497355
+  },
+  "camille_training_games": {
+   "games": 702,
+   "mean_score": 0.5171989502285059,
+   "mean_score_interval": [
+    0.5107057924959995,
+    0.5235993324964079
+   ],
+   "share_scored_as_camille": 0.5925925925925926
+  },
+  "other_players_training_games": {
+   "games": 2010,
+   "mean_score": 0.4827676409912724,
+   "mean_score_interval": [
+    0.47902769612291773,
+    0.48690677513708736
+   ],
+   "share_scored_as_camille": 0.4373134328358209
+  }
+ },
+ "validation": {
+  "candidate_games": 207,
+  "other_games": 522,
+  "area_under_curve": 0.5732504118311215,
+  "area_under_curve_interval": [
+   0.5271061228644937,
+   0.6199999537268402
+  ]
+ },
+ "training_separation": {
+  "candidate_games": 702,
+  "other_games": 2010,
+  "area_under_curve": 0.6100480503465578,
+  "area_under_curve_interval": [
+   0.5863702676078298,
+   0.6343798546441581
+  ]
+ },
+ "validation_lichess_only": {
+  "candidate_games": 89,
+  "other_games": 522,
+  "area_under_curve": 0.5367859141590253,
+  "area_under_curve_interval": [
+   0.47319083903741016,
+   0.5993225063498213
+  ]
+ },
+ "validation_chesscom_only": {
+  "candidate_games": 118,
+  "other_games": 522,
+  "area_under_curve": 0.60075329566855,
+  "area_under_curve_interval": [
+   0.5395265114617832,
+   0.6600684297681667
+  ]
+ },
+ "bot_against_other_players": {
+  "candidate_games": 395,
+  "other_games": 522,
+  "area_under_curve": 0.5187011979242446,
+  "area_under_curve_interval": [
+   0.48291951598040644,
+   0.5587292060720694
+  ]
+ },
+ "baseline_against_other_players": {
+  "candidate_games": 378,
+  "other_games": 522,
+  "area_under_curve": 0.5143323400028381,
+  "area_under_curve_interval": [
+   0.47603134059072755,
+   0.5499147306858034
+  ]
+ },
+ "bot_against_baseline": {
+  "mean_score_difference": 0.002236693462991046,
+  "mean_score_difference_interval": [
+   -0.010320772292283141,
+   0.014790052471304814
+  ],
+  "area_under_curve": 0.5046279552608667,
+  "area_under_curve_interval": [
+   0.4653923046011654,
+   0.5434254236152969
+  ]
+ },
+ "weights": {
+  "capture taken when on offer, middlegame": -0.17089167590503904,
+  "king moves, endgame": -0.161374049128042,
+  "bishop moves, endgame": 0.13226355437778947,
+  "bishop moves, middlegame": 0.11479604762928462,
+  "king moves, middlegame": -0.1028888090064622,
+  "rook moves, middlegame": 0.08412758881366635,
+  "knight moves, endgame": -0.0832223331025995,
+  "rook moves, endgame": 0.08227758827154966,
+  "pawn moves, endgame": 0.07201333460359254,
+  "pawn moves, middlegame": -0.0713626586462224,
+  "queen moves, middlegame": -0.05787795983931373,
+  "castled queenside": 0.05610695053125601,
+  "knight moves, middlegame": 0.03546277876681771,
+  "castled kingside": -0.02852361097070922,
+  "queen moves, endgame": -0.026369804287899486,
+  "capture taken when on offer, endgame": -0.010538517372959773,
+  "queens off before move 20": 0.005357697675020878
+ }
+}
