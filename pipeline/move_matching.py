@@ -36,6 +36,25 @@ class MoveMatchingReport:
     by_phase: dict[str, MoveMatchingScore]
 
 
+@dataclass(frozen=True)
+class Difference:
+    # The model's share matched minus the Baseline's, as a fraction: 0.01 is
+    # one percentage point more of Camille's moves.
+    difference: float
+    # The standard error of that difference, with games as clusters. Both
+    # models play the same positions, so the error of the difference is
+    # computed from the per-game differences rather than from the two separate
+    # errors, which would overstate it. NaN for a single game.
+    standard_error: float
+
+
+@dataclass(frozen=True)
+class BaselineComparison:
+    overall: Difference
+    after_ply_10: Difference
+    by_phase: dict[str, Difference]
+
+
 @dataclass
 class _GameTally:
     matched: int = 0
@@ -101,3 +120,46 @@ def _clustered_standard_error(games: list[_GameTally], matched: int, positions: 
     small_sample_correction = game_count / (game_count - 1)
     variance = small_sample_correction * sum_of_squared_residuals / (positions * positions)
     return variance**0.5
+
+
+def compare_with_baseline(
+    positions: list[Position], baseline_moves: list[str], model_moves: list[str]
+) -> BaselineComparison:
+    """How much more often a model plays Camille's move than the Baseline does, on the same positions."""
+    outcomes = []
+    for played_position, baseline_move, model_move in zip(positions, baseline_moves, model_moves, strict=True):
+        # +1 where only the model matches, -1 where only the Baseline does.
+        gain = int(model_move == played_position.move) - int(baseline_move == played_position.move)
+        outcomes.append((played_position, gain))
+
+    after_opening = [outcome for outcome in outcomes if outcome[0].ply > LAST_OPENING_PLY]
+    by_phase = {}
+    for phase in PHASES:
+        in_phase = [outcome for outcome in outcomes if outcome[0].phase == phase]
+        by_phase[phase] = _difference(in_phase)
+
+    return BaselineComparison(
+        overall=_difference(outcomes), after_ply_10=_difference(after_opening), by_phase=by_phase
+    )
+
+
+def _difference(outcomes: list[tuple[Position, int]]) -> Difference:
+    """The mean gain per position, with the same clustered error as a share.
+
+    Each game's net gain plays the part a game's matches play in a share, so
+    the cluster-robust formula carries over unchanged.
+    """
+    tallies: dict[str, _GameTally] = {}
+    for played_position, gain in outcomes:
+        tally = tallies.setdefault(played_position.game_id, _GameTally())
+        tally.positions = tally.positions + 1
+        tally.matched = tally.matched + gain
+
+    net_gain = sum(tally.matched for tally in tallies.values())
+    positions = sum(tally.positions for tally in tallies.values())
+    if positions == 0:
+        return Difference(difference=float("nan"), standard_error=float("nan"))
+    return Difference(
+        difference=net_gain / positions,
+        standard_error=_clustered_standard_error(list(tallies.values()), net_gain, positions),
+    )
