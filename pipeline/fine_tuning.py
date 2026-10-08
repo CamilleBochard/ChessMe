@@ -50,6 +50,47 @@ class TrainingRun:
     best_epoch: int
 
 
+class Adapter(torch.nn.Module):
+    """A small correction added to what the trunk says about each square.
+
+    The trunk's description of a square (256 numbers) is squeezed through
+    `width` numbers and widened back, and the result is added to it. The
+    widening starts at zero, so an untrained adapter adds nothing and the
+    model answers exactly as the Base Model does.
+    """
+
+    def __init__(self, model_width: int, width: int):
+        super().__init__()
+        self.narrow = torch.nn.Linear(model_width, width)
+        self.widen = torch.nn.Linear(width, model_width)
+        torch.nn.init.zeros_(self.widen.weight)
+        torch.nn.init.zeros_(self.widen.bias)
+
+    def forward(self, squares: torch.Tensor) -> torch.Tensor:
+        correction = self.widen(F.gelu(self.narrow(squares)))
+        return squares + correction
+
+
+class AdaptedTrunk(torch.nn.Module):
+    """Maia-3's trunk followed by an adapter, in the place the trunk had in the model."""
+
+    def __init__(self, trunk: torch.nn.Module, adapter: Adapter):
+        super().__init__()
+        self.trunk = trunk
+        self.adapter = adapter
+
+    def forward(self, squares: torch.Tensor) -> torch.Tensor:
+        return self.adapter(self.trunk(squares))
+
+
+def with_adapter(model: torch.nn.Module, width: int) -> torch.nn.Module:
+    """A copy of the model with an adapter between its trunk and the heads that read it."""
+    adapted = copy.deepcopy(model)
+    adapter = Adapter(model_width=adapted.cfg.dim_vit, width=width).to(next(adapted.parameters()).device)
+    adapted.transformer = AdaptedTrunk(adapted.transformer, adapter)
+    return adapted
+
+
 def fine_tune(
     model: torch.nn.Module, training: list[Position], validation: list[Position], settings: TrainingSettings
 ) -> TrainingRun:

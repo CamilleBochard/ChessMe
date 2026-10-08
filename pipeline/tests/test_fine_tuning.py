@@ -8,7 +8,7 @@ torch = pytest.importorskip("torch", reason="needs the models extra: pip install
 from pipeline.build_dataset import TEST_FRACTION  # noqa: E402
 from pipeline.convert_maia3 import CHECKPOINT_PATH, load_reference  # noqa: E402
 from pipeline.dataset import Position, is_held_back  # noqa: E402
-from pipeline.fine_tuning import TrainingSettings, fine_tune, split_validation, top_moves  # noqa: E402
+from pipeline.fine_tuning import TrainingSettings, fine_tune, split_validation, top_moves, with_adapter  # noqa: E402
 from pipeline.fixture_models import FIXTURES_DIR  # noqa: E402
 
 # The weights are downloaded by python -m pipeline.fetch_models and not
@@ -21,11 +21,15 @@ def base_model():
     return load_reference()
 
 
-@needs_weights
-def test_the_base_model_in_pytorch_plays_the_engine_s_reference_moves(base_model):
+def read_reference() -> dict:
     # Recorded by python -m pipeline.maia3_reference from the ONNX file the
     # browser runs; the engine's own encoding is checked against the same file.
-    reference = json.loads((FIXTURES_DIR / "maia3-5m-reference.json").read_text(encoding="utf-8"))
+    return json.loads((FIXTURES_DIR / "maia3-5m-reference.json").read_text(encoding="utf-8"))
+
+
+@needs_weights
+def test_the_base_model_in_pytorch_plays_the_engine_s_reference_moves(base_model):
+    reference = read_reference()
     fens = [recorded["fen"] for recorded in reference["positions"]]
     expected_moves = [recorded["best_move"] for recorded in reference["positions"]]
 
@@ -67,3 +71,14 @@ def test_fine_tuning_teaches_the_model_the_move_camille_played(base_model):
     fine_tune(model, training=[rook_pawn] * 4, validation=[rook_pawn], settings=settings)
 
     assert top_moves(model, [SICILIAN_PLY_12], rating=1100) == ["h7h5"]
+
+
+@needs_weights
+def test_an_untrained_adapter_leaves_every_move_of_the_base_model_unchanged(base_model):
+    reference = read_reference()
+    fens = [recorded["fen"] for recorded in reference["positions"]]
+    expected_moves = [recorded["best_move"] for recorded in reference["positions"]]
+
+    adapted = with_adapter(base_model, width=16)
+
+    assert top_moves(adapted, fens, rating=reference["rating"]) == expected_moves
