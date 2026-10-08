@@ -199,10 +199,21 @@ clear chance.
 Bot.** The weights that matter most say he takes an offered capture less
 often in the middlegame, moves his king less in the endgame and his bishops
 more. Castling, the clearest difference between him and the Bot in the Style
-Fingerprint, barely separates him from other players of his level (+0.06 for
-castling queenside): leaving the king uncastled or castling long is a habit
-he shares with them, and the Bot's 84% of kingside castles is the Base
-Model's, not a departure from what 1300 players do.
+Fingerprint, barely separates him from other players (+0.06 for castling
+queenside), because they castle as he does. Over every game of each group,
+measured by the fingerprint's own code:
+
+| Castling, whole game | Camille | Other players | Bot | Baseline |
+|---|---|---|---|---|
+| Kingside | 53.5% | 56.3% | 84.0% | 82.8% |
+| Queenside | 15.2% | 12.7% | 6.5% | 6.0% |
+| Never | 31.3% | 30.9% | 9.5% | 11.3% |
+
+The Bot's castling is not Camille's and not his peers' either: it belongs to
+the Base Model's top move. The discriminator cannot see it, and this is a
+limit of the instrument rather than a finding about the Bot. Trained to tell
+Camille from other people, it weighs only what differs between them, and a
+Bot can be unlike everyone in a way that no weight measures.
 
 ## The Bot against the Baseline: no difference found
 
