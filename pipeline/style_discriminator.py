@@ -30,6 +30,11 @@ from pipeline.style_fingerprint import PIECE_NAMES, move_statistics
 # Phase; the discriminator reads from the middlegame on.
 FIRST_PLY_READ = 11
 
+# Fewer moves than this from ply 11 on and a game is too short to read. Ten
+# keeps 87% of Camille's games, 85% of the other players' and 395 of the
+# Bot's 400.
+MIN_MOVES_READ = 10
+
 # The Phases the discriminator reads.
 PHASES_READ = ["middlegame", "endgame"]
 
@@ -118,3 +123,22 @@ def _feature_row(positions: list[Position]) -> list[float]:
             value = float("nan")
         row.append(value)
     return row
+
+
+def games_long_enough(positions: list[Position]) -> list[list[Position]]:
+    """The positions grouped by game, keeping the games with enough moves from ply 11 on to be read.
+
+    A game resigned soon after the opening leaves a handful of moves, too
+    few for shares and rates to say anything; it is left out rather than
+    scored on noise. The same rule applies to every player's games.
+    """
+    positions_by_game: dict[str, list[Position]] = {}
+    for position in positions:
+        positions_by_game.setdefault(position.game_id, []).append(position)
+
+    games = []
+    for game in positions_by_game.values():
+        moves_read = [position for position in game if position.ply >= FIRST_PLY_READ]
+        if len(moves_read) >= MIN_MOVES_READ:
+            games.append(game)
+    return games

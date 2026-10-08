@@ -1,7 +1,7 @@
 import chess
 
 from pipeline.dataset import Position, positions_faced
-from pipeline.style_discriminator import train_discriminator
+from pipeline.style_discriminator import games_long_enough, train_discriminator
 
 # Ten plies of development, then White castles at ply 11, the first ply the
 # discriminator reads, on the side the name says.
@@ -57,3 +57,16 @@ def test_reads_nothing_from_the_first_ten_plies_where_the_opening_book_plays():
 
     unseen_early_castle = white_game("unseen:early", CASTLES_EARLY + KNIGHTS_SHUFFLE_WHITE_FIRST)
     assert 0.45 < discriminator.camille_probability(unseen_early_castle) < 0.55
+
+
+def test_keeps_only_the_games_with_ten_moves_to_read_from_ply_11_on():
+    # Both games castle at ply 11, White's first move read. White's knight
+    # then moves eight more times in one game, for nine moves read, and
+    # once more in the other, for ten.
+    eight_knight_moves = " c6b8 c3b1 b8c6 b1c3" * 4
+    nine_moves_read = white_game("lichess:nine", CASTLES_KINGSIDE + eight_knight_moves)
+    ten_moves_read = white_game("lichess:ten", CASTLES_KINGSIDE + eight_knight_moves + " c6b8 c3b1")
+
+    kept = games_long_enough(ten_moves_read + nine_moves_read)
+
+    assert kept == [ten_moves_read]
