@@ -51,15 +51,15 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
       <button type="button" data-resign>Resign</button>
       <button type="button" data-new-game>New game</button>
     </div>
+  </div>
 
-    <div class="impression" data-impression hidden>
-      <p>Did the Bot feel like a real player of about {SERVED_MODEL_RATING} on Lichess?</p>
-      <div class="buttons" data-impression-choices>
-        <button type="button" data-felt-real="yes">Yes</button>
-        <button type="button" data-felt-real="no">No</button>
-      </div>
-      <p class="impression-thanks" data-impression-thanks hidden></p>
+  <div class="impression" data-impression hidden>
+    <p>Did the Bot feel like a real player of about {SERVED_MODEL_RATING} on Lichess?</p>
+    <div class="buttons" data-impression-choices>
+      <button type="button" data-felt-real="yes">Yes</button>
+      <button type="button" data-felt-real="no">No</button>
     </div>
+    <p class="impression-thanks" data-impression-thanks hidden></p>
   </div>
 
   <aside class="moves">
@@ -794,9 +794,12 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
     cursor: default;
   }
 
+  /* Under the buttons on a phone. On a wide screen the page places it, since
+     it decides what sits in its columns. */
   .impression {
     width: 100%;
     max-width: 24rem;
+    margin-inline: auto;
     text-align: center;
   }
 

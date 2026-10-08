@@ -108,9 +108,9 @@ import SessionGameSummary from '../components/SessionGameSummary.astro';
     main {
       display: grid;
       grid-template-columns: minmax(14rem, 1fr) auto 17rem;
-      /* The title, then the summary under it; the board and the moves span
-         both rows. */
-      grid-template-rows: auto 1fr;
+      /* The title, then the summary of the site's games and the end-of-game
+         question under it; the board and the moves span every row. */
+      grid-template-rows: auto auto 1fr;
       height: 100dvh;
       padding: 0;
     }
@@ -131,7 +131,25 @@ import SessionGameSummary from '../components/SessionGameSummary.astro';
     .visitor-summary {
       grid-column: 1;
       grid-row: 2;
-      padding: 0 1.5rem 2rem;
+      padding: 0 1.5rem;
+    }
+
+    /* The question about the game just played, kept in view under the
+       summary rather than below the board's buttons, which on a short
+       screen means scrolling. */
+    main :global(.impression) {
+      grid-column: 1;
+      grid-row: 3;
+      align-self: start;
+      justify-self: end;
+      width: auto;
+      max-width: 16rem;
+      margin: 1.5rem 1.5rem 2rem;
+      text-align: left;
+    }
+
+    main :global(.impression [data-impression-choices]) {
+      justify-content: flex-start;
     }
 
     /* Set against the board like the title above it. */
