@@ -49,8 +49,9 @@ player. Camille's own account is left out. When both players of a
 game qualify, a hash of the game's id picks one, so the sample is not
 filled with White's games.
 
-The other players are split into training games and held-out games by the
-same rule as Camille's Test Set: a hash of the game's id, 20% held out.
+The other players are split into training games and a test split by the
+same rule as Camille's Test Set: a hash of the game's id, 20% kept out of
+training.
 
 ## What the discriminator reads
 
@@ -137,7 +138,7 @@ it. "Scored as Camille" is the share of games whose score is above one half.
 | Games | Scored | Mean score (95% interval) | Scored as Camille |
 |---|---|---|---|
 | Camille, Test Set | 207 | 0.506 (0.493 to 0.520) | 55.1% |
-| Other players, held out | 522 | 0.480 (0.471 to 0.488) | 43.1% |
+| Other players, test split | 522 | 0.480 (0.471 to 0.488) | 43.1% |
 | Bot | 395 | 0.487 (0.477 to 0.496) | 46.8% |
 | Baseline | 378 | 0.485 (0.475 to 0.493) | 47.4% |
 | Camille, training games | 702 | 0.517 (0.511 to 0.524) | 59.3% |
@@ -145,12 +146,12 @@ it. "Scored as Camille" is the share of games whose score is above one half.
 
 | Separation | Area under the curve (95% interval) |
 |---|---|
-| Camille's Test Set against held-out players | 0.573 (0.527 to 0.620) |
-| Camille's Lichess Test Set games against held-out players | 0.537 (0.473 to 0.599) |
-| Camille's Chess.com Test Set games against held-out players | 0.601 (0.540 to 0.660) |
+| Camille's Test Set against the other players' test split | 0.573 (0.527 to 0.620) |
+| Camille's Lichess Test Set games against the other players' test split | 0.537 (0.473 to 0.599) |
+| Camille's Chess.com Test Set games against the other players' test split | 0.601 (0.540 to 0.660) |
 | Training games, for comparison | 0.610 (0.586 to 0.634) |
-| Bot against held-out players | 0.519 (0.483 to 0.559) |
-| Baseline against held-out players | 0.514 (0.476 to 0.550) |
+| Bot against the other players' test split | 0.519 (0.483 to 0.559) |
+| Baseline against the other players' test split | 0.514 (0.476 to 0.550) |
 | Bot against Baseline | 0.505 (0.465 to 0.543) |
 
 The Bot's mean score minus the Baseline's: +0.002 (-0.010 to +0.015).
@@ -183,7 +184,7 @@ Camille, and the size is the push of one standard deviation of the statistic.
 **A signal exists, and it is weak.** On games it never saw, the
 discriminator ranks one of Camille's games above another player's 57 times in
 100, where a coin would manage 50; the interval, 0.527 to 0.620, stays clear of
-0.5. It is far from recognising him: it scores 55% of his held-out games as
+0.5. It is far from recognising him: it scores 55% of his Test Set games as
 his, and 43% of the other players' as his too. Its separation on its own
 training games is barely higher (0.610), so the limit is not a model that
 memorised its games: these statistics, read from one game of a few dozen
@@ -229,7 +230,7 @@ measurement: past ply 10 the Bot and the Baseline are the same model playing
 its top move, and the book can only change the positions the middlegame
 starts from. The interval bounds what was missed: the book raises the Bot's
 mean score by at most 0.015, about half the gap of 0.026 between Camille's own
-held-out games and the other players'.
+Test Set games and the other players'.
 
 ## The Bot against Camille's peers
 

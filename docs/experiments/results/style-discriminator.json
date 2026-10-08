@@ -11,7 +11,7 @@
    ],
    "share_scored_as_camille": 0.5507246376811594
   },
-  "other_players_held_out": {
+  "other_players_test_split": {
    "games": 522,
    "mean_score": 0.4796341361001623,
    "mean_score_interval": [
@@ -57,7 +57,7 @@
    "share_scored_as_camille": 0.4373134328358209
   }
  },
- "validation": {
+ "test_set_separation": {
   "candidate_games": 207,
   "other_games": 522,
   "area_under_curve": 0.5732504118311215,
@@ -75,7 +75,7 @@
    0.6343798546441581
   ]
  },
- "validation_lichess_only": {
+ "test_set_separation_lichess_only": {
   "candidate_games": 89,
   "other_games": 522,
   "area_under_curve": 0.5367859141590253,
@@ -84,7 +84,7 @@
    0.5993225063498213
   ]
  },
- "validation_chesscom_only": {
+ "test_set_separation_chesscom_only": {
   "candidate_games": 118,
   "other_games": 522,
   "area_under_curve": 0.60075329566855,
