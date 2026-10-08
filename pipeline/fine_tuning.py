@@ -12,11 +12,32 @@ import torch
 from maia3.dataset import get_legal_moves_mask
 from maia3.utils import mirror_move
 
+from pipeline.dataset import Position, is_held_back
 from pipeline.verify_maia3 import ALL_MOVES, MOVE_INDEX, encode
 
 # Positions run through the network at once. Large enough to keep a CPU or GPU
 # busy, small enough to fit an ordinary GPU's memory while training.
 BATCH_SIZE = 256
+
+
+def split_validation(positions: list[Position], fraction: float) -> tuple[list[Position], list[Position]]:
+    """Sets about `fraction` of the training games aside to judge training by, keeping each game whole.
+
+    Training needs games of Camille's it does not learn from, to tell when it
+    starts learning his particular games rather than his play. The Test Set
+    cannot serve: it is kept for the final measurement alone. A game is set
+    aside by the same kind of hash as the Test Set split, but salted, since
+    the unsalted hash of every training game is by construction above the
+    Test Set's threshold and would set nothing aside.
+    """
+    training = []
+    validation = []
+    for position in positions:
+        if is_held_back(f"validation:{position.game_id}", fraction):
+            validation.append(position)
+        else:
+            training.append(position)
+    return training, validation
 
 
 def encode_positions(fens: list[str], config) -> tuple[torch.Tensor, torch.Tensor]:
