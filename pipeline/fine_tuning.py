@@ -7,17 +7,104 @@ copy: the maia3 package's tokenizer, the history filled with copies of the
 current position, and one rating for both players.
 """
 
+import copy
+import random
+from dataclasses import dataclass
+
 import chess
 import torch
+import torch.nn.functional as F
 from maia3.dataset import get_legal_moves_mask
 from maia3.utils import mirror_move
 
 from pipeline.dataset import Position, is_held_back
+from pipeline.move_matching import move_matching_report
 from pipeline.verify_maia3 import ALL_MOVES, MOVE_INDEX, encode
 
 # Positions run through the network at once. Large enough to keep a CPU or GPU
 # busy, small enough to fit an ordinary GPU's memory while training.
 BATCH_SIZE = 256
+
+
+@dataclass(frozen=True)
+class TrainingSettings:
+    # How far each step moves the weights. Too high and a step undoes what
+    # the Base Model learned from millions of games; too low and nothing moves.
+    learning_rate: float
+    # Passes over the training positions.
+    epochs: int
+    # Positions per step: each step follows the average gradient of a batch.
+    batch_size: int
+    # The rating given to the network for both players, as the engine does.
+    rating: int
+    # Fixes the order positions are shuffled in, so a run can be repeated.
+    seed: int = 0
+
+
+@dataclass(frozen=True)
+class TrainingRun:
+    # Validation Move-Matching after ply 10 before training (index 0) and
+    # after each epoch.
+    validation_by_epoch: list[float]
+    # The epoch whose weights the model was left with, counted from 1.
+    best_epoch: int
+
+
+def fine_tune(
+    model: torch.nn.Module, training: list[Position], validation: list[Position], settings: TrainingSettings
+) -> TrainingRun:
+    """Trains the model on Camille's moves and leaves it with the epoch that matched validation best.
+
+    Only parameters that require gradients are trained, so a caller can freeze
+    part of the model. The loss is the cross-entropy of Camille's move among the
+    legal moves: the lower it is, the more probability the network gives the
+    move he played. After every epoch the model plays the validation positions,
+    and the weights of the epoch with the best Move-Matching after ply 10 are
+    kept: past that point, further epochs learn his particular training games
+    rather than his play.
+    """
+    device = next(model.parameters()).device
+    trained_parameters = [parameter for parameter in model.parameters() if parameter.requires_grad]
+    optimizer = torch.optim.AdamW(trained_parameters, lr=settings.learning_rate)
+    shuffler = random.Random(settings.seed)
+
+    tokens, legal = encode_positions([position.fen for position in training], model.cfg)
+    targets = torch.tensor([_move_index(position.fen, position.move) for position in training])
+
+    validation_by_epoch = [_validation_move_matching(model, validation, settings.rating)]
+    best_state = None
+    best_score = None
+    best_epoch = 0
+    for epoch in range(1, settings.epochs + 1):
+        model.train()
+        order = list(range(len(training)))
+        shuffler.shuffle(order)
+        for start in range(0, len(order), settings.batch_size):
+            batch = torch.tensor(order[start : start + settings.batch_size])
+            logits = legal_move_logits(model, tokens[batch].to(device), legal[batch].to(device), settings.rating)
+            loss = F.cross_entropy(logits, targets[batch].to(device))
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+        score = _validation_move_matching(model, validation, settings.rating)
+        validation_by_epoch.append(score)
+        if best_score is None or score > best_score:
+            best_score = score
+            best_epoch = epoch
+            best_state = copy.deepcopy(model.state_dict())
+
+    model.load_state_dict(best_state)
+    model.eval()
+    return TrainingRun(validation_by_epoch=validation_by_epoch, best_epoch=best_epoch)
+
+
+def _validation_move_matching(model: torch.nn.Module, validation: list[Position], rating: int) -> float:
+    moves = top_moves(model, [position.fen for position in validation], rating)
+    after_ply_10 = move_matching_report(validation, moves).after_ply_10
+    if after_ply_10.positions == 0:
+        return float("nan")
+    return after_ply_10.matched / after_ply_10.positions
 
 
 def split_validation(positions: list[Position], fraction: float) -> tuple[list[Position], list[Position]]:
@@ -86,6 +173,13 @@ def legal_move_logits(model: torch.nn.Module, tokens: torch.Tensor, legal: torch
     ratings = torch.full((tokens.shape[0],), rating, dtype=torch.long, device=tokens.device)
     move_logits = model(tokens, ratings, ratings)[0]
     return move_logits.masked_fill(~legal, float("-inf"))
+
+
+def _move_index(fen: str, move: str) -> int:
+    """Where the network scores a move, named as it names moves: from the side to move."""
+    if chess.Board(fen).turn == chess.BLACK:
+        move = mirror_move(move)
+    return MOVE_INDEX[move]
 
 
 def _move_name(fen: str, move_index: int) -> str:

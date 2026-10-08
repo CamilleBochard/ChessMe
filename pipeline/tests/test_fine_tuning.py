@@ -1,3 +1,4 @@
+import copy
 import json
 
 import pytest
@@ -7,7 +8,7 @@ torch = pytest.importorskip("torch", reason="needs the models extra: pip install
 from pipeline.build_dataset import TEST_FRACTION  # noqa: E402
 from pipeline.convert_maia3 import CHECKPOINT_PATH, load_reference  # noqa: E402
 from pipeline.dataset import Position, is_held_back  # noqa: E402
-from pipeline.fine_tuning import split_validation, top_moves  # noqa: E402
+from pipeline.fine_tuning import TrainingSettings, fine_tune, split_validation, top_moves  # noqa: E402
 from pipeline.fixture_models import FIXTURES_DIR  # noqa: E402
 
 # The weights are downloaded by python -m pipeline.fetch_models and not
@@ -48,3 +49,21 @@ def test_validation_takes_whole_training_games_and_about_the_share_asked():
     assert len(training) + len(validation) == len(positions)
     validation_share = len(validation_games) / len(training_game_ids)
     assert 0.08 < validation_share < 0.12
+
+
+# Black to move at ply 12 of a Sicilian, past the plies validation leaves out.
+SICILIAN_PLY_12 = "r1bqkbnr/pp2pp1p/2np2p1/8/4P3/5N1P/PPP2PP1/RNBQKB1R b KQkq - 0 6"
+
+
+@needs_weights
+def test_fine_tuning_teaches_the_model_the_move_camille_played(base_model):
+    model = copy.deepcopy(base_model)
+    rook_pawn = Position(
+        game_id="lichess:g", source="lichess", ply=12, phase="middlegame", fen=SICILIAN_PLY_12, move="h7h5"
+    )
+    assert top_moves(model, [SICILIAN_PLY_12], rating=1100) != ["h7h5"]
+
+    settings = TrainingSettings(learning_rate=1e-4, epochs=3, batch_size=1, rating=1100)
+    fine_tune(model, training=[rook_pawn] * 4, validation=[rook_pawn], settings=settings)
+
+    assert top_moves(model, [SICILIAN_PLY_12], rating=1100) == ["h7h5"]
