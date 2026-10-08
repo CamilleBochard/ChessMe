@@ -8,7 +8,14 @@ torch = pytest.importorskip("torch", reason="needs the models extra: pip install
 from pipeline.build_dataset import TEST_FRACTION  # noqa: E402
 from pipeline.convert_maia3 import CHECKPOINT_PATH, load_reference  # noqa: E402
 from pipeline.dataset import Position, is_held_back  # noqa: E402
-from pipeline.fine_tuning import TrainingSettings, fine_tune, split_validation, top_moves, with_adapter  # noqa: E402
+from pipeline.fine_tuning import (  # noqa: E402
+    TrainingSettings,
+    fine_tune,
+    split_validation,
+    take_whole_games,
+    top_moves,
+    with_adapter,
+)
 from pipeline.fixture_models import FIXTURES_DIR  # noqa: E402
 
 # The weights are downloaded by python -m pipeline.fetch_models and not
@@ -103,3 +110,16 @@ def test_fine_tuning_an_adapter_changes_the_moves_but_none_of_the_base_model_s_w
         base_name = name.replace("transformer.trunk.", "transformer.")
         if base_name in base_weights:
             assert torch.equal(weight, base_weights[base_name]), f"{name} was trained"
+
+
+def test_takes_whole_games_in_order_until_there_are_as_many_positions_as_asked():
+    positions = []
+    for game_number in range(5):
+        for ply in (2, 4, 6):
+            game_id = f"lichess:game{game_number}"
+            positions.append(Position(game_id=game_id, source="lichess", ply=ply, phase="opening", fen="unused", move="e2e4"))
+
+    taken = take_whole_games(positions, count=7)
+
+    # Two whole games make 6 positions, short of 7, so a third is taken whole.
+    assert [kept.game_id for kept in taken] == ["lichess:game0"] * 3 + ["lichess:game1"] * 3 + ["lichess:game2"] * 3

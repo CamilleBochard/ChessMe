@@ -191,6 +191,24 @@ def split_validation(positions: list[Position], fraction: float) -> tuple[list[P
     return training, validation
 
 
+def take_whole_games(positions: list[Position], count: int) -> list[Position]:
+    """The positions of the first games, in order, until there are at least `count` of them.
+
+    Games are kept whole, so the last one taken may carry the total a few
+    positions past `count`. Used to give a control model as many positions to
+    learn from as Camille's training games hold.
+    """
+    taken = []
+    current_game = None
+    for position in positions:
+        starts_a_new_game = position.game_id != current_game
+        if starts_a_new_game and len(taken) >= count:
+            break
+        taken.append(position)
+        current_game = position.game_id
+    return taken
+
+
 def encode_positions(fens: list[str], config) -> tuple[torch.Tensor, torch.Tensor]:
     """The network's input for each position, and which of its move scores are legal moves.
 
