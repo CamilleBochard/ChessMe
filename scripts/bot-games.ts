@@ -2,10 +2,13 @@
 // the Style Fingerprint can be measured on games the Bot played, with no
 // browser and no visitor.
 //
-//     npm run bot-games -- [--games 400] [--seed 13] [--opponent-rating 2000] [--out data/dataset/bot-games.jsonl]
+//     npm run bot-games -- [--games 400] [--seed 13] [--opponent-rating 2000] [--baseline] [--out data/dataset/bot-games.jsonl]
 //
 // The Bot is the Move-Selection Engine as the site serves it: the Opening Book,
-// then the served Base Model's top move. The Bot plays the same move every time
+// then the served Base Model's top move. With --baseline the Opening Book is
+// left out and the Baseline plays instead: the Base Model alone, against the
+// same opponent, so that what the book changes can be measured on whole
+// games. The Bot plays the same move every time
 // it meets a position, so the variety has to come from its opponent: the same
 // Base Model, drawing each move at random from its probabilities, as a crowd of
 // players at its rating would choose. The draws are seeded, so a run can be
@@ -29,7 +32,7 @@ import { dirname } from 'node:path';
 import { parseArgs } from 'node:util';
 import { loadBaseModel } from '../src/engine/base-model';
 import { selectMove } from '../src/engine/move-selection';
-import { readOpeningBook } from '../src/engine/opening-book';
+import { readOpeningBook, type OpeningBook } from '../src/engine/opening-book';
 import { SERVED_MODEL_RATING, SERVED_MODEL_SOURCE } from '../src/engine/served-model';
 import { drawMove, playGame, type Player } from '../src/evaluation/bot-games';
 import { seededRandom } from '../src/evaluation/seeded-random';
@@ -45,6 +48,7 @@ const { values: flags } = parseArgs({
     games: { type: 'string', default: '400' },
     seed: { type: 'string', default: '13' },
     'opponent-rating': { type: 'string', default: String(BALANCED_OPPONENT_RATING) },
+    baseline: { type: 'boolean', default: false },
     out: { type: 'string', default: 'data/dataset/bot-games.jsonl' },
   },
 });
@@ -54,7 +58,10 @@ const opponentRating = Number(flags['opponent-rating']);
 
 const baseModel = await loadBaseModel(await readFile(SERVED_MODEL_SOURCE), { rating: SERVED_MODEL_RATING });
 const opponentModel = await loadBaseModel(await readFile(SERVED_MODEL_SOURCE), { rating: opponentRating });
-const openingBook = readOpeningBook(await readFile(OPENING_BOOK, 'utf-8'));
+let openingBook: OpeningBook | undefined = undefined;
+if (!flags.baseline) {
+  openingBook = readOpeningBook(await readFile(OPENING_BOOK, 'utf-8'));
+}
 const random = seededRandom(seed);
 
 const bot: Player = (fen) => selectMove(fen, { openingBook, baseModel });
@@ -81,7 +88,11 @@ for (let index = 0; index < gameCount; index++) {
     game = await playGame(opponent, bot);
   }
 
-  const record = { game_id: `bot:${seed}-${index}`, bot_colour: botColour, moves: game.moves, ending: game.ending };
+  let gameIdPrefix = 'bot';
+  if (flags.baseline) {
+    gameIdPrefix = 'baseline';
+  }
+  const record = { game_id: `${gameIdPrefix}:${seed}-${index}`, bot_colour: botColour, moves: game.moves, ending: game.ending };
   lines.push(JSON.stringify(record));
 
   totalPlies += game.moves.length;
@@ -100,7 +111,11 @@ for (let index = 0; index < gameCount; index++) {
 await mkdir(dirname(flags.out), { recursive: true });
 await writeFile(flags.out, lines.join('\n') + '\n');
 
-console.log(`Bot: ${OPENING_BOOK}, then ${SERVED_MODEL_SOURCE} at ${SERVED_MODEL_RATING}, top move`);
+if (flags.baseline) {
+  console.log(`Baseline: ${SERVED_MODEL_SOURCE} at ${SERVED_MODEL_RATING}, top move, no Opening Book`);
+} else {
+  console.log(`Bot: ${OPENING_BOOK}, then ${SERVED_MODEL_SOURCE} at ${SERVED_MODEL_RATING}, top move`);
+}
 console.log(`Opponent: ${SERVED_MODEL_SOURCE} at ${opponentRating}, drawn from its probabilities, seed ${seed}`);
 console.log(`Games: ${gameCount}, Bot ${results.win} won, ${results.draw} drawn, ${results.loss} lost`);
 console.log(`Average length: ${(totalPlies / gameCount).toFixed(1)} plies`);
