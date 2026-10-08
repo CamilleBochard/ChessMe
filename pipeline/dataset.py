@@ -57,7 +57,7 @@ def build_dataset(pgn_paths: list[Path], player: str, test_fraction: float) -> D
                 seen_game_ids.add(game_id)
 
                 positions = _player_positions(game, game_id, player)
-                if _is_held_back(game_id, test_fraction):
+                if is_held_back(game_id, test_fraction):
                     test.extend(positions)
                 else:
                     train.extend(positions)
@@ -81,7 +81,7 @@ def _read_json_lines(path: Path) -> list[Position]:
     return positions
 
 
-def _is_held_back(game_id: str, test_fraction: float) -> bool:
+def is_held_back(game_id: str, test_fraction: float) -> bool:
     """Whether a game belongs to the Test Set.
 
     The decision depends on the game's id alone, through a hash, so it is the

@@ -45,8 +45,18 @@ def build_style_fingerprint(positions: list[Position], move_losses: list[MoveLos
     measures it; its distribution is summarised by the Blunder Profile's own
     code, so the two can never disagree on what the error shape is.
     """
+    fingerprint = {"centipawn_loss": build_blunder_profile(move_losses)}
+    fingerprint.update(move_statistics(positions))
+    return fingerprint
+
+
+def move_statistics(positions: list[Position]) -> dict:
+    """The fingerprint's statistics that are read from the moves alone, without an engine.
+
+    Every statistic but the centipawn loss: the style discriminator reads
+    these from a single game, where no Stockfish analysis is run.
+    """
     return {
-        "centipawn_loss": build_blunder_profile(move_losses),
         "piece_share": _per_phase(positions, _share_by_piece),
         "capture_taken_rate": _per_phase(positions, _capture_taken_rate),
         "queen_trade_before_move_20": _queen_trade_rate(positions),
