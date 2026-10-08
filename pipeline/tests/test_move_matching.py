@@ -1,7 +1,7 @@
 import math
 
 from pipeline.dataset import Position
-from pipeline.move_matching import compare_with_baseline, move_matching_report
+from pipeline.move_matching import BaselineComparison, Difference, beats_baseline, compare_with_baseline, move_matching_report
 
 
 def position(game_id: str, ply: int, phase: str, move: str) -> Position:
@@ -49,3 +49,19 @@ def test_measures_how_far_a_model_moves_from_the_baseline_on_the_same_positions(
     # the overall gain predicts: the variance is 2/1 * (1 + 1) / 4^2 = 0.25.
     assert math.isclose(comparison.after_ply_10.standard_error, 0.5)
     assert math.isclose(comparison.by_phase["middlegame"].difference, 0.5)
+
+
+def comparison_after_ply_10(difference: float, standard_error: float) -> BaselineComparison:
+    gap = Difference(difference=difference, standard_error=standard_error)
+    unused = Difference(difference=0.0, standard_error=0.01)
+    return BaselineComparison(
+        overall=unused, after_ply_10=gap, by_phase={"opening": unused, "middlegame": unused, "endgame": unused}
+    )
+
+
+def test_a_gain_after_ply_10_of_more_than_two_standard_errors_beats_the_baseline():
+    assert beats_baseline(comparison_after_ply_10(difference=0.011, standard_error=0.005))
+
+
+def test_a_gain_within_two_standard_errors_does_not_beat_the_baseline():
+    assert not beats_baseline(comparison_after_ply_10(difference=0.009, standard_error=0.005))

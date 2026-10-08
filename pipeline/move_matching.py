@@ -163,3 +163,18 @@ def _difference(outcomes: list[tuple[Position, int]]) -> Difference:
         difference=net_gain / positions,
         standard_error=_clustered_standard_error(list(tallies.values()), net_gain, positions),
     )
+
+
+# How many standard errors a gain must exceed before it counts as real: about
+# a 2.5% chance of a model with no real gain clearing it by luck.
+STANDARD_ERRORS_REQUIRED = 2
+
+
+def beats_baseline(comparison: BaselineComparison) -> bool:
+    """Whether a model plays Camille's move more often than the Baseline by more than chance would.
+
+    Judged after ply 10, as the Base Model was chosen: the Opening Book answers
+    most opening positions, so a gain there would rarely reach a visitor.
+    """
+    gap = comparison.after_ply_10
+    return gap.difference > STANDARD_ERRORS_REQUIRED * gap.standard_error
