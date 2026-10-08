@@ -115,11 +115,15 @@ def fine_tune(
     kept: past that point, further epochs learn his particular training games
     rather than his play. report_epoch, when given, is called with each epoch
     and its validation score as soon as it is known; epoch 0 is the untrained
-    model.
+    model. Epoch 0 is reported but never kept, even when no epoch beats it:
+    keeping it would hand back the Base Model and leave fine-tuning unmeasured.
     """
     device = next(model.parameters()).device
     trained_parameters = [parameter for parameter in model.parameters() if parameter.requires_grad]
-    optimizer = torch.optim.AdamW(trained_parameters, lr=settings.learning_rate)
+    # No weight decay: it pulls weights toward zero, which suits training from
+    # scratch, while here the weights worth staying near are the Base Model's.
+    # Keeping the best epoch on validation is what guards against overfitting.
+    optimizer = torch.optim.AdamW(trained_parameters, lr=settings.learning_rate, weight_decay=0.0)
     shuffler = random.Random(settings.seed)
 
     tokens, legal = encode_positions([position.fen for position in training], model.cfg)

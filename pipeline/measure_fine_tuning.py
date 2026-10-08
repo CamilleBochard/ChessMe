@@ -29,6 +29,7 @@ Baseline may be converted and put there.
 import argparse
 import copy
 import json
+import math
 import sys
 from dataclasses import asdict
 from datetime import date
@@ -101,14 +102,31 @@ def game_count(positions: list[Position]) -> int:
 
 
 def check_against_engine(report: MoveMatchingReport) -> dict:
-    """Sets the PyTorch Baseline's counts beside the ones the engine recorded with the ONNX file."""
+    """Sets the PyTorch Baseline's figures beside the ones the engine recorded with the ONNX file.
+
+    Matching counts and matching clustered errors in every slice mean the two
+    played Camille's move in the same number of positions of every game.
+    """
     recorded = json.loads(ENGINE_BASELINE_PATH.read_text(encoding="utf-8"))["baseModelAlone"]
-    pytorch_counts = {"overall": report.overall.matched, "afterPly10": report.after_ply_10.matched}
-    engine_counts = {"overall": recorded["overall"]["matched"], "afterPly10": recorded["afterPly10"]["matched"]}
+    pytorch_scores = {"overall": report.overall, "afterPly10": report.after_ply_10}
+    engine_scores = {"overall": recorded["overall"], "afterPly10": recorded["afterPly10"]}
     for phase in PHASES:
-        pytorch_counts[phase] = report.by_phase[phase].matched
-        engine_counts[phase] = recorded["byPhase"][phase]["matched"]
-    return {"pytorch": pytorch_counts, "engine": engine_counts, "identical": pytorch_counts == engine_counts}
+        pytorch_scores[phase] = report.by_phase[phase]
+        engine_scores[phase] = recorded["byPhase"][phase]
+
+    slices = {}
+    identical = True
+    for name, pytorch_score in pytorch_scores.items():
+        engine_score = engine_scores[name]
+        same_count = pytorch_score.matched == engine_score["matched"]
+        same_error = math.isclose(pytorch_score.standard_error, engine_score["standardError"], rel_tol=1e-9)
+        if not (same_count and same_error):
+            identical = False
+        slices[name] = {
+            "pytorch": {"matched": pytorch_score.matched, "standardError": pytorch_score.standard_error},
+            "engine": {"matched": engine_score["matched"], "standardError": engine_score["standardError"]},
+        }
+    return {"slices": slices, "identical": identical}
 
 
 def score_as_json(score: MoveMatchingScore) -> dict:
