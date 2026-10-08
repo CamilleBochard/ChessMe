@@ -117,6 +117,10 @@ if (flags.baseline) {
   console.log(`Bot: ${OPENING_BOOK}, then ${SERVED_MODEL_SOURCE} at ${SERVED_MODEL_RATING}, top move`);
 }
 console.log(`Opponent: ${SERVED_MODEL_SOURCE} at ${opponentRating}, drawn from its probabilities, seed ${seed}`);
-console.log(`Games: ${gameCount}, Bot ${results.win} won, ${results.draw} drawn, ${results.loss} lost`);
+let playerName = 'Bot';
+if (flags.baseline) {
+  playerName = 'Baseline';
+}
+console.log(`Games: ${gameCount}, ${playerName} ${results.win} won, ${results.draw} drawn, ${results.loss} lost`);
 console.log(`Average length: ${(totalPlies / gameCount).toFixed(1)} plies`);
 console.log(`Written to ${flags.out}`);
