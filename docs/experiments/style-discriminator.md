@@ -44,7 +44,8 @@ one of its players is rated 1190 to 1360: the middle 80% of Camille's own
 Lichess ratings in the dataset's games (10th percentile 1191, median 1261,
 90th percentile 1361). Only that player's side is kept, and each player
 enters once, so the sample is 3,000 different players rather than a few
-prolific ones. Camille's own account is left out. When both players of a
+prolific ones; 2,989 of the games hold at least one move of the sampled
+player. Camille's own account is left out. When both players of a
 game qualify, a hash of the game's id picks one, so the sample is not
 filled with White's games.
 
@@ -107,7 +108,9 @@ order.
 each group are drawn again at random, with replacement, as many as there
 were, the figure is computed again, 2,000 times, and the middle 95% of the
 results is the interval. It shows how far the figure would move with another
-sample of games of the same kinds. The draws are seeded.
+sample of games scored by the same trained discriminator. It leaves out how
+far the discriminator itself would change if trained on other games, so the
+true uncertainty is somewhat wider. The draws are seeded.
 
 **Bot against Baseline.** Both sets of games were played by the same script
 against the same opponent with the same seed; the only difference is the
@@ -177,14 +180,15 @@ Camille, and the size is the push of one standard deviation of the statistic.
 
 ## What the discriminator can tell
 
-**A style signal exists, and it is weak.** On games it never saw, the
+**A signal exists, and it is weak.** On games it never saw, the
 discriminator ranks one of Camille's games above another player's 57 times in
 100, where a coin would manage 50; the interval, 0.527 to 0.620, stays clear of
 0.5. It is far from recognising him: it scores 55% of his held-out games as
 his, and 43% of the other players' as his too. Its separation on its own
 training games is barely higher (0.610), so the limit is not a model that
 memorised its games: these statistics, read from one game of a few dozen
-moves, carry little of what sets Camille apart.
+moves, carry little of what sets Camille apart. Whether that little is his
+Style at all is the next question.
 
 **Part of it may be the site.** Every other player comes from Lichess, while
 most of Camille's games come from Chess.com. On his Chess.com games the
@@ -230,9 +234,9 @@ held-out games and the other players'.
 ## The Bot against Camille's peers
 
 Measured as Camille's Test Set is, the Bot stands out from the other players
-at 0.519 and the Baseline at 0.514, and both intervals include 0.5: to the
-discriminator, the Bot's games look like those of any player at Camille's
-level, not like his. That is as far as the evidence goes. The Bot's interval
+at 0.519 and the Baseline at 0.514, and both intervals include 0.5: the
+discriminator cannot tell the Bot's games from those of other players at
+Camille's level. That does not make them unlike his. The Bot's interval
 reaches 0.559 and Camille's starts at 0.527, so the data does not show that
 the Bot is less like him than his own games are; and the Bot's games, with no
 clock and a model across the board, are not the kind of game the
