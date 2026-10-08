@@ -9,6 +9,7 @@ current position, and one rating for both players.
 
 import copy
 import random
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import chess
@@ -98,7 +99,11 @@ def with_adapter(model: torch.nn.Module, width: int) -> torch.nn.Module:
 
 
 def fine_tune(
-    model: torch.nn.Module, training: list[Position], validation: list[Position], settings: TrainingSettings
+    model: torch.nn.Module,
+    training: list[Position],
+    validation: list[Position],
+    settings: TrainingSettings,
+    report_epoch: Callable[[int, float], None] | None = None,
 ) -> TrainingRun:
     """Trains the model on Camille's moves and leaves it with the epoch that matched validation best.
 
@@ -108,7 +113,9 @@ def fine_tune(
     move he played. After every epoch the model plays the validation positions,
     and the weights of the epoch with the best Move-Matching after ply 10 are
     kept: past that point, further epochs learn his particular training games
-    rather than his play.
+    rather than his play. report_epoch, when given, is called with each epoch
+    and its validation score as soon as it is known; epoch 0 is the untrained
+    model.
     """
     device = next(model.parameters()).device
     trained_parameters = [parameter for parameter in model.parameters() if parameter.requires_grad]
@@ -119,6 +126,8 @@ def fine_tune(
     targets = torch.tensor([_move_index(position.fen, position.move) for position in training])
 
     validation_by_epoch = [_validation_move_matching(model, validation, settings.rating)]
+    if report_epoch is not None:
+        report_epoch(0, validation_by_epoch[0])
     best_state = None
     best_score = None
     best_epoch = 0
@@ -136,6 +145,8 @@ def fine_tune(
 
         score = _validation_move_matching(model, validation, settings.rating)
         validation_by_epoch.append(score)
+        if report_epoch is not None:
+            report_epoch(epoch, score)
         if best_score is None or score > best_score:
             best_score = score
             best_epoch = epoch
