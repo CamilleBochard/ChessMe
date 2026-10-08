@@ -1,7 +1,7 @@
 """Samples games of other players at Camille's level from the Lichess database.
 
 The style discriminator learns to tell Camille's games from those of other
-players of his strength. Lichess publishes every rated game of a month as one
+players at his Level. Lichess publishes every rated game of a month as one
 PGN file; this module reads such a stream and keeps one side of the games
 that match: a 10-minute game, played by someone rated where Camille is.
 
@@ -34,7 +34,6 @@ def sample_other_players(
 ) -> list[dict]:
     lowest_rating, highest_rating = rating_range
     sampled = []
-    # Lichess names are case-insensitive, so they are compared in lower case.
     players_sampled = set()
     # The database is read as a stream and never to its end: one month holds
     # far more games than the sample needs.
@@ -53,7 +52,7 @@ def sample_other_players(
                 continue
             # One game per player, so that the sample is many players
             # rather than a few prolific ones.
-            player = game.headers[_side_header(colour)].lower()
+            player = _player_name(game, colour)
             if player in players_sampled:
                 continue
             if player == excluded_player.lower():
@@ -63,7 +62,7 @@ def sample_other_players(
             continue
 
         colour = _one_side(game, qualifying_colours)
-        players_sampled.add(game.headers[_side_header(colour)].lower())
+        players_sampled.add(_player_name(game, colour))
         sampled.append(
             {
                 "game_id": _game_id(game),
@@ -120,6 +119,11 @@ def _one_side(game: chess.pgn.Game, qualifying_colours: list[chess.Color]) -> ch
 def _side_header(colour: chess.Color) -> str:
     """The header naming the player of a colour: "White" or "Black"."""
     return COLOUR_NAMES[colour].capitalize()
+
+
+def _player_name(game: chess.pgn.Game, colour: chess.Color) -> str:
+    """The name of the player of a colour, in lower case: Lichess names are case-insensitive."""
+    return game.headers[_side_header(colour)].lower()
 
 
 def _rating(game: chess.pgn.Game, colour: chess.Color) -> int:

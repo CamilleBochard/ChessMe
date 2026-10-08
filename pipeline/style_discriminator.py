@@ -3,14 +3,14 @@
 The Style Fingerprint compares Camille and the Bot through averages over
 hundreds of games. The discriminator asks the question game by game: given
 one game, how likely is it that Camille played it rather than another player
-of his strength? Trained on his games and on a sample of other players', and
+at his Level? Trained on his games and on a sample of other players', and
 checked on games of his it never saw, it can then be asked about the Bot's.
 
 It reads each game as the Style Fingerprint's move statistics computed on
 that game alone, from ply 11 on: the first ten plies are where the Opening
 Book plays, and the question is how the Bot plays where it has no book.
 Centipawn loss is left out. The other players are chosen at Camille's
-strength, so Level is what is held equal and Style is what is left to tell
+Level, so Level is what is held equal and Style is what is left to tell
 him apart.
 
 The classifier is a logistic regression: each statistic gets a weight, the
@@ -40,16 +40,12 @@ PHASES_READ = ["middlegame", "endgame"]
 
 
 def feature_names() -> list[str]:
-    """The statistics a game is read as, in the order the classifier receives them."""
-    names = []
-    for phase in PHASES_READ:
-        for piece in PIECE_NAMES.values():
-            names.append(f"{piece} moves, {phase}")
-        names.append(f"capture taken when on offer, {phase}")
-    names.append("castled kingside")
-    names.append("castled queenside")
-    names.append("queens off before move 20")
-    return names
+    """The statistics a game is read as, in the order the classifier receives them.
+
+    Read from game_features itself, on a game with no moves, so that the
+    names are written in one place only.
+    """
+    return list(game_features([]))
 
 
 def game_features(positions: list[Position]) -> dict[str, float | None]:
@@ -58,8 +54,7 @@ def game_features(positions: list[Position]) -> dict[str, float | None]:
     A statistic the game gives no evidence on, such as the endgame of a game
     that never reached it, is None.
     """
-    positions_read = [position for position in positions if position.ply >= FIRST_PLY_READ]
-    statistics = move_statistics(positions_read)
+    statistics = move_statistics(_moves_read(positions))
 
     features = {}
     for phase in PHASES_READ:
@@ -154,7 +149,11 @@ def games_long_enough(positions: list[Position]) -> list[list[Position]]:
 
     games = []
     for game in positions_by_game.values():
-        moves_read = [position for position in game if position.ply >= FIRST_PLY_READ]
-        if len(moves_read) >= MIN_MOVES_READ:
+        if len(_moves_read(game)) >= MIN_MOVES_READ:
             games.append(game)
     return games
+
+
+def _moves_read(positions: list[Position]) -> list[Position]:
+    """The positions the discriminator reads: those from ply 11 on."""
+    return [position for position in positions if position.ply >= FIRST_PLY_READ]

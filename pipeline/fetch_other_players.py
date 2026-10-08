@@ -1,4 +1,4 @@
-"""Samples games of other players at Camille's level from the Lichess database.
+"""Fetches the sample of other players' games from the Lichess database.
 
 Run from the repository root (needs curl and zstd):
 
@@ -20,10 +20,10 @@ import json
 import subprocess
 from pathlib import Path
 
+from pipeline.extract_blunder_profile import DATASET_DIR
 from pipeline.other_players import sample_other_players
 
-REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
-OTHER_PLAYERS_PATH = REPOSITORY_ROOT / "data" / "dataset" / "other-players.jsonl"
+OTHER_PLAYERS_PATH = DATASET_DIR / "other-players.jsonl"
 
 DATABASE_URL = "https://database.lichess.org/standard/lichess_db_standard_rated_{month}.pgn.zst"
 

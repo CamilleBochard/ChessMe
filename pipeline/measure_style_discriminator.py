@@ -1,4 +1,4 @@
-"""Trains the style discriminator, checks it on held-out games, then asks it about the Bot and the Baseline.
+"""Trains the style discriminator, checks it on Camille's Test Set, then asks it about the Bot and the Baseline.
 
 Run from the repository root, once the dataset is built, the other players'
 sample fetched and both sets of games played:
@@ -47,7 +47,7 @@ RESULTS_PATH = REPOSITORY_ROOT / "docs" / "experiments" / "results" / "style-dis
 # The groups of games scored, in the order the tables show them.
 GROUP_LABELS = {
     "camille_test_set": "Camille, Test Set",
-    "other_players_held_out": "Other players, held out",
+    "other_players_test_split": "Other players, test split",
     "bot": "Bot",
     "baseline": "Baseline",
     "camille_training_games": "Camille, training games",
@@ -60,16 +60,16 @@ def measure(dataset_dir: Path, other_players_path: Path, bot_games_path: Path, b
     other_positions = read_other_players(other_players_path)
 
     other_training_positions = []
-    other_held_out_positions = []
+    other_test_split_positions = []
     for position in other_positions:
         if is_held_back(position.game_id, TEST_FRACTION):
-            other_held_out_positions.append(position)
+            other_test_split_positions.append(position)
         else:
             other_training_positions.append(position)
 
     groups = {
         "camille_test_set": games_long_enough(dataset.test),
-        "other_players_held_out": games_long_enough(other_held_out_positions),
+        "other_players_test_split": games_long_enough(other_test_split_positions),
         "bot": games_long_enough(read_bot_games(bot_games_path)),
         "baseline": games_long_enough(read_bot_games(baseline_games_path)),
         "camille_training_games": games_long_enough(dataset.train),
@@ -86,25 +86,25 @@ def measure(dataset_dir: Path, other_players_path: Path, bot_games_path: Path, b
         "format_version": FORMAT_VERSION,
         "min_moves_read": MIN_MOVES_READ,
         "groups": _group_summaries(scores),
-        # Criterion of validity: on games it never saw, does it tell Camille
-        # from players of his strength better than a coin toss?
-        "validation": _separation(scores["camille_test_set"], scores["other_players_held_out"]),
+        # The check that comes first: on games it never saw, does it tell
+        # Camille from players at his Level better than a coin toss?
+        "test_set_separation": _separation(scores["camille_test_set"], scores["other_players_test_split"]),
         # The same measure on the games it was trained on. Far above the
-        # validation figure, it would mean the discriminator memorised its
+        # Test Set's figure, it would mean the discriminator memorised its
         # training games rather than learnt a style.
         "training_separation": _separation(scores["camille_training_games"], scores["other_players_training_games"]),
         # The other players all come from Lichess, Camille's games mostly
         # from Chess.com. Separation on his Lichess games alone shows
         # whether the discriminator learnt the site rather than the player.
-        "validation_lichess_only": _separation(_from_source(scores["camille_test_set"], "lichess"), scores["other_players_held_out"]),
-        "validation_chesscom_only": _separation(_from_source(scores["camille_test_set"], "chesscom"), scores["other_players_held_out"]),
+        "test_set_separation_lichess_only": _separation(_from_source(scores["camille_test_set"], "lichess"), scores["other_players_test_split"]),
+        "test_set_separation_chesscom_only": _separation(_from_source(scores["camille_test_set"], "chesscom"), scores["other_players_test_split"]),
         # The Bot and the Baseline measured as Camille's Test Set is: a
         # group that plays like him stands out from the other players as
         # much as his own games do.
-        "bot_against_other_players": _separation(scores["bot"], scores["other_players_held_out"]),
-        "baseline_against_other_players": _separation(scores["baseline"], scores["other_players_held_out"]),
+        "bot_against_other_players": _separation(scores["bot"], scores["other_players_test_split"]),
+        "baseline_against_other_players": _separation(scores["baseline"], scores["other_players_test_split"]),
         "bot_against_baseline": _bot_against_baseline(scores["bot"], scores["baseline"]),
-        "weights": _sorted_by_strength(discriminator.weights()),
+        "weights": _strongest_push_first(discriminator.weights()),
     }
 
 
@@ -171,7 +171,7 @@ def _bot_against_baseline(bot_scored: list[dict], baseline_scored: list[dict]) -
     }
 
 
-def _sorted_by_strength(weights: dict[str, float]) -> dict[str, float]:
+def _strongest_push_first(weights: dict[str, float]) -> dict[str, float]:
     """The weights, strongest push first, whichever its direction."""
     names = sorted(weights, key=lambda name: abs(weights[name]), reverse=True)
     return {name: weights[name] for name in names}
@@ -186,12 +186,12 @@ def tables(results: dict) -> str:
 
     lines += ["", "| Separation | Area under the curve (95% interval) |", "|---|---|"]
     separations = [
-        ("Camille's Test Set against held-out players", results["validation"]),
-        ("Camille's Lichess Test Set games against held-out players", results["validation_lichess_only"]),
-        ("Camille's Chess.com Test Set games against held-out players", results["validation_chesscom_only"]),
+        ("Camille's Test Set against the other players' test split", results["test_set_separation"]),
+        ("Camille's Lichess Test Set games against the other players' test split", results["test_set_separation_lichess_only"]),
+        ("Camille's Chess.com Test Set games against the other players' test split", results["test_set_separation_chesscom_only"]),
         ("Training games, for comparison", results["training_separation"]),
-        ("Bot against held-out players", results["bot_against_other_players"]),
-        ("Baseline against held-out players", results["baseline_against_other_players"]),
+        ("Bot against the other players' test split", results["bot_against_other_players"]),
+        ("Baseline against the other players' test split", results["baseline_against_other_players"]),
         ("Bot against Baseline", results["bot_against_baseline"]),
     ]
     for label, separation in separations:

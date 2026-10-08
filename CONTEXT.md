@@ -80,6 +80,12 @@ shape, piece preferences, capture and trade rates, material remaining. It is the
 only way to compare Camille against the Bot on games that share no positions.
 _Avoid_: profile (that is the Blunder Profile), signature, playstyle vector
 
+**Style Discriminator**:
+A classifier trained to tell Camille's games from those of other players at his
+Level, read from his moves after the opening. Checked on the Test Set, then
+asked whether the Bot's games pass for his.
+_Avoid_: style detector, Camille classifier
+
 **Session Game**:
 A game played by a visitor against the Bot on the site. Evidence about the Bot's
 behaviour; never training data about Camille, since he did not play it.

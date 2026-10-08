@@ -58,8 +58,15 @@ const opponentRating = Number(flags['opponent-rating']);
 
 const baseModel = await loadBaseModel(await readFile(SERVED_MODEL_SOURCE), { rating: SERVED_MODEL_RATING });
 const opponentModel = await loadBaseModel(await readFile(SERVED_MODEL_SOURCE), { rating: opponentRating });
+// Who plays: the Bot with its Opening Book, or the Baseline without one. The
+// name labels the games and the summary.
+let playerName = 'bot';
 let openingBook: OpeningBook | undefined = undefined;
-if (!flags.baseline) {
+let playerDescription = `${OPENING_BOOK}, then ${SERVED_MODEL_SOURCE} at ${SERVED_MODEL_RATING}, top move`;
+if (flags.baseline) {
+  playerName = 'baseline';
+  playerDescription = `${SERVED_MODEL_SOURCE} at ${SERVED_MODEL_RATING}, top move, no Opening Book`;
+} else {
   openingBook = readOpeningBook(await readFile(OPENING_BOOK, 'utf-8'));
 }
 const random = seededRandom(seed);
@@ -88,11 +95,7 @@ for (let index = 0; index < gameCount; index++) {
     game = await playGame(opponent, bot);
   }
 
-  let gameIdPrefix = 'bot';
-  if (flags.baseline) {
-    gameIdPrefix = 'baseline';
-  }
-  const record = { game_id: `${gameIdPrefix}:${seed}-${index}`, bot_colour: botColour, moves: game.moves, ending: game.ending };
+  const record = { game_id: `${playerName}:${seed}-${index}`, bot_colour: botColour, moves: game.moves, ending: game.ending };
   lines.push(JSON.stringify(record));
 
   totalPlies += game.moves.length;
@@ -111,16 +114,8 @@ for (let index = 0; index < gameCount; index++) {
 await mkdir(dirname(flags.out), { recursive: true });
 await writeFile(flags.out, lines.join('\n') + '\n');
 
-if (flags.baseline) {
-  console.log(`Baseline: ${SERVED_MODEL_SOURCE} at ${SERVED_MODEL_RATING}, top move, no Opening Book`);
-} else {
-  console.log(`Bot: ${OPENING_BOOK}, then ${SERVED_MODEL_SOURCE} at ${SERVED_MODEL_RATING}, top move`);
-}
+console.log(`${playerName}: ${playerDescription}`);
 console.log(`Opponent: ${SERVED_MODEL_SOURCE} at ${opponentRating}, drawn from its probabilities, seed ${seed}`);
-let playerName = 'Bot';
-if (flags.baseline) {
-  playerName = 'Baseline';
-}
 console.log(`Games: ${gameCount}, ${playerName} ${results.win} won, ${results.draw} drawn, ${results.loss} lost`);
 console.log(`Average length: ${(totalPlies / gameCount).toFixed(1)} plies`);
 console.log(`Written to ${flags.out}`);

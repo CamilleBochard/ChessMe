@@ -3,7 +3,7 @@
 The Style Fingerprint compares Camille and the Bot through averages over
 hundreds of games. The style discriminator asks the question one game at a
 time: given a single game, how likely is it that Camille played it rather
-than another player of his strength? A classifier is trained to answer it on
+than another player at his Level? A classifier is trained to answer it on
 his games and on a sample of other players', checked on games of his it never
 saw, and only then asked about the Bot's games and the Baseline's.
 
@@ -72,7 +72,7 @@ replays it, which [the Opening Book's measurement](opening-book.md) already
 shows. The question here is how the Bot plays once the book is behind it. The
 cost is small: 699 of Camille's 719 castles come after ply 10.
 
-**No centipawn loss.** The other players are chosen at Camille's strength, so
+**No centipawn loss.** The other players are chosen at Camille's Level, so
 Level is held equal and what is left to tell him apart is Style. The Bot's
 Level is already known to be far from his ([the Style
 Fingerprint](style-fingerprint.md)); a discriminator reading it would mostly
