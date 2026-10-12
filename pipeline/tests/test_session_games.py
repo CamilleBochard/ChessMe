@@ -327,3 +327,22 @@ def test_refuses_a_loss_on_time_after_the_game_ended_on_the_board(tmp_path):
 
     with pytest.raises(RejectedGame, match="already ended"):
         record_session_game(store, report, played_on=PLAYED_ON)
+
+
+@pytest.mark.parametrize("timed_out", ["green", True, 1])
+def test_refuses_a_loss_on_time_for_a_side_that_is_not_white_or_black(tmp_path, timed_out):
+    store = open_store(tmp_path / "session-games.sqlite")
+    report = visitor_out_of_time_after_two_moves()
+    report["timedOut"] = timed_out
+
+    with pytest.raises(RejectedGame, match="ran out of time"):
+        record_session_game(store, report, played_on=PLAYED_ON)
+
+
+def test_refuses_a_game_both_resigned_and_lost_on_time(tmp_path):
+    store = open_store(tmp_path / "session-games.sqlite")
+    report = visitor_out_of_time_after_two_moves()
+    report["visitorResigned"] = True
+
+    with pytest.raises(RejectedGame, match="both"):
+        record_session_game(store, report, played_on=PLAYED_ON)

@@ -247,6 +247,14 @@ def check_shape(report: object) -> None:
     if not isinstance(visitor_resigned, bool):
         raise RejectedGame("the report says neither yes nor no about a resignation")
 
+    # Absent or null unless a clock ran out. Only a side's name may end a
+    # game on time: a truthy value of any other kind would end one by mistake.
+    timed_out = report.get("timedOut")
+    if timed_out is not None and timed_out not in ("white", "black"):
+        raise RejectedGame(f"the report says {timed_out!r} ran out of time, which is neither white nor black")
+    if timed_out is not None and visitor_resigned:
+        raise RejectedGame("the report says the game was both resigned and lost on time")
+
 
 def session_game_pgns(connection: sqlite3.Connection) -> list[str]:
     """Every stored game as PGN, oldest first."""
