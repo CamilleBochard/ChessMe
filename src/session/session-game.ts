@@ -36,6 +36,8 @@ export interface FinishedGame {
   moves: PlayedMove[];
   /** True when the visitor resigned, rather than the game ending on the board. */
   visitorResigned: boolean;
+  /** The side whose clock ran out, or null when the game ended otherwise. */
+  timedOut: Colour | null;
 }
 
 export interface SessionGameOptions {
@@ -164,7 +166,8 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
     }
 
     const visitorResigned = game.resignedBy !== undefined;
-    options.onGameEnd({ visitor: visitor, moves: moves, visitorResigned: visitorResigned });
+    const timedOut = game.timedOutBy ?? null;
+    options.onGameEnd({ visitor: visitor, moves: moves, visitorResigned: visitorResigned, timedOut: timedOut });
   }
 
   /** Plays a move on the game and passes the turn on the clock. */

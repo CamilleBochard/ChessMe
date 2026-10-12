@@ -9,7 +9,7 @@ import { connectTelemetry, sessionGameReport } from './session-game';
 const SERVED_MODEL = { baseModel: 'maia3-5m', rating: 1100 };
 
 /** A short finished game, for the tests where its moves do not matter. */
-const RESIGNED_AT_ONCE: FinishedGame = { visitor: 'white', moves: [], visitorResigned: true };
+const RESIGNED_AT_ONCE: FinishedGame = { visitor: 'white', moves: [], visitorResigned: true, timedOut: null };
 
 interface SentRequest {
   url: string;
@@ -41,6 +41,7 @@ describe('reporting a Session Game', () => {
         { move: { from: 'd8', to: 'h4' }, source: 'base-model' },
       ],
       visitorResigned: false,
+      timedOut: null,
     };
     const gameId = await telemetry.reportGame(sessionGameReport(SERVED_MODEL, foolsMate));
 
@@ -60,6 +61,7 @@ describe('reporting a Session Game', () => {
             { uci: 'd8h4', source: 'base-model' },
           ],
           visitorResigned: false,
+          timedOut: null,
         },
       },
     ]);
@@ -72,6 +74,7 @@ describe('reporting a Session Game', () => {
       visitor: 'white',
       moves: [{ move: { from: 'e2', to: 'e4' } }, { move: { from: 'e7', to: 'e5' }, source: 'opening-book' }],
       visitorResigned: true,
+      timedOut: null,
     };
 
     const report = sessionGameReport(SERVED_MODEL, finished);
@@ -83,7 +86,23 @@ describe('reporting a Session Game', () => {
       rating: 1100,
       moves: [{ uci: 'e2e4' }, { uci: 'e7e5', source: 'opening-book' }],
       visitorResigned: true,
+      timedOut: null,
     });
+  });
+
+  it("reports a game lost on time with the side whose clock ran out", async () => {
+    const service = fetchAnswering(() => Response.json({ id: 'game-3' }, { status: 201 }));
+    const telemetry = connectTelemetry(service.fetch);
+    const finished: FinishedGame = {
+      visitor: 'black',
+      moves: [{ move: { from: 'e2', to: 'e4' }, source: 'opening-book' }],
+      visitorResigned: false,
+      timedOut: 'black',
+    };
+
+    await telemetry.reportGame(sessionGameReport(SERVED_MODEL, finished));
+
+    expect(service.sent[0].body).toMatchObject({ botColour: 'white', visitorResigned: false, timedOut: 'black' });
   });
 
   it('returns no id when the service refuses the game', async () => {

@@ -335,6 +335,7 @@ describe('the finished game', () => {
           { move: { from: 'd8', to: 'h4' }, source: 'base-model' },
         ],
         visitorResigned: false,
+        timedOut: null,
       },
     ]);
   });
@@ -357,6 +358,7 @@ describe('the finished game', () => {
         visitor: 'white',
         moves: [{ move: { from: 'e2', to: 'e4' } }, { move: { from: 'e7', to: 'e5' }, source: 'opening-book' }],
         visitorResigned: true,
+        timedOut: null,
       },
     ]);
   });
@@ -499,5 +501,28 @@ describe('the clock', () => {
 
     expect(gameStatus(session.game())).toEqual({ kind: 'time-forfeit', winner: 'white' });
     expect(moveList(session.game())).toEqual([{ moveNumber: 1, white: 'e4', black: null }]);
+  });
+
+  it('hands over a game lost on time, saying whose clock ran out', async () => {
+    const finishedGames: FinishedGame[] = [];
+    const session = createSessionGame({
+      chooseMove: scriptedBot([{ from: 'e7', to: 'e5' }], 'opening-book'),
+      onGameEnd: (finished) => {
+        finishedGames.push(finished);
+      },
+    });
+    await session.start('white');
+    await session.playVisitorMove({ from: 'e2', to: 'e4' });
+
+    vi.advanceTimersByTime(TEN_MINUTES);
+
+    expect(finishedGames).toEqual([
+      {
+        visitor: 'white',
+        moves: [{ move: { from: 'e2', to: 'e4' } }, { move: { from: 'e7', to: 'e5' }, source: 'opening-book' }],
+        visitorResigned: false,
+        timedOut: 'white',
+      },
+    ]);
   });
 });
