@@ -382,3 +382,13 @@ def test_stores_a_draw_when_the_side_out_of_time_faces_an_opponent_who_could_not
     assert '[Result "1/2-1/2"]' in pgn
     assert '[Termination "Time forfeit"]' in pgn
     assert session_game_counts(store)["draws"] == 1
+
+
+def test_refuses_a_loss_on_time_for_the_side_not_to_move(tmp_path):
+    store = open_store(tmp_path / "session-games.sqlite")
+    report = visitor_out_of_time_after_two_moves()
+    # After 1. e4 e5 it is White's turn, so only White's clock was running.
+    report["timedOut"] = "black"
+
+    with pytest.raises(RejectedGame, match="not to move"):
+        record_session_game(store, report, played_on=PLAYED_ON)

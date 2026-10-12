@@ -80,9 +80,9 @@ def open_store(path: Path) -> sqlite3.Connection:
 def record_session_game(connection: sqlite3.Connection, report: dict, played_on: date) -> str:
     """
     Stores the game the page reported and returns the id it was stored under.
-    A game is finished when it ended on the board or when the visitor resigned
-    it. Raises RejectedGame, storing nothing, when the report is not a
-    finished, legal game shaped as the page sends it.
+    A game is finished when it ended on the board, when the visitor resigned
+    it, or when a clock ran out. Raises RejectedGame, storing nothing, when
+    the report is not a finished, legal game shaped as the page sends it.
     """
     check_shape(report)
 
@@ -117,18 +117,22 @@ def record_session_game(connection: sqlite3.Connection, report: dict, played_on:
     if timed_out is not None:
         if has_ended_on_the_board:
             raise RejectedGame("the game had already ended when a clock ran out")
-        # The side whose clock ran out loses to an opponent who could
-        # still mate, and draws against one who never could, as the page
-        # decides it.
-        opponent = chess.BLACK
+        # Only the side to move has its clock running, so only it can run
+        # out of time.
+        side_out_of_time = chess.WHITE
         if timed_out == "black":
-            opponent = chess.WHITE
+            side_out_of_time = chess.BLACK
+        if board.turn != side_out_of_time:
+            raise RejectedGame(f"{timed_out} ran out of time while not to move")
+        # The side whose clock ran out loses to an opponent who could still
+        # mate, and draws against one who never could, as the page decides it.
+        opponent = not side_out_of_time
         if board.has_insufficient_material(opponent):
             result = "1/2-1/2"
-        elif timed_out == "white":
-            result = "0-1"
-        else:
+        elif opponent == chess.WHITE:
             result = "1-0"
+        else:
+            result = "0-1"
     elif visitor_resigned:
         if has_ended_on_the_board:
             raise RejectedGame("the game had already ended when the visitor resigned")
