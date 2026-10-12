@@ -96,7 +96,7 @@ for (const run of runs) {
 
   const startedAt = performance.now();
   const baseModel = await loadBaseModel(onnxFile, { rating: run.rating });
-  const report = await measureMoveMatching(positions, (fen) => selectMove(fen, { baseModel }));
+  const report = await measureMoveMatching(positions, (fen) => selectMove(fen, { baseModel, temperature: 0 }));
   const seconds = (performance.now() - startedAt) / 1000;
   progress(`${run.name}: ${percent(report.afterPly10)} after ply 10, ${seconds.toFixed(0)} s`);
 

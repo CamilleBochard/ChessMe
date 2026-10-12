@@ -72,7 +72,7 @@ if (flags.baseline) {
 }
 const random = seededRandom(seed);
 
-const bot: Player = (fen) => selectMove(fen, { openingBook, baseModel });
+const bot: Player = (fen) => selectMove(fen, { openingBook, baseModel, temperature: 0 });
 const opponent: Player = async (fen) => {
   const policy = await opponentModel.movePolicy(gameFromFen(fen));
   return drawMove(policy, random);
