@@ -15,6 +15,10 @@ cookie or address is stored, and the service's own output names no client.
 A game the visitor did not finish is never sent, and the service refuses
 one that has not ended. A game the visitor resigned counts as finished: it
 is stored as the Bot's win, its PGN marked `[Termination "Visitor resigned"]`.
+So does a game in which a clock ran out: the report names the side, which
+loses unless the other side could not have mated, in which case it is a
+draw, and the PGN is marked `[Termination "Time forfeit"]`. A loss on time
+is refused for a game that had already ended on the board.
 
 ## On the VPS
 
