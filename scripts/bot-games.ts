@@ -2,7 +2,7 @@
 // what the Bot plays (its Style Fingerprint, its evaluation losses) can be
 // measured with no browser and no visitor.
 //
-//     npm run bot-games -- [--games 400] [--seed 13] [--temperature 0] [--opponent-rating 2000] [--baseline] [--out data/dataset/bot-games.jsonl]
+//     npm run bot-games -- [--games 400] [--seed 13] [--temperature 0] [--opponent-rating 2000] [--baseline] [--model <file.onnx>] [--out data/dataset/bot-games.jsonl]
 //
 // The Bot is the Move-Selection Engine with the Opening Book, then the served
 // Base Model's move drawn at --temperature. The default, 0, is the top move:
@@ -11,7 +11,9 @@
 // served temperature; pass it to play the Bot as the site serves it. With
 // --baseline the Opening Book is left out and the Baseline plays instead: the
 // Base Model alone, against the same opponent, so that what the book changes
-// can be measured on whole games. The opponent is the same Base Model at
+// can be measured on whole games. With --model the Bot consults another Base
+// Model file, such as a fine-tuned one, at the same rating; its opponent stays
+// the served model. The opponent is the served Base Model at
 // --opponent-rating, drawing each move at random from its probabilities, as a
 // crowd of players at that rating would choose. Both sides' draws are seeded,
 // each from a stream of its own, so a run can be replayed exactly and a Bot
@@ -50,6 +52,7 @@ const { values: flags } = parseArgs({
     temperature: { type: 'string', default: '0' },
     'opponent-rating': { type: 'string', default: String(BALANCED_OPPONENT_RATING) },
     baseline: { type: 'boolean', default: false },
+    model: { type: 'string', default: SERVED_MODEL_SOURCE },
     out: { type: 'string', default: 'data/dataset/bot-games.jsonl' },
   },
 });
@@ -58,7 +61,7 @@ const seed = Number(flags.seed);
 const temperature = Number(flags.temperature);
 const opponentRating = Number(flags['opponent-rating']);
 
-const baseModel = await loadBaseModel(await readFile(SERVED_MODEL_SOURCE), { rating: SERVED_MODEL_RATING });
+const baseModel = await loadBaseModel(await readFile(flags.model), { rating: SERVED_MODEL_RATING });
 const opponentModel = await loadBaseModel(await readFile(SERVED_MODEL_SOURCE), { rating: opponentRating });
 // Who plays: the Bot with its Opening Book, or the Baseline without one. The
 // name labels the games and the summary.
@@ -68,10 +71,10 @@ let drawDescription = `drawn at temperature ${temperature}`;
 if (temperature === 0) {
   drawDescription = 'top move';
 }
-let playerDescription = `${OPENING_BOOK}, then ${SERVED_MODEL_SOURCE} at ${SERVED_MODEL_RATING}, ${drawDescription}`;
+let playerDescription = `${OPENING_BOOK}, then ${flags.model} at ${SERVED_MODEL_RATING}, ${drawDescription}`;
 if (flags.baseline) {
   playerName = 'baseline';
-  playerDescription = `${SERVED_MODEL_SOURCE} at ${SERVED_MODEL_RATING}, ${drawDescription}, no Opening Book`;
+  playerDescription = `${flags.model} at ${SERVED_MODEL_RATING}, ${drawDescription}, no Opening Book`;
 } else {
   openingBook = readOpeningBook(await readFile(OPENING_BOOK, 'utf-8'));
 }
