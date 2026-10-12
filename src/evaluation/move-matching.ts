@@ -92,6 +92,19 @@ export interface DrawnMoveMatchingReport {
   drawn: MoveMatchingReport;
 }
 
+/**
+ * Two Bots scored on the same positions, and what the second gains over the
+ * first. In the gain, matched holds the matches gained, negative when the
+ * second Bot loses some, and its standard error is that of the gain itself:
+ * both Bots answer the same positions, so whatever makes one game easier
+ * than another cancels out of the difference.
+ */
+export interface BotComparison {
+  first: DrawnMoveMatchingReport;
+  second: DrawnMoveMatchingReport;
+  gain: DrawnMoveMatchingReport;
+}
+
 /** Reads positions in JSON Lines, one per line, as in the Test Set and the training file. */
 export function readPositions(jsonLines: string): PlayedPosition[] {
   const positions: PlayedPosition[] = [];
@@ -141,18 +154,60 @@ export async function measureDrawnMoveMatching(
   const drawnOutcomes: Outcome[] = [];
   for (const position of positions) {
     const distribution = await weighMoves(position.fen);
-
-    const mostLikely = distribution[0].move;
-    topMoveOutcomes.push({ position: position, matched: matchOf(mostLikely, position) });
-
-    let probabilityOfHisMove = 0;
-    for (const candidate of distribution) {
-      const probabilityIfHis = candidate.probability * matchOf(candidate.move, position);
-      probabilityOfHisMove = probabilityOfHisMove + probabilityIfHis;
-    }
-    drawnOutcomes.push({ position: position, matched: probabilityOfHisMove });
+    topMoveOutcomes.push({ position: position, matched: topMoveMatch(distribution, position) });
+    drawnOutcomes.push({ position: position, matched: drawnMatch(distribution, position) });
   }
   return { topMove: report(topMoveOutcomes), drawn: report(drawnOutcomes) };
+}
+
+/**
+ * Scores two Bots on the same positions, top move and draw, and measures the
+ * second's gain over the first position by position.
+ */
+export async function compareBots(
+  positions: PlayedPosition[],
+  weighFirst: WeighMoves,
+  weighSecond: WeighMoves,
+): Promise<BotComparison> {
+  const first = { topMove: [] as Outcome[], drawn: [] as Outcome[] };
+  const second = { topMove: [] as Outcome[], drawn: [] as Outcome[] };
+  const gain = { topMove: [] as Outcome[], drawn: [] as Outcome[] };
+  for (const position of positions) {
+    const firstDistribution = await weighFirst(position.fen);
+    const secondDistribution = await weighSecond(position.fen);
+
+    const firstTopMove = topMoveMatch(firstDistribution, position);
+    const secondTopMove = topMoveMatch(secondDistribution, position);
+    first.topMove.push({ position: position, matched: firstTopMove });
+    second.topMove.push({ position: position, matched: secondTopMove });
+    gain.topMove.push({ position: position, matched: secondTopMove - firstTopMove });
+
+    const firstDrawn = drawnMatch(firstDistribution, position);
+    const secondDrawn = drawnMatch(secondDistribution, position);
+    first.drawn.push({ position: position, matched: firstDrawn });
+    second.drawn.push({ position: position, matched: secondDrawn });
+    gain.drawn.push({ position: position, matched: secondDrawn - firstDrawn });
+  }
+  return {
+    first: { topMove: report(first.topMove), drawn: report(first.drawn) },
+    second: { topMove: report(second.topMove), drawn: report(second.drawn) },
+    gain: { topMove: report(gain.topMove), drawn: report(gain.drawn) },
+  };
+}
+
+/** 1 when the most likely move of the distribution is Camille's, 0 otherwise. */
+function topMoveMatch(distribution: MoveProbability[], position: PlayedPosition): number {
+  return matchOf(distribution[0].move, position);
+}
+
+/** The probability a draw from the distribution lands on Camille's move. */
+function drawnMatch(distribution: MoveProbability[], position: PlayedPosition): number {
+  let probabilityOfHisMove = 0;
+  for (const candidate of distribution) {
+    const probabilityIfHis = candidate.probability * matchOf(candidate.move, position);
+    probabilityOfHisMove = probabilityOfHisMove + probabilityIfHis;
+  }
+  return probabilityOfHisMove;
 }
 
 /** 1 when the move is the one Camille played in the position, 0 otherwise. */
