@@ -594,4 +594,23 @@ describe('the clock', () => {
     expect(session.runningClock()).toBe('white');
     expect(session.timeLeft('white')).toBe(TEN_MINUTES - 15_000);
   });
+
+  it('stops the clock when the Bot fails, so the game is never reported as lost on time', async () => {
+    const finishedGames: FinishedGame[] = [];
+    const session = createSessionGame({
+      chooseMove: async () => {
+        throw new Error('The Bot could not be loaded');
+      },
+      onGameEnd: (finished) => {
+        finishedGames.push(finished);
+      },
+    });
+    await session.start('white');
+    await expect(session.playVisitorMove({ from: 'e2', to: 'e4' })).rejects.toThrow('could not be loaded');
+
+    vi.advanceTimersByTime(TEN_MINUTES);
+
+    expect(session.runningClock()).toBeNull();
+    expect(finishedGames).toEqual([]);
+  });
 });

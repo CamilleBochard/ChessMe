@@ -268,7 +268,18 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
 
   async function playBotMove(): Promise<void> {
     const askedAbout = game;
-    const reply = await options.chooseMove(currentFen(askedAbout));
+    let reply: BotMove;
+    try {
+      reply = await options.chooseMove(currentFen(askedAbout));
+    } catch (error) {
+      // A Bot that failed cannot go on, and its clock must not run out for
+      // it: the game would be reported as won on time against a Bot that
+      // never played. The page says the game cannot continue.
+      if (game === askedAbout) {
+        stopTheClock();
+      }
+      throw error;
+    }
 
     // While the Bot was choosing, the visitor may have resigned or started
     // over. The reply answers a game that is gone.
