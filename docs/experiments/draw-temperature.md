@@ -32,8 +32,10 @@ for each temperature measured, with only `--temperature` and `--out`
 changing. The second scores every move of the Bot's with Stockfish 19 at
 depth 18, the Blunder Profile's settings and cache, takes one `--run` per
 temperature, and writes `docs/experiments/results/draw-temperature.json`
-with Markdown tables of the results. It ends by saying which temperature the
-rule wants measured next, or which one it chooses.
+with Markdown tables of the results: the losses per Phase, the distances,
+each Phase's own distance, and the losses again without the moves made in
+positions already decided. It ends by saying which temperature the rule
+wants measured next, or which one it chooses.
 
 ## How the Bot's games are played
 
@@ -41,12 +43,12 @@ rule wants measured next, or which one it chooses.
 Book, then Maia-3 5M at 1100 drawing its move at the temperature measured.
 
 **Against a stand-in for Camille's opponents.** Lichess and Chess.com pair
-him with players of about his own rating, and he scores 48% against them. The Bot's opponent is the same network at 1100, his
-Maia-Equivalent Rating, drawing at temperature 1: the model's own estimate
+him with players of about his own rating, and he scores 48% against them.
+The Bot's opponent is the same network at 1100, his Maia-Equivalent Rating, drawing at temperature 1: the model's own estimate
 of a player at his rating. The opponent is the same at every temperature, so
 only the Bot changes from one run to the next. The 2000-rated opponent of
 the [Style Fingerprint](style-fingerprint.md) was set to balance the score
-of the top-move Bot, which was far stronger than Camille; tuning the
+of the top-move Bot, whose Level was far above Camille's; tuning the
 opponent again for each temperature would hide the very difference being
 measured, so the Bot's score is reported instead, as a second sign of its
 Level.
@@ -170,8 +172,10 @@ middlegame its losses match his almost point for point: a mean of 104.6
 centipawns against 103.1, a 90th percentile of 310 against 313, three
 pawns or more lost on 10.8% of moves against 10.6%. In the opening the mean
 is 25.6 against 25.7. Both Phases are 3.4 from his, about the 3.6 that
-separates his own two sets of games. A quarter step either way is clearly off: at
-0.75 the middlegame mean falls to 82.8, at 1.25 it rises to 133.0. The
+separates his own two sets of games. The opening is close partly by
+construction, since the Opening Book plays Camille's own replies there, and
+it barely moves with the temperature. A quarter step either way is clearly
+off: at 0.75 the middlegame mean falls to 82.8, at 1.25 it rises to 133.0. The
 Base Model's own estimate of how a player at 1100 chooses turns out to be
 the right one, with no adjustment.
 
@@ -196,15 +200,16 @@ temperature is worth about twenty points of score.
 
 **Compared with the top move.** The top-move Bot measured for the [Style
 Fingerprint](style-fingerprint.md) lost 55 centipawns a move in the
-middlegame, half of Camille's 103. Its games were played against a
-stronger opponent, so the figures are not strictly comparable, but the
+middlegame, half of Camille's 103. Its games were played against an
+opponent of a higher Level, so the figures are not strictly comparable, but the
 direction is plain: drawing at 1 brings the Bot's mistakes back to the
 size and frequency of his.
 
 **Move-Matching at the chosen temperature.** Since 1 is the temperature
 the drawn move was already measured at, the figures are those of [the
 drawn move](move-matching.md#the-drawn-move), the Base Model alone on the
-Test Set: 36.66% after ply 10 against 49.53% for the top move; 35.08%
+Test Set, without the Opening Book: 36.66% after ply 10 against 49.53%
+for the top move; 35.08%
 against 51.30% in the opening, 34.40% against 47.60% in the middlegame and
 37.97% against 50.65% in the endgame. The site keeps serving temperature
 1, so nothing changes on it.
@@ -234,7 +239,7 @@ difference the middlegame figures suggest is small.
 **One seed, one opponent.** Each temperature is 200 games played from
 seed 13 against one stand-in opponent. The stand-in is the model's
 estimate of a player at Camille's rating; if that estimate is off, the
-Bot meets opponents slightly stronger or weaker than his, at every
+Bot meets opponents slightly above or below his Level, at every
 temperature alike.
 
 **Positions are judged from the FEN alone,** as in the Blunder Profile,
