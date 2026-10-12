@@ -10,3 +10,9 @@ export const SERVED_MODEL_DIRECTORY = 'public/models';
 
 /** The rating the Base Model plays at. */
 export const SERVED_MODEL_RATING = 1100;
+
+/**
+ * The temperature the Bot draws the Base Model's move at. At 1 each move is
+ * played as often as the model predicts a player at its rating would play it.
+ */
+export const SERVED_MODEL_TEMPERATURE = 1;

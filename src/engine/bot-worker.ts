@@ -19,6 +19,8 @@ export interface WorkerDependencies {
   openingBook?: OpeningBook;
   /** Returns a number in [0, 1), like Math.random, which it defaults to; tests fix it. */
   random?: () => number;
+  /** The temperature the Base Model's move is drawn at; the engine's default of 1 if left out. */
+  temperature?: number;
 }
 
 /** Answers the page's messages arriving on the port. */
@@ -45,6 +47,7 @@ export function serveBot(port: BotPort, dependencies: WorkerDependencies): void 
           openingBook: dependencies.openingBook,
           baseModel: baseModel!,
           random: dependencies.random,
+          temperature: dependencies.temperature,
         });
         send(port, { kind: 'move', id: message.id, botMove: botMove });
       } catch (error) {
