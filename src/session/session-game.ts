@@ -355,6 +355,13 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
         return;
       }
       setGame(earlier);
+      // Taking back a move that ended the game, a checkmate or a draw,
+      // reopens it, and the clock that stopped with it runs again for the
+      // side to move. No time comes back.
+      if (clock.running === null && gameStatus(game).kind === 'ongoing') {
+        clock = startTurn(clock, sideToMove(game), Date.now());
+        watchForFlag();
+      }
     },
 
     canResign: isGameInProgress,

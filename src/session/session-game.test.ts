@@ -574,4 +574,24 @@ describe('the clock', () => {
     expect(gameStatus(session.game())).toEqual({ kind: 'time-forfeit', winner: 'white' });
     expect(moveList(session.game())).toEqual([{ moveNumber: 1, white: 'e4', black: null }]);
   });
+
+  it('runs the visitor\'s clock again after taking back a move that lost to checkmate', async () => {
+    const session = createSessionGame({
+      chooseMove: scriptedBot([
+        { from: 'e7', to: 'e5' },
+        { from: 'd8', to: 'h4' },
+      ]),
+    });
+    await session.start('white');
+    await session.playVisitorMove({ from: 'f2', to: 'f3' });
+    vi.advanceTimersByTime(10_000);
+    await session.playVisitorMove({ from: 'g2', to: 'g4' });
+
+    session.takeBack();
+    vi.advanceTimersByTime(5_000);
+
+    // Back before g4, still the visitor's turn: the 10 seconds stay spent, and the clock runs on.
+    expect(session.runningClock()).toBe('white');
+    expect(session.timeLeft('white')).toBe(TEN_MINUTES - 15_000);
+  });
 });
