@@ -19,6 +19,7 @@ import { openingBookFrom, type OpeningBookFile } from '../src/engine/opening-boo
 import { gameFromFen } from '../src/game/game';
 import {
   measureMoveMatching,
+  PHASE_LABELS,
   PHASES,
   readPositions,
   type MoveMatchingReport,
@@ -34,11 +35,6 @@ import {
 const DEFAULT_TEST_SET = 'data/dataset/test.jsonl';
 const DEFAULT_BOOK = 'data/dataset/opening-book.json';
 
-const PHASE_LABELS: Record<Phase, string> = {
-  opening: 'Opening (1-10)',
-  middlegame: 'Middlegame (11-30)',
-  endgame: 'Endgame (31+)',
-};
 
 const { values: flags, positionals } = parseArgs({
   options: {

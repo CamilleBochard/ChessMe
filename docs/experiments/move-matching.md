@@ -99,12 +99,12 @@ estimates and a breakdown by Phase, chose the Base Model: see
 
 ## The drawn move
 
-The Bot no longer always plays the Base Model's most likely move. Maia
-predicts the moves of a crowd of players at a rating, and the crowd's single
-most likely move is rarely a mistake, while a player at that rating
+The Bot does not always play the Base Model's most likely move. The Base
+Model predicts the moves of a crowd of players at a rating, and the crowd's
+single most likely move is rarely a mistake, while a player at that rating
 sometimes plays a less likely move and makes most of his mistakes among
-them. Always playing the top move filtered those out, and Camille won none
-of 21 games against that Bot. The engine now draws the Base Model's move at
+them. A Bot always playing the top move filters those out, and Camille won
+none of 21 games against it. So the engine draws the Base Model's move at
 random, weighted by the model's probabilities over the legal moves. A
 temperature shapes the draw: each probability is raised to the power 1/T
 and the set rescaled, which is what dividing the network's raw scores by T
@@ -119,8 +119,8 @@ and still plays Camille's most played reply.
 npm run drawn-move -- models/onnx/maia3-5m.onnx --rating 1100 --record docs/experiments/results/drawn-move.json
 ```
 
-`--temperature <t>` measures another temperature. Every earlier script
-(Move-Matching, the sweep, the Opening Book, the Bot's games) asks for
+`--temperature <t>` measures another temperature. The other scripts
+(Move-Matching, the sweep, the Opening Book, the Bot's games) ask for
 temperature 0, so the figures and games recorded with the top move are
 reproduced unchanged.
 
@@ -158,13 +158,15 @@ positions in brackets.
 | After ply 10 | 49.53 ± 0.67 (5942) | 36.66 ± 0.50 (5942) |
 | All | 49.82 ± 0.57 (7092) | 36.40 ± 0.43 (7092) |
 
-The top-move column is the Baseline published by the
-[Opening Book experiment](opening-book.md), to the last digit.
+The top-move column is the Baseline the [Opening Book experiment](opening-book.md)
+recorded in `docs/experiments/results/opening-book.json`, to the last digit
+in every slice, after ply 10 included.
 
 ### Reading the results
 
-**Drawing costs about 13 points of Move-Matching in every Phase**: after
-ply 10, 36.66% against 49.53%. On average the model gives the move Camille
+**Drawing costs between 13 and 16 points of Move-Matching**: 16.2 in the
+opening, 13.2 in the middlegame and 12.7 in the endgame; after ply 10,
+36.66% against 49.53%. On average the model gives the move Camille
 played a probability of about 0.36, so a draw lands on it a little more
 than one time in three, while the top move is his about half the time.
 

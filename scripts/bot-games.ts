@@ -4,8 +4,11 @@
 //
 //     npm run bot-games -- [--games 400] [--seed 13] [--opponent-rating 2000] [--baseline] [--out data/dataset/bot-games.jsonl]
 //
-// The Bot is the Move-Selection Engine as the site serves it: the Opening Book,
-// then the served Base Model's top move. With --baseline the Opening Book is
+// The Bot is the Move-Selection Engine with the Opening Book, then the served
+// Base Model's top move (temperature 0): the Bot the Style Fingerprint and the
+// style discriminator were measured on, so the recorded games can be played
+// again exactly. The site itself draws the Base Model's move at the served
+// temperature; this script does not play that Bot. With --baseline the Opening Book is
 // left out and the Baseline plays instead: the Base Model alone, against the
 // same opponent, so that what the book changes can be measured on whole
 // games. The Bot plays the same move every time

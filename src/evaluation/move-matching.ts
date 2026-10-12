@@ -27,6 +27,13 @@ export type Phase = 'opening' | 'middlegame' | 'endgame';
 /** The Phases in the order a game passes through them. */
 export const PHASES: readonly Phase[] = ['opening', 'middlegame', 'endgame'];
 
+/** How a Phase is named in a table, with the plies that belong to it. */
+export const PHASE_LABELS: Record<Phase, string> = {
+  opening: 'Opening (1-10)',
+  middlegame: 'Middlegame (11-30)',
+  endgame: 'Endgame (31+)',
+};
+
 /** How many positions were scored and in how many the engine played Camille's move. */
 export interface MoveMatchingScore {
   /**
@@ -71,7 +78,7 @@ const LAST_OPENING_PLY = 10;
 export type ChooseMove = (fen: string) => Promise<MoveRequest>;
 
 /** How likely the engine is to play each move in a position, most likely first. */
-export type MoveDistributionOf = (fen: string) => Promise<MoveProbability[]>;
+export type WeighMoves = (fen: string) => Promise<MoveProbability[]>;
 
 /** The same positions scored two ways from one distribution per position. */
 export interface DrawnMoveMatchingReport {
@@ -109,7 +116,7 @@ export function share(score: MoveMatchingScore): number {
  */
 interface Outcome {
   position: PlayedPosition;
-  value: number;
+  matched: number;
 }
 
 /** Asks the engine for its move in every position and counts the ones that match Camille's. */
@@ -117,11 +124,7 @@ export async function measureMoveMatching(positions: PlayedPosition[], chooseMov
   const outcomes: Outcome[] = [];
   for (const position of positions) {
     const engineMove = await chooseMove(position.fen);
-    let value = 0;
-    if (uciName(engineMove) === position.move) {
-      value = 1;
-    }
-    outcomes.push({ position: position, value: value });
+    outcomes.push({ position: position, matched: matchOf(engineMove, position) });
   }
   return report(outcomes);
 }
@@ -132,28 +135,32 @@ export async function measureMoveMatching(positions: PlayedPosition[], chooseMov
  */
 export async function measureDrawnMoveMatching(
   positions: PlayedPosition[],
-  distributionOf: MoveDistributionOf,
+  weighMoves: WeighMoves,
 ): Promise<DrawnMoveMatchingReport> {
   const topMoveOutcomes: Outcome[] = [];
   const drawnOutcomes: Outcome[] = [];
   for (const position of positions) {
-    const distribution = await distributionOf(position.fen);
+    const distribution = await weighMoves(position.fen);
 
-    let topMoveValue = 0;
-    if (uciName(distribution[0].move) === position.move) {
-      topMoveValue = 1;
-    }
-    topMoveOutcomes.push({ position: position, value: topMoveValue });
+    const mostLikely = distribution[0].move;
+    topMoveOutcomes.push({ position: position, matched: matchOf(mostLikely, position) });
 
     let probabilityOfHisMove = 0;
     for (const candidate of distribution) {
-      if (uciName(candidate.move) === position.move) {
-        probabilityOfHisMove = probabilityOfHisMove + candidate.probability;
-      }
+      const probabilityIfHis = candidate.probability * matchOf(candidate.move, position);
+      probabilityOfHisMove = probabilityOfHisMove + probabilityIfHis;
     }
-    drawnOutcomes.push({ position: position, value: probabilityOfHisMove });
+    drawnOutcomes.push({ position: position, matched: probabilityOfHisMove });
   }
   return { topMove: report(topMoveOutcomes), drawn: report(drawnOutcomes) };
+}
+
+/** 1 when the move is the one Camille played in the position, 0 otherwise. */
+function matchOf(move: MoveRequest, position: PlayedPosition): number {
+  if (uciName(move) === position.move) {
+    return 1;
+  }
+  return 0;
 }
 
 /** Scores every position, the positions after ply 10, and each Phase's positions. */
@@ -182,7 +189,7 @@ function score(outcomes: Outcome[]): MoveMatchingScore {
       tallies.set(outcome.position.game, tally);
     }
     tally.positions = tally.positions + 1;
-    tally.matched = tally.matched + outcome.value;
+    tally.matched = tally.matched + outcome.matched;
   }
 
   let matched = 0;

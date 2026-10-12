@@ -30,11 +30,11 @@ import {
 } from '../src/evaluation/base-model-sweep';
 import {
   measureMoveMatching,
+  PHASE_LABELS,
   PHASES,
   readPositions,
   share,
   type MoveMatchingScore,
-  type Phase,
   type PlayedPosition,
 } from '../src/evaluation/move-matching';
 
@@ -46,11 +46,6 @@ const MAIA3_RATINGS = [700, 900, 1100, 1300, 1500, 1700, 1900];
 const LICHESS_RATING = 1331;
 const MEGABYTE = 1_000_000;
 
-const PHASE_LABELS: Record<Phase, string> = {
-  opening: 'Opening (1-10)',
-  middlegame: 'Middlegame (11-30)',
-  endgame: 'Endgame (31+)',
-};
 
 interface CandidateEntry {
   name: string;
