@@ -118,8 +118,14 @@ def record_session_game(connection: sqlite3.Connection, report: dict, played_on:
         if has_ended_on_the_board:
             raise RejectedGame("the game had already ended when a clock ran out")
         # The side whose clock ran out loses to an opponent who could
-        # still mate.
-        if timed_out == "white":
+        # still mate, and draws against one who never could, as the page
+        # decides it.
+        opponent = chess.BLACK
+        if timed_out == "black":
+            opponent = chess.WHITE
+        if board.has_insufficient_material(opponent):
+            result = "1/2-1/2"
+        elif timed_out == "white":
             result = "0-1"
         else:
             result = "1-0"
