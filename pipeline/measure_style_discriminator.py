@@ -59,13 +59,7 @@ def measure(dataset_dir: Path, other_players_path: Path, bot_games_path: Path, b
     dataset = read_dataset(dataset_dir)
     other_positions = read_other_players(other_players_path)
 
-    other_training_positions = []
-    other_test_split_positions = []
-    for position in other_positions:
-        if is_held_back(position.game_id, TEST_FRACTION):
-            other_test_split_positions.append(position)
-        else:
-            other_training_positions.append(position)
+    other_training_positions, other_test_split_positions = split_other_players(other_positions)
 
     groups = {
         "camille_test_set": games_long_enough(dataset.test),
@@ -80,35 +74,47 @@ def measure(dataset_dir: Path, other_players_path: Path, bot_games_path: Path, b
 
     scores = {}
     for name, games in groups.items():
-        scores[name] = _scores(discriminator, games)
+        scores[name] = score_games(discriminator, games)
 
     return {
         "format_version": FORMAT_VERSION,
         "min_moves_read": MIN_MOVES_READ,
-        "groups": _group_summaries(scores),
+        "groups": group_summaries(scores),
         # The check that comes first: on games it never saw, does it tell
         # Camille from players at his Level better than a coin toss?
-        "test_set_separation": _separation(scores["camille_test_set"], scores["other_players_test_split"]),
+        "test_set_separation": separation(scores["camille_test_set"], scores["other_players_test_split"]),
         # The same measure on the games it was trained on. Far above the
         # Test Set's figure, it would mean the discriminator memorised its
         # training games rather than learnt a style.
-        "training_separation": _separation(scores["camille_training_games"], scores["other_players_training_games"]),
+        "training_separation": separation(scores["camille_training_games"], scores["other_players_training_games"]),
         # The other players all come from Lichess, Camille's games mostly
         # from Chess.com. Separation on his Lichess games alone shows
         # whether the discriminator learnt the site rather than the player.
-        "test_set_separation_lichess_only": _separation(_from_source(scores["camille_test_set"], "lichess"), scores["other_players_test_split"]),
-        "test_set_separation_chesscom_only": _separation(_from_source(scores["camille_test_set"], "chesscom"), scores["other_players_test_split"]),
+        "test_set_separation_lichess_only": separation(_from_source(scores["camille_test_set"], "lichess"), scores["other_players_test_split"]),
+        "test_set_separation_chesscom_only": separation(_from_source(scores["camille_test_set"], "chesscom"), scores["other_players_test_split"]),
         # The Bot and the Baseline measured as Camille's Test Set is: a
         # group that plays like him stands out from the other players as
         # much as his own games do.
-        "bot_against_other_players": _separation(scores["bot"], scores["other_players_test_split"]),
-        "baseline_against_other_players": _separation(scores["baseline"], scores["other_players_test_split"]),
-        "bot_against_baseline": _bot_against_baseline(scores["bot"], scores["baseline"]),
+        "bot_against_other_players": separation(scores["bot"], scores["other_players_test_split"]),
+        "baseline_against_other_players": separation(scores["baseline"], scores["other_players_test_split"]),
+        "bot_against_baseline": compare_mean_scores(scores["bot"], scores["baseline"]),
         "weights": _strongest_push_first(discriminator.weights()),
     }
 
 
-def _scores(discriminator: StyleDiscriminator, games: list[list[Position]]) -> list[dict]:
+def split_other_players(other_positions: list[Position]) -> tuple[list[Position], list[Position]]:
+    """The other players' training games and test split, divided by the same hash as Camille's."""
+    training = []
+    test_split = []
+    for position in other_positions:
+        if is_held_back(position.game_id, TEST_FRACTION):
+            test_split.append(position)
+        else:
+            training.append(position)
+    return training, test_split
+
+
+def score_games(discriminator: StyleDiscriminator, games: list[list[Position]]) -> list[dict]:
     scored = []
     for game in games:
         scored.append({"game_id": game[0].game_id, "source": game[0].source, "score": discriminator.camille_probability(game)})
@@ -123,7 +129,7 @@ def _from_source(scored: list[dict], source: str) -> list[dict]:
     return [game for game in scored if game["source"] == source]
 
 
-def _group_summaries(scores: dict[str, list[dict]]) -> dict:
+def group_summaries(scores: dict[str, list[dict]]) -> dict:
     summaries = {}
     for name, scored in scores.items():
         values = _values(scored)
@@ -138,7 +144,7 @@ def _group_summaries(scores: dict[str, list[dict]]) -> dict:
     return summaries
 
 
-def _separation(candidate_scored: list[dict], other_scored: list[dict]) -> dict:
+def separation(candidate_scored: list[dict], other_scored: list[dict]) -> dict:
     """How far a group of games stands out from other players' games as Camille's: the area under the curve."""
     candidate_values = _values(candidate_scored)
     other_values = _values(other_scored)
@@ -151,7 +157,8 @@ def _separation(candidate_scored: list[dict], other_scored: list[dict]) -> dict:
     }
 
 
-def _bot_against_baseline(bot_scored: list[dict], baseline_scored: list[dict]) -> dict:
+def compare_mean_scores(bot_scored: list[dict], baseline_scored: list[dict]) -> dict:
+    """How much more like Camille's the first group of games scores than the second, with intervals."""
     bot_values = _values(bot_scored)
     baseline_values = _values(baseline_scored)
 
