@@ -6,11 +6,12 @@
 import type { Colour } from '../board/starting-position';
 import type { Game } from './game';
 
-/** Every way a game can stand. Only checkmate and resignation have a winner. */
+/** Every way a game can stand. Only checkmate, resignation and a loss on time have a winner. */
 export type GameStatus =
   | { kind: 'ongoing' }
   | { kind: 'checkmate'; winner: Colour }
   | { kind: 'resignation'; winner: Colour }
+  | { kind: 'time-forfeit'; winner: Colour }
   | { kind: 'stalemate' }
   | { kind: 'insufficient-material' }
   | { kind: 'fifty-move-rule' }
@@ -25,6 +26,10 @@ export function gameStatus(game: Game): GameStatus {
 
   if (game.resignedBy !== undefined) {
     return { kind: 'resignation', winner: opponentOf(game.resignedBy) };
+  }
+
+  if (game.timedOutBy !== undefined) {
+    return { kind: 'time-forfeit', winner: opponentOf(game.timedOutBy) };
   }
 
   if (position.isCheckmate()) {
@@ -68,6 +73,11 @@ export function describeResult(status: GameStatus): string | null {
         return 'Black resigns. White wins.';
       }
       return 'White resigns. Black wins.';
+    case 'time-forfeit':
+      if (status.winner === 'white') {
+        return 'Black ran out of time. White wins.';
+      }
+      return 'White ran out of time. Black wins.';
     case 'stalemate':
       return 'Draw by stalemate.';
     case 'insufficient-material':

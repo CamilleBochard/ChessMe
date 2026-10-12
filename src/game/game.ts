@@ -45,6 +45,8 @@ export interface Game {
   readonly previous?: Game;
   /** The side that resigned, which ends the game whatever the position. */
   readonly resignedBy?: Colour;
+  /** The side whose clock ran out, which ends the game whatever the position. */
+  readonly timedOutBy?: Colour;
 }
 
 /** One line of the move list: a move number, White's move and Black's reply. */
@@ -149,6 +151,12 @@ export function moveList(game: Game): MoveListRow[] {
 export function resign(game: Game, side: Colour): Game {
   const resigned: Game = { ...game, resignedBy: side };
   return resigned;
+}
+
+/** The same game, ended by the given side's clock running out. */
+export function timeOut(game: Game, side: Colour): Game {
+  const timedOut: Game = { ...game, timedOutBy: side };
+  return timedOut;
 }
 
 /**

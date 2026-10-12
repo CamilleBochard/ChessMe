@@ -3,7 +3,7 @@
 // game must still be going.
 
 import { describe, expect, it } from 'vitest';
-import { gameFromFen, newGame, playMove, resign, type Game, type MoveRequest } from './game';
+import { gameFromFen, newGame, playMove, resign, timeOut, type Game, type MoveRequest } from './game';
 import { describeResult, describeTurn, gameStatus } from './game-status';
 
 /** Plays a sequence of moves, failing loudly if one is illegal. */
@@ -22,6 +22,15 @@ function playMoves(moves: MoveRequest[], from: Game = newGame()): Game {
 describe('gameStatus', () => {
   it('is ongoing at the start', () => {
     expect(gameStatus(newGame())).toEqual({ kind: 'ongoing' });
+  });
+
+  it('ends with the opponent winning when a side runs out of time', () => {
+    // After 1. e4 both sides still have every piece: Black could mate.
+    const afterKingsPawn = playMoves([{ from: 'e2', to: 'e4' }]);
+
+    const whiteOutOfTime = timeOut(afterKingsPawn, 'white');
+
+    expect(gameStatus(whiteOutOfTime)).toEqual({ kind: 'time-forfeit', winner: 'black' });
   });
 
   it("ends Fool's Mate with black winning", () => {
