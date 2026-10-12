@@ -15,7 +15,8 @@ export type GameStatus =
   | { kind: 'stalemate' }
   | { kind: 'insufficient-material' }
   | { kind: 'fifty-move-rule' }
-  | { kind: 'threefold-repetition' };
+  | { kind: 'threefold-repetition' }
+  | { kind: 'draw-on-time' };
 
 /**
  * How the game stands right now. The draw rules end the game automatically
@@ -29,7 +30,13 @@ export function gameStatus(game: Game): GameStatus {
   }
 
   if (game.timedOutBy !== undefined) {
-    return { kind: 'time-forfeit', winner: opponentOf(game.timedOutBy) };
+    // Running out of time loses only to an opponent who could still mate;
+    // against one who never could, whatever the other side did, it is a draw.
+    const opponent = opponentOf(game.timedOutBy);
+    if (position.hasInsufficientMaterial(opponent)) {
+      return { kind: 'draw-on-time' };
+    }
+    return { kind: 'time-forfeit', winner: opponent };
   }
 
   if (position.isCheckmate()) {
@@ -86,6 +93,8 @@ export function describeResult(status: GameStatus): string | null {
       return 'Draw by the fifty-move rule.';
     case 'threefold-repetition':
       return 'Draw by threefold repetition.';
+    case 'draw-on-time':
+      return 'Draw: out of time, but the opponent could not have mated.';
   }
 }
 

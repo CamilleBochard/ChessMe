@@ -33,6 +33,15 @@ describe('gameStatus', () => {
     expect(gameStatus(whiteOutOfTime)).toEqual({ kind: 'time-forfeit', winner: 'black' });
   });
 
+  it('ends in a draw when a side runs out of time against a lone king, which could never mate', () => {
+    // White has only its king; Black has a king and a queen.
+    const loneWhiteKing = gameFromFen('8/8/8/4k3/8/8/q7/4K3 b - - 0 1');
+
+    const blackOutOfTime = timeOut(loneWhiteKing, 'black');
+
+    expect(gameStatus(blackOutOfTime)).toEqual({ kind: 'draw-on-time' });
+  });
+
   it("ends Fool's Mate with black winning", () => {
     const foolsMate = playMoves([
       { from: 'f2', to: 'f3' },
