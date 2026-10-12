@@ -34,7 +34,8 @@ import { loadBaseModel } from '../src/engine/base-model';
 import { selectMove } from '../src/engine/move-selection';
 import { readOpeningBook, type OpeningBook } from '../src/engine/opening-book';
 import { SERVED_MODEL_RATING, SERVED_MODEL_SOURCE } from '../src/engine/served-model';
-import { drawMove, playGame, type Player } from '../src/evaluation/bot-games';
+import { drawMove } from '../src/engine/move-draw';
+import { playGame, type Player } from '../src/evaluation/bot-games';
 import { seededRandom } from '../src/evaluation/seeded-random';
 import { gameFromFen } from '../src/game/game';
 

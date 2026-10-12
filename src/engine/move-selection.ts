@@ -6,6 +6,7 @@
 
 import { gameFromFen, legalMoves, type MoveRequest } from '../game/game';
 import type { BaseModel } from './base-model';
+import { drawMove } from './move-draw';
 import type { OpeningBook } from './opening-book';
 
 /** What the engine depends on, supplied by the caller so tests can fix it. */
@@ -64,7 +65,7 @@ export async function selectMoveWithSource(fen: string, options: EngineOptions =
   if (options.baseModel !== undefined) {
     const baseModel = await options.baseModel;
     const policy = await baseModel.movePolicy(game);
-    return { move: policy[0].move, source: 'base-model' };
+    return { move: drawMove(policy, random), source: 'base-model' };
   }
 
   const index = Math.floor(random() * candidates.length);

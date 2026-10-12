@@ -17,6 +17,8 @@ export interface WorkerDependencies {
   download(model: ModelSource, onProgress: (progress: DownloadProgress) => void): Promise<Uint8Array>;
   /** Camille's own replies, which need no model and so can answer during the download. */
   openingBook?: OpeningBook;
+  /** Returns a number in [0, 1), like Math.random, which it defaults to; tests fix it. */
+  random?: () => number;
 }
 
 /** Answers the page's messages arriving on the port. */
@@ -42,6 +44,7 @@ export function serveBot(port: BotPort, dependencies: WorkerDependencies): void 
         const botMove = await selectMoveWithSource(message.fen, {
           openingBook: dependencies.openingBook,
           baseModel: baseModel!,
+          random: dependencies.random,
         });
         send(port, { kind: 'move', id: message.id, botMove: botMove });
       } catch (error) {

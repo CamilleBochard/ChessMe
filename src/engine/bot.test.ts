@@ -50,6 +50,8 @@ describe('the Bot', () => {
     const channel = openChannel();
     serveBot(channel.workerEnd, {
       download: async () => new Uint8Array(await readFile(FIXED_PREFERENCE_MODEL)),
+      // The bottom of the random range draws the model's most likely move.
+      random: () => 0,
     });
     const bot = connectBot(channel.pageEnd, MODEL);
 

@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { parseSquare } from 'chessops/util';
 import { currentFen, legalMoves, newGame, playMove, type Game, type MoveRequest } from '../game/game';
 import { gameStatus } from '../game/game-status';
-import { loadBaseModel } from './base-model';
+import { loadBaseModel, type BaseModel, type MoveProbability } from './base-model';
 import { selectMove, selectMoveWithSource } from './move-selection';
 import { readOpeningBook, type OpeningBook } from './opening-book';
 import { seededRandom } from '../evaluation/seeded-random';
@@ -90,7 +90,7 @@ describe.each(FIXED_PREFERENCE_MODELS)('selectMove with a $family Base Model', (
     // the model's first legal preference is e2e4.
     const startingPosition = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
-    const move = await selectMove(startingPosition, { baseModel });
+    const move = await selectMove(startingPosition, { baseModel, random: () => 0 });
 
     expect(move).toEqual({ from: 'e2', to: 'e4' });
   });
@@ -101,7 +101,7 @@ describe.each(FIXED_PREFERENCE_MODELS)('selectMove with a $family Base Model', (
     // e2e4 is the pawn on e7 advancing two squares.
     const afterKingsPawn = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1';
 
-    const move = await selectMove(afterKingsPawn, { baseModel });
+    const move = await selectMove(afterKingsPawn, { baseModel, random: () => 0 });
 
     expect(move).toEqual({ from: 'e7', to: 'e5' });
   });
@@ -112,7 +112,7 @@ describe.each(FIXED_PREFERENCE_MODELS)('selectMove with a $family Base Model', (
     // a7, so castling is the first legal preference.
     const whiteMayCastleKingside = 'r3k2r/pppqbppp/2np1n2/4p3/2B1P3/2NP1N2/PPP2PPP/R2QK2R w Kkq - 0 8';
 
-    const move = await selectMove(whiteMayCastleKingside, { baseModel });
+    const move = await selectMove(whiteMayCastleKingside, { baseModel, random: () => 0 });
 
     expect(move).toEqual({ from: 'e1', to: 'g1' });
   });
@@ -123,9 +123,33 @@ describe.each(FIXED_PREFERENCE_MODELS)('selectMove with a $family Base Model', (
     // second: the pawn on a7 promoting to a rook.
     const pawnAboutToPromote = '8/P7/8/8/8/8/k6K/8 w - - 0 1';
 
-    const move = await selectMove(pawnAboutToPromote, { baseModel });
+    const move = await selectMove(pawnAboutToPromote, { baseModel, random: () => 0 });
 
     expect(move).toEqual({ from: 'a7', to: 'a8', promotion: 'rook' });
+  });
+});
+
+/**
+ * A Base Model that gives the same probabilities in every position, most
+ * likely first, so a test can say which move a given random number draws.
+ */
+function modelWithPolicy(policy: MoveProbability[]): BaseModel {
+  return { movePolicy: async () => policy };
+}
+
+describe('selectMove drawing from the Base Model', () => {
+  const startingPosition = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+  // e2e4 owns [0, 0.7) of the random range, d2d4 [0.7, 0.9), g1f3 [0.9, 1).
+  const baseModel = modelWithPolicy([
+    { move: { from: 'e2', to: 'e4' }, probability: 0.7 },
+    { move: { from: 'd2', to: 'd4' }, probability: 0.2 },
+    { move: { from: 'g1', to: 'f3' }, probability: 0.1 },
+  ]);
+
+  it('draws the move from the probabilities, so it can play one other than the most likely', async () => {
+    const move = await selectMove(startingPosition, { baseModel, random: () => 0.75 });
+
+    expect(move).toEqual({ from: 'd2', to: 'd4' });
   });
 });
 
@@ -153,7 +177,7 @@ describe('selectMove with an Opening Book', () => {
     // The book only knows Black's reply to 1. e4.
     const openingBook = bookWith({ 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -': 'c7c5' });
 
-    const move = await selectMove(startingPosition, { openingBook, baseModel });
+    const move = await selectMove(startingPosition, { openingBook, baseModel, random: () => 0 });
 
     expect(move).toEqual({ from: 'e2', to: 'e4' });
   });
@@ -195,7 +219,7 @@ describe('selectMoveWithSource', () => {
     const baseModel = await loadBaseModel(await readFile(FIXED_PREFERENCE_MODELS[0].file));
     const openingBook = bookWith({ 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -': 'c7c5' });
 
-    const botMove = await selectMoveWithSource(startingPosition, { openingBook, baseModel });
+    const botMove = await selectMoveWithSource(startingPosition, { openingBook, baseModel, random: () => 0 });
 
     expect(botMove).toEqual({ move: { from: 'e2', to: 'e4' }, source: 'base-model' });
   });
