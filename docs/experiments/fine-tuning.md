@@ -16,9 +16,10 @@ because a prediction is not a measurement.
 raised Move-Matching after ply 10 from 49.53% to 51.50% on the Test Set, a
 gain of 1.97 ± 0.37 points measured position by position, more than five
 standard errors. Training only a small adapter gained 0.40 ± 0.37 points,
-within chance. How much of the first gain is Camille's Style, rather than
-the model adapting to how this project feeds it positions, is not settled
-here; see [What the gain may contain](#what-the-gain-may-contain).
+within chance. A control model, trained the same way on as many positions
+of other players' games at Camille's Level, gained nothing on his Test Set,
+so the gain comes from his games and not from the model adapting to how
+this project feeds it positions; see [The control](#the-control).
 
 ## Reproducing
 
@@ -208,33 +209,83 @@ trunk's description of each square, after the eight blocks have done
 their work, and that was enough to learn opening preferences but not to move
 Move-Matching later in the game.
 
-## What the gain may contain
+## The control
 
-The gain is measured; what it consists of is not. Two things besides
-Camille's Style can raise Move-Matching here, and neither is specific to
-him.
+A gain over the Baseline could contain more than Camille's Style. Two
+effects could raise Move-Matching here without being specific to him:
 
 - **The history the network is given.** Maia-3 was trained on real game
   histories, but the engine gives it eight copies of the current position,
   since it receives a FEN and no earlier moves (see
   [Measuring Move-Matching](move-matching.md)). Fine-tuning trains on that
-  same input, so part of the gain may be the model adapting to copied
-  histories.
+  same input, so it could teach the model to cope with copied histories.
 - **The time control.** Maia-3's ratings are on the Lichess blitz scale,
   while Camille's games are ten-minute ones (see
   [Choosing the Base Model](base-model-sweep.md)). If the games it learned
-  from were mostly faster than his, part of the gain may be learning how
-  people play with ten minutes on the clock.
+  from were mostly faster than his, fine-tuning could teach it how people
+  play with ten minutes on the clock.
 
-Fine-tuning the same way on the other players' ten-minute games at his
-Level, sampled for [the style discriminator](style-discriminator.md), and
-measuring that model on Camille's Test Set would separate the two: whatever
-gain it shows is not his. That control has not been run.
+Any player's ten-minute games would teach both. So a control model is
+trained exactly like the full variant that won, every weight at a learning
+rate of 10⁻⁵ for one epoch, on other players' games instead of Camille's:
+the sample drawn for [the style discriminator](style-discriminator.md),
+ten-minute Lichess games of players rated 1190 to 1360, one game per
+player. Whole games are taken in order until there are as many positions
+as his training games hold: 21,677 positions from 683 games, against his
+21,639 from 741, with a similar share of each Phase. Both models are
+trained in the same run and measured on his Test Set, so only whose games
+they learned from differs.
+
+```sh
+python -m pipeline.fetch_other_players
+python -m pipeline.measure_fine_tuning_control
+```
+
+The second command writes `docs/experiments/results/fine-tuning-control.json`.
+The notebook's last section runs both on Colab, and checks that the sample
+drawn there is the one the discriminator used, by its SHA-256.
+
+Measured on 2026-10-12 on a Google Colab GPU. Move-Matching on Camille's
+Test Set, in percent, ± one standard error clustered by game.
+
+| Model | Opening (1-10) | Middlegame (11-30) | Endgame (31+) | After ply 10 | All |
+|---|---|---|---|---|---|
+| Baseline | 51.30 ± 1.46 | 47.60 ± 1.06 | 50.65 ± 0.94 | 49.53 ± 0.67 | 49.82 ± 0.57 |
+| Fine-tuned on Camille's games | 66.26 ± 1.61 | 50.85 ± 1.09 | 51.88 ± 1.00 | 51.50 ± 0.69 | 53.89 ± 0.62 |
+| Fine-tuned on other players' games | 52.70 ± 1.41 | 47.51 ± 1.06 | 49.93 ± 1.00 | 49.04 ± 0.71 | 49.63 ± 0.61 |
+
+Gains on the same positions, in percentage points, ± one standard error of
+the gain.
+
+| Gain | Opening (1-10) | Middlegame (11-30) | Endgame (31+) | After ply 10 | All |
+|---|---|---|---|---|---|
+| Camille's games, over the Baseline | +14.96 ± 1.24 | +3.25 ± 0.69 | +1.23 ± 0.47 | +1.97 ± 0.37 | +4.08 ± 0.38 |
+| Other players' games, over the Baseline | +1.39 ± 0.61 | −0.09 ± 0.46 | −0.72 ± 0.38 | −0.49 ± 0.28 | −0.18 ± 0.25 |
+| Camille's games, over other players' | +13.57 ± 1.21 | +3.34 ± 0.74 | +1.94 ± 0.52 | +2.46 ± 0.42 | +4.26 ± 0.40 |
+
+**The control gains nothing after the opening.** Trained on other players'
+games, the model matches Camille's moves after ply 10 no more often than
+the Baseline: 0.49 points less, within two standard errors. Whatever
+fine-tuning teaches about copied histories or ten-minute games, it does not
+show in his moves. Its small gain in the opening, 1.39 ± 0.61 points, is
+most likely the openings common at this Level that he plays too.
+
+**So the gain is his.** The model trained on his games matches his moves
+2.46 ± 0.42 points more often after ply 10 than the one trained on other
+players' games, about six standard errors, in the middlegame as in the
+endgame. Opening repertoire and piece preferences are Style by the
+project's definition, and the middlegame gain, 3.34 ± 0.74 points, reaches
+past what the Opening Book holds.
+
+The model trained on Camille's games in this run played exactly the moves
+of the first run's: the same count in every slice of the Test Set, on the
+same kind of Colab GPU.
 
 ## Decision
 
 Full fine-tuning **beats the Baseline** by the rule fixed before the run,
-so it may replace the Base Model in the browser. It is not shipped by this
+and the control shows the gain comes from Camille's games, so it may
+replace the Base Model in the browser. It is not shipped by this
 experiment. Shipping it means converting the trained weights to ONNX,
 measuring the Bot with it under Node behind the Opening Book, and playing
 again the Bot's games that the Style Fingerprint and the style
@@ -247,9 +298,12 @@ players. Which of these differences matters was not tested.
 
 ## Limits
 
-- One run per learning rate, on a GPU. GPU arithmetic is not exactly
-  repeatable, so a second run would give slightly different figures; how
-  different was not measured.
+- One run per learning rate. Training on Camille's games was repeated once,
+  in the control's run, and gave the same counts in every slice; both ran
+  on the same kind of Colab GPU and software, and another GPU could round
+  differently.
+- One control sample: other players' games from one month of Lichess,
+  drawn once.
 - The validation games are few: about one point of standard error per
   figure, too coarse to rank learning rates that end within a point of
   each other.
