@@ -1,0 +1,13 @@
+# Allowlist: only what the build needs. A forgotten local file (raw data,
+# notes, other models) cannot end up in the image by accident.
+*
+!package.json
+!package-lock.json
+!astro.config.mjs
+!tsconfig.json
+!scripts/stage-model.ts
+!models/onnx/maia3-5m.onnx
+!data/dataset/opening-book.json
+!docs/experiments/results/
+!src/
+!docker/nginx/
