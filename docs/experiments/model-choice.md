@@ -41,3 +41,38 @@ training and not from playing.
 In the first two cases the recreated weights go forward, since they are
 what the repository produces: they are the ones converted, measured and,
 if chosen, served.
+
+## The rule, stated before the figures were read
+
+A Bot plays like Camille when its mistakes are his size and frequency
+(Level) and it chooses his moves (Style). The temperature of the draw is
+the dial for Level, so each model is first set to its own temperature, and
+the models are then compared on Style.
+
+**Each model at its own temperature.** The temperature that brings a
+model's evaluation losses closest to Camille's Blunder Profile is chosen
+exactly as in [the draw's temperature](draw-temperature.md): the same rule,
+distance, opponent (the original model at 1100, drawing at 1), 200 games
+per temperature, seed 13, and Stockfish 19 at depth 18. For the original
+model this was done: temperature 1. For the fine-tuned model it is done
+here. The ticket that asked for this comparison left the temperature out
+of scope; the rule needs it, so it is measured here and reported with the
+rest.
+
+**Then Style decides.** Both Bots, the Opening Book in front of each model
+and each drawing at its own temperature, answer the Test Set. The
+fine-tuned model is chosen if its Bot's Move-Matching after ply 10,
+measured on the drawn move as the probability the draw lands on Camille's
+move, exceeds the original Bot's by more than two standard errors of the
+gain, measured position by position. Otherwise the original model stays:
+it is already served, and a gap within chance is no reason to change what
+every visitor downloads. After ply 10, because the Opening Book answers
+most opening positions for both Bots alike.
+
+**Reported beside the decision, without changing it:** each model's
+temperature and distance to the Blunder Profile, the top move's
+Move-Matching, the Style Fingerprint and the style discriminator on 400
+games of each Bot at its own temperature, and both models' download sizes.
+
+**What follows.** If the fine-tuned model is chosen, the site serves it at
+its temperature. If not, nothing changes on the site.
