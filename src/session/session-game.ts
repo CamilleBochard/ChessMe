@@ -61,6 +61,8 @@ export interface SessionGame {
   status(): string;
   /** The time the side has left on its clock right now, in milliseconds. */
   timeLeft(side: Colour): number;
+  /** The side whose clock is running, or null before the first move and once the game has ended. */
+  runningClock(): Colour | null;
   /**
    * Starts a fresh game with the visitor on the given side. Resolves once the
    * Bot has played its opening move, if it has the first move.
@@ -281,6 +283,8 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
     timeLeft(side: Colour): number {
       return remainingTime(clock, side, Date.now());
     },
+
+    runningClock: () => clock.running,
 
     async start(side: Colour): Promise<void> {
       visitor = side;

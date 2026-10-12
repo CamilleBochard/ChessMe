@@ -525,4 +525,21 @@ describe('the clock', () => {
       },
     ]);
   });
+
+  it('says which clock is running: none before the first move, then the side to move', async () => {
+    const bot = slowBot();
+    const session = createSessionGame({ chooseMove: bot.chooseMove });
+    await session.start('white');
+    expect(session.runningClock()).toBeNull();
+
+    const visitorMove = session.playVisitorMove({ from: 'e2', to: 'e4' });
+    expect(session.runningClock()).toBe('black');
+
+    bot.reply({ from: 'e7', to: 'e5' });
+    await visitorMove;
+    expect(session.runningClock()).toBe('white');
+
+    session.resign();
+    expect(session.runningClock()).toBeNull();
+  });
 });
