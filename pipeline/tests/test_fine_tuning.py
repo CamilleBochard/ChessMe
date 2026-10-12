@@ -139,3 +139,18 @@ def test_refuses_to_compare_weights_of_two_different_shapes_of_model():
 
     with pytest.raises(ValueError, match="layer.weight"):
         largest_weight_difference(first, second)
+
+
+@needs_weights
+def test_the_reference_model_can_carry_fine_tuned_weights_saved_by_training(base_model, tmp_path):
+    trained = copy.deepcopy(base_model.state_dict())
+    # A weight held by one layer only: the attention bias is one tensor
+    # listed under nine names, so changing one name alone would be undone.
+    name = "elo_embedding_low.weight"
+    trained[name] = trained[name] + 1.0
+    weights_path = tmp_path / "trained.pt"
+    torch.save(trained, weights_path)
+
+    model = load_reference(fine_tuned_weights=weights_path)
+
+    assert torch.equal(model.state_dict()[name], trained[name])

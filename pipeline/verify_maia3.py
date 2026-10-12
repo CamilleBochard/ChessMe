@@ -3,6 +3,7 @@
 Run from the repository root, after python -m pipeline.convert_maia3:
 
     python -m pipeline.verify_maia3
+    python -m pipeline.verify_maia3 --fine-tuned models/fine-tuned/maia3-5m-full-recreated.pt
 
 Each position in verification_positions.txt is encoded once, with the maia3
 package's own encoder, and the same tensors are given to the unmodified
@@ -13,9 +14,14 @@ Maia-3 takes the rating as an input, so the conversion is checked at several
 ratings across the range the candidates cover. Only a FEN is known for each
 position, so the history Maia-3 reads is filled with the current position,
 as CSSLab's engine does when it is given no moves.
+
+With --fine-tuned, the fine-tuned weights are loaded into the same reference
+network and checked against the file convert_maia3 wrote from them.
 """
 
+import argparse
 from collections import deque
+from pathlib import Path
 
 import chess
 import numpy
@@ -25,7 +31,7 @@ from maia3.dataset import get_historical_tokens, get_legal_moves_mask, tokenize_
 from maia3.utils import get_all_possible_moves, mirror_move
 
 from pipeline.conversion_check import POSITIONS_PATH, Answer, compare, read_positions
-from pipeline.convert_maia3 import CANDIDATE_NAME, ONNX_PATH, load_reference
+from pipeline.convert_maia3 import CANDIDATE_NAME, FINE_TUNED_ONNX_PATH, ONNX_PATH, load_reference
 
 RATINGS = [1100, 1300, 1500, 1700, 1900]
 
@@ -62,8 +68,17 @@ def answer_from_logits(board: chess.Board, logits: numpy.ndarray) -> Answer:
 
 
 if __name__ == "__main__":
-    reference = load_reference()
-    converted = onnxruntime.InferenceSession(str(ONNX_PATH), providers=["CPUExecutionProvider"])
+    parser = argparse.ArgumentParser(description="Check the converted Maia-3 model against CSSLab's reference.")
+    parser.add_argument("--fine-tuned", type=Path, help="weights a fine-tuning run saved, checked against their conversion")
+    arguments = parser.parse_args()
+
+    onnx_path = ONNX_PATH
+    model_name = CANDIDATE_NAME
+    if arguments.fine_tuned is not None:
+        onnx_path = FINE_TUNED_ONNX_PATH
+        model_name = f"{CANDIDATE_NAME}, fine-tuned"
+    reference = load_reference(arguments.fine_tuned)
+    converted = onnxruntime.InferenceSession(str(onnx_path), providers=["CPUExecutionProvider"])
     fens = read_positions(POSITIONS_PATH)
 
     for rating in RATINGS:
@@ -93,7 +108,7 @@ if __name__ == "__main__":
             largest_logit_difference = max(largest_logit_difference, logit_difference)
 
         print(
-            f"{CANDIDATE_NAME} at {rating}: same top move in {same_best_moves}/{len(fens)} positions, "
+            f"{model_name} at {rating}: same top move in {same_best_moves}/{len(fens)} positions, "
             f"largest policy difference {largest_difference:.6f} percentage points, "
             f"largest raw score difference {largest_logit_difference:.2e}"
         )

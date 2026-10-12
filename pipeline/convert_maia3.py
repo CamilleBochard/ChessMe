@@ -3,13 +3,18 @@
 Run from the repository root, after python -m pipeline.fetch_models:
 
     python -m pipeline.convert_maia3
+    python -m pipeline.convert_maia3 --fine-tuned models/fine-tuned/maia3-5m-full-recreated.pt
 
 The model is built with CSSLab's maia3 package, the reference implementation,
-and exported with torch.onnx into models/onnx/maia3-5m.onnx.
+and exported with torch.onnx into models/onnx/maia3-5m.onnx. With
+--fine-tuned, the weights a fine-tuning run saved replace the published ones
+before the export, and the file is models/onnx/maia3-5m-fine-tuned.onnx.
 """
 
+import argparse
 import copy
 import math
+from pathlib import Path
 
 import torch
 import torch.nn.functional as F
@@ -22,6 +27,7 @@ from pipeline.fetch_models import WEIGHTS_DIR
 CANDIDATE_NAME = "maia3-5m"
 CHECKPOINT_PATH = WEIGHTS_DIR / "maia3-5m.pt"
 ONNX_PATH = ONNX_DIR / f"{CANDIDATE_NAME}.onnx"
+FINE_TUNED_ONNX_PATH = ONNX_DIR / f"{CANDIDATE_NAME}-fine-tuned.onnx"
 
 # Maia-3 normalises with RMSNorm, which ONNX only has as a single operator from
 # opset 23. torch.onnx writes it out as elementary operations at opset 18,
@@ -29,11 +35,18 @@ ONNX_PATH = ONNX_DIR / f"{CANDIDATE_NAME}.onnx"
 ONNX_OPSET = 18
 
 
-def load_reference() -> torch.nn.Module:
-    """The Maia-3 5M model exactly as CSSLab's own engine builds and loads it."""
+def load_reference(fine_tuned_weights: Path | None = None) -> torch.nn.Module:
+    """The Maia-3 5M model exactly as CSSLab's own engine builds and loads it.
+
+    fine_tuned_weights, if given, is a state dict a fine-tuning run saved; its
+    weights replace the published ones in the same network.
+    """
     arguments = parse_args(["--checkpoint", str(CHECKPOINT_PATH), "--device", "cpu"])
     apply_model_config(arguments, resolve_model_spec(CANDIDATE_NAME))
-    return load_model(arguments)
+    model = load_model(arguments)
+    if fine_tuned_weights is not None:
+        model.load_state_dict(torch.load(fine_tuned_weights, map_location="cpu"))
+    return model
 
 
 class WrittenOutAttention(torch.nn.Module):
@@ -83,7 +96,7 @@ def exportable_copy(reference: torch.nn.Module) -> torch.nn.Module:
     return model
 
 
-def export(model: torch.nn.Module) -> None:
+def export(model: torch.nn.Module, onnx_path: Path) -> None:
     # A batch of two example positions, not one: with a single position torch
     # cannot tell the batch dimension apart from a fixed size of one.
     example_tokens = torch.zeros((2, 64, model.cfg.history * 12 + 1))
@@ -99,10 +112,17 @@ def export(model: torch.nn.Module) -> None:
         opset_version=ONNX_OPSET,
         dynamo=True,
     )
-    program.save(str(ONNX_PATH))
+    program.save(str(onnx_path))
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Convert Maia-3 5M to ONNX.")
+    parser.add_argument("--fine-tuned", type=Path, help="weights a fine-tuning run saved, converted in place of the published ones")
+    arguments = parser.parse_args()
+
+    onnx_path = ONNX_PATH
+    if arguments.fine_tuned is not None:
+        onnx_path = FINE_TUNED_ONNX_PATH
     ONNX_DIR.mkdir(parents=True, exist_ok=True)
-    export(exportable_copy(load_reference()))
-    print(f"{CANDIDATE_NAME:>12}: {ONNX_PATH}")
+    export(exportable_copy(load_reference(arguments.fine_tuned)), onnx_path)
+    print(f"{CANDIDATE_NAME:>12}: {onnx_path}")
