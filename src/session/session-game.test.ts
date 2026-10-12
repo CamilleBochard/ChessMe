@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BotMove, MoveSource } from '../engine/move-selection';
 import { currentFen, moveList, type MoveRequest } from '../game/game';
 import { gameStatus } from '../game/game-status';
-import { createSessionGame, type FinishedGame } from './session-game';
+import { clockFaces, createSessionGame, type FinishedGame } from './session-game';
 
 /** A Bot that plays the given moves in order, whatever the position, all from the given source. */
 function scriptedBot(replies: MoveRequest[], source: MoveSource = 'base-model'): (fen: string) => Promise<BotMove> {
@@ -612,5 +612,21 @@ describe('the clock', () => {
 
     expect(session.runningClock()).toBeNull();
     expect(finishedGames).toEqual([]);
+  });
+});
+
+describe('the clock faces', () => {
+  it('puts the visitor under the board as You and the Bot above it', () => {
+    expect(clockFaces('black')).toEqual({
+      top: { side: 'white', name: 'Bot' },
+      bottom: { side: 'black', name: 'You' },
+    });
+  });
+
+  it('shows White under the board and Black above it until a side is chosen', () => {
+    expect(clockFaces(null)).toEqual({
+      top: { side: 'black', name: 'Black' },
+      bottom: { side: 'white', name: 'White' },
+    });
   });
 });

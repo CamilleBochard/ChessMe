@@ -120,7 +120,7 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
   import type { BotStatus } from '../engine/bot-protocol';
   import type { BotMove } from '../engine/move-selection';
   import type { DownloadProgress } from '../engine/model-download';
-  import { createSessionGame, type FinishedGame } from '../session/session-game';
+  import { clockFaces, createSessionGame, type ClockFace, type FinishedGame } from '../session/session-game';
   import { connectTelemetry, sessionGameReport } from '../telemetry/session-game';
   import { SESSION_GAMES_CHANGED } from '../telemetry/session-game-summary';
 
@@ -453,35 +453,20 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
 
     /** The visitor's clock under the board and the Bot's above it, the running one marked. */
     function showClocks(): void {
-      const visitor = session.visitor();
-      let bottomSide: Colour = 'white';
-      if (visitor !== null) {
-        bottomSide = visitor;
-      }
-      let topSide: Colour = 'black';
-      if (bottomSide === 'black') {
-        topSide = 'white';
-      }
-
-      let bottomName = 'White';
-      let topName = 'Black';
-      if (bottomSide === 'black') {
-        bottomName = 'Black';
-        topName = 'White';
-      }
-      if (visitor !== null) {
-        bottomName = 'You';
-        topName = 'Bot';
-      }
-
-      showClock(bottomClock, bottomName, bottomSide);
-      showClock(topClock, topName, topSide);
+      const faces = clockFaces(session.visitor());
+      showClock(topClock, faces.top);
+      showClock(bottomClock, faces.bottom);
     }
 
-    function showClock(element: HTMLElement, name: string, side: Colour): void {
-      element.querySelector<HTMLElement>('[data-clock-name]')!.textContent = name;
-      element.querySelector<HTMLElement>('[data-clock-time]')!.textContent = formatClockTime(session.timeLeft(side));
-      element.classList.toggle('running', session.runningClock() === side);
+    function showClock(element: HTMLElement, face: ClockFace): void {
+      const nameElement = element.querySelector<HTMLElement>('[data-clock-name]')!;
+      const timeElement = element.querySelector<HTMLElement>('[data-clock-time]')!;
+      const timeLeft = session.timeLeft(face.side);
+      const isRunning = session.runningClock() === face.side;
+
+      nameElement.textContent = face.name;
+      timeElement.textContent = formatClockTime(timeLeft);
+      element.classList.toggle('running', isRunning);
     }
   }
 
@@ -994,6 +979,8 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
       grid-row: 1 / -1;
       padding: 2rem 2rem 2rem 0;
       min-height: 0;
+      /* The board and the two clocks share this width. */
+      --board-size: min(calc(100dvh - 15rem), calc(100vw - 17rem - 14rem - 2rem));
     }
 
     /* As large as the screen height allows while leaving room for the two
@@ -1002,13 +989,13 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
        keeping room for the title column (14rem), the moves column (17rem) and
        the padding around the board. */
     .board {
-      width: min(calc(100dvh - 15rem), calc(100vw - 17rem - 14rem - 2rem));
+      width: var(--board-size);
       max-width: none;
     }
 
     /* As wide as the board above and below it. */
     .clock {
-      width: min(calc(100dvh - 15rem), calc(100vw - 17rem - 14rem - 2rem));
+      width: var(--board-size);
       max-width: none;
     }
 

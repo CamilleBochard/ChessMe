@@ -100,6 +100,29 @@ export interface SessionGame {
   viewForward(): void;
 }
 
+/** One clock as the page shows it: whose time it holds and the name above the time. */
+export interface ClockFace {
+  side: Colour;
+  name: string;
+}
+
+/**
+ * Which clock goes above the board and which below. The visitor's sits under
+ * the board, on the side the board is turned to, and the Bot's above. Before
+ * a side is chosen the board shows White at the bottom, and so do the clocks.
+ */
+export function clockFaces(visitor: Colour | null): { top: ClockFace; bottom: ClockFace } {
+  if (visitor === null) {
+    return { top: { side: 'black', name: 'Black' }, bottom: { side: 'white', name: 'White' } };
+  }
+
+  let botSide: Colour = 'white';
+  if (visitor === 'white') {
+    botSide = 'black';
+  }
+  return { top: { side: botSide, name: 'Bot' }, bottom: { side: visitor, name: 'You' } };
+}
+
 export function createSessionGame(options: SessionGameOptions): SessionGame {
   let game = newGame();
   let visitor: Colour | null = null;
@@ -128,7 +151,7 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
     // However the game ended, both clocks stop where they were.
     const hasEnded = gameStatus(game).kind !== 'ongoing';
     if (hasEnded) {
-      stopTheClock();
+      stopBothClocks();
     }
     notifyPage();
 
@@ -138,12 +161,12 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
   }
 
   /** Both sides back to ten minutes, neither running until the first move. */
-  function resetTheClock(): void {
-    stopTheClock();
+  function resetBothClocks(): void {
+    stopBothClocks();
     clock = newClock();
   }
 
-  function stopTheClock(): void {
+  function stopBothClocks(): void {
     clock = stopClock(clock, Date.now());
     cancelFlagTimer();
   }
@@ -276,7 +299,7 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
       // it: the game would be reported as won on time against a Bot that
       // never played. The page says the game cannot continue.
       if (game === askedAbout) {
-        stopTheClock();
+        stopBothClocks();
       }
       throw error;
     }
@@ -321,7 +344,7 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
 
     async start(side: Colour): Promise<void> {
       visitor = side;
-      resetTheClock();
+      resetBothClocks();
       setGame(newGame());
 
       if (sideToMove(game) !== visitor) {
@@ -408,7 +431,7 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
 
     startOver(): void {
       visitor = null;
-      resetTheClock();
+      resetBothClocks();
       setGame(newGame());
     },
   };
