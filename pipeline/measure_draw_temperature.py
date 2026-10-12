@@ -110,14 +110,20 @@ if __name__ == "__main__":
         required=True,
         help="a temperature and the games npm run bot-games played at it, as 0.75=path/to/games.jsonl",
     )
+    parser.add_argument(
+        "--out",
+        type=Path,
+        default=RESULTS_PATH,
+        help=f"where to write the results, e.g. for another model's runs (default {RESULTS_PATH})",
+    )
     add_stockfish_arguments(parser)
     arguments = parser.parse_args()
     runs = dict(arguments.run)
 
     with running_stockfish(arguments.depth, arguments.workers) as (stockfish_processes, cache_path):
-        results = extract(DATASET_DIR, runs, cache_path, RESULTS_PATH, stockfish_processes, ProgressPrinter())
+        results = extract(DATASET_DIR, runs, cache_path, arguments.out, stockfish_processes, ProgressPrinter())
 
-    print(f"Written to {RESULTS_PATH}")
+    print(f"Written to {arguments.out}")
     print()
     print(loss_tables(results))
     print(summary_table(results))
