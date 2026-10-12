@@ -276,3 +276,21 @@ def _mirrored_for_black(fen: str, move: str) -> str:
     if chess.Board(fen).turn == chess.BLACK:
         return mirror_move(move)
     return move
+
+
+def largest_weight_difference(first: dict[str, torch.Tensor], second: dict[str, torch.Tensor]) -> float:
+    """The largest gap between two corresponding weights of two models with the same layers.
+
+    Both arguments are state dicts. Two trainings of the same recipe on
+    different processors round differently, and this says by how much the
+    weights they ended with drifted apart.
+    """
+    if first.keys() != second.keys():
+        only_in_one = sorted(first.keys() ^ second.keys())
+        raise ValueError(f"the two models do not have the same layers: {', '.join(only_in_one)}")
+
+    largest = 0.0
+    for name, first_weights in first.items():
+        difference = (first_weights.float() - second[name].float()).abs().max().item()
+        largest = max(largest, difference)
+    return largest

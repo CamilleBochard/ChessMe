@@ -93,6 +93,28 @@ def move_matching_report(positions: list[Position], model_moves: list[str]) -> M
     return MoveMatchingReport(overall=overall, after_ply_10=after_ply_10, by_phase=by_phase)
 
 
+def same_counts_as_recorded(report: MoveMatchingReport, recorded: dict) -> dict:
+    """Sets a report's matched counts beside the ones a results file recorded, slice by slice.
+
+    recorded is a Test Set report as the results files write it, with
+    "overall", "afterPly10" and "byPhase". identical is true only when every
+    slice matched exactly as often.
+    """
+    measured_counts = {"overall": report.overall.matched, "afterPly10": report.after_ply_10.matched}
+    recorded_counts = {"overall": recorded["overall"]["matched"], "afterPly10": recorded["afterPly10"]["matched"]}
+    for phase in PHASES:
+        measured_counts[phase] = report.by_phase[phase].matched
+        recorded_counts[phase] = recorded["byPhase"][phase]["matched"]
+
+    slices = {}
+    identical = True
+    for name, measured in measured_counts.items():
+        slices[name] = {"recorded": recorded_counts[name], "measured": measured}
+        if measured != recorded_counts[name]:
+            identical = False
+    return {"slices": slices, "identical": identical}
+
+
 def compare_with_baseline(
     positions: list[Position], baseline_moves: list[str], model_moves: list[str]
 ) -> BaselineComparison:
