@@ -167,6 +167,21 @@ describe('selectMove drawing from the Base Model', () => {
     expect(move).toEqual({ from: 'e2', to: 'e4' });
   });
 
+  it('plays the most likely move at a temperature just above 0', async () => {
+    // Raised to the power 10,000, even 0.7 is too small for a floating-point
+    // number (about 10^-1549); the draw must still lean all the way to e2e4.
+    const move = await selectMove(startingPosition, { baseModel, random: () => 0.85, temperature: 0.0001 });
+
+    expect(move).toEqual({ from: 'e2', to: 'e4' });
+  });
+
+  it('refuses a negative temperature', async () => {
+    // Below 0 the reshaping would turn the order of the moves upside down.
+    await expect(selectMove(startingPosition, { baseModel, temperature: -1 })).rejects.toThrow(
+      'A temperature cannot be negative: -1',
+    );
+  });
+
   it('spreads towards the less likely moves above temperature 1', async () => {
     // At 2 each probability is replaced by its square root and the three
     // rescaled: 0.7, 0.2 and 0.1 become about 0.523, 0.280 and 0.198. At 1,
