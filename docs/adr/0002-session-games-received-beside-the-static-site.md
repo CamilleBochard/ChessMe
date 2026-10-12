@@ -44,3 +44,13 @@ own log.
 The endpoint is public, so anyone can post a legal finished game that was
 never played on the site. Replaying refuses nonsense but cannot tell a real
 game from a fabricated one. The counts are reported with that limit stated.
+
+## Running in containers
+
+On the VPS both the site and the service run in containers behind Traefik,
+which takes the web server's place: it routes `/api/` to the service and
+applies the request size and rate limits. The service listens on every
+interface of its own container rather than on 127.0.0.1, so that Traefik
+can reach it; the container publishes no port, so Traefik remains the only
+way in. Traefik's access log is turned off for `/api/`, as the web server's
+was.
