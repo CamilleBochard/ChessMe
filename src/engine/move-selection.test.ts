@@ -90,7 +90,7 @@ describe.each(FIXED_PREFERENCE_MODELS)('selectMove with a $family Base Model', (
     // the model's first legal preference is e2e4.
     const startingPosition = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
-    const move = await selectMove(startingPosition, { baseModel, random: () => 0 });
+    const move = await selectMove(startingPosition, { baseModel, temperature: 0 });
 
     expect(move).toEqual({ from: 'e2', to: 'e4' });
   });
@@ -101,7 +101,7 @@ describe.each(FIXED_PREFERENCE_MODELS)('selectMove with a $family Base Model', (
     // e2e4 is the pawn on e7 advancing two squares.
     const afterKingsPawn = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1';
 
-    const move = await selectMove(afterKingsPawn, { baseModel, random: () => 0 });
+    const move = await selectMove(afterKingsPawn, { baseModel, temperature: 0 });
 
     expect(move).toEqual({ from: 'e7', to: 'e5' });
   });
@@ -112,7 +112,7 @@ describe.each(FIXED_PREFERENCE_MODELS)('selectMove with a $family Base Model', (
     // a7, so castling is the first legal preference.
     const whiteMayCastleKingside = 'r3k2r/pppqbppp/2np1n2/4p3/2B1P3/2NP1N2/PPP2PPP/R2QK2R w Kkq - 0 8';
 
-    const move = await selectMove(whiteMayCastleKingside, { baseModel, random: () => 0 });
+    const move = await selectMove(whiteMayCastleKingside, { baseModel, temperature: 0 });
 
     expect(move).toEqual({ from: 'e1', to: 'g1' });
   });
@@ -123,7 +123,7 @@ describe.each(FIXED_PREFERENCE_MODELS)('selectMove with a $family Base Model', (
     // second: the pawn on a7 promoting to a rook.
     const pawnAboutToPromote = '8/P7/8/8/8/8/k6K/8 w - - 0 1';
 
-    const move = await selectMove(pawnAboutToPromote, { baseModel, random: () => 0 });
+    const move = await selectMove(pawnAboutToPromote, { baseModel, temperature: 0 });
 
     expect(move).toEqual({ from: 'a7', to: 'a8', promotion: 'rook' });
   });
@@ -151,6 +151,12 @@ describe('selectMove drawing from the Base Model', () => {
 
     expect(move).toEqual({ from: 'd2', to: 'd4' });
   });
+
+  it('plays the most likely move at temperature 0, whatever the random number', async () => {
+    const move = await selectMove(startingPosition, { baseModel, random: () => 0.95, temperature: 0 });
+
+    expect(move).toEqual({ from: 'e2', to: 'e4' });
+  });
 });
 
 /** An Opening Book holding the given positions, each mapped to a move in UCI form. */
@@ -177,7 +183,7 @@ describe('selectMove with an Opening Book', () => {
     // The book only knows Black's reply to 1. e4.
     const openingBook = bookWith({ 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -': 'c7c5' });
 
-    const move = await selectMove(startingPosition, { openingBook, baseModel, random: () => 0 });
+    const move = await selectMove(startingPosition, { openingBook, baseModel, temperature: 0 });
 
     expect(move).toEqual({ from: 'e2', to: 'e4' });
   });
@@ -219,7 +225,7 @@ describe('selectMoveWithSource', () => {
     const baseModel = await loadBaseModel(await readFile(FIXED_PREFERENCE_MODELS[0].file));
     const openingBook = bookWith({ 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -': 'c7c5' });
 
-    const botMove = await selectMoveWithSource(startingPosition, { openingBook, baseModel, random: () => 0 });
+    const botMove = await selectMoveWithSource(startingPosition, { openingBook, baseModel, temperature: 0 });
 
     expect(botMove).toEqual({ move: { from: 'e2', to: 'e4' }, source: 'base-model' });
   });

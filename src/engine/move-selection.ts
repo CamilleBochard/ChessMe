@@ -20,6 +20,12 @@ export interface EngineOptions {
   baseModel?: BaseModel | Promise<BaseModel>;
   /** Returns a number in [0, 1), like Math.random. */
   random?: () => number;
+  /**
+   * How the Base Model's move is drawn: at 1, each move as often as the model
+   * predicts; below 1 the draw leans towards the most likely move, and at 0
+   * it always plays it. Defaults to 1.
+   */
+  temperature?: number;
 }
 
 /** Where a move of the Bot came from. */
@@ -65,6 +71,9 @@ export async function selectMoveWithSource(fen: string, options: EngineOptions =
   if (options.baseModel !== undefined) {
     const baseModel = await options.baseModel;
     const policy = await baseModel.movePolicy(game);
+    if (options.temperature === 0) {
+      return { move: policy[0].move, source: 'base-model' };
+    }
     return { move: drawMove(policy, random), source: 'base-model' };
   }
 
