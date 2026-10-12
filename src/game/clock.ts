@@ -54,3 +54,16 @@ export function remainingTime(clock: Clock, side: Colour, now: number): number {
   }
   return left;
 }
+
+/**
+ * A time as a clock face shows it, minutes and seconds such as 9:30. Seconds
+ * are rounded up, so the face reads 0:00 only once the time is gone, never
+ * while a fraction of a second is left to move in.
+ */
+export function formatClockTime(milliseconds: number): string {
+  const totalSeconds = Math.ceil(milliseconds / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  const paddedSeconds = String(seconds).padStart(2, '0');
+  return `${minutes}:${paddedSeconds}`;
+}

@@ -2,7 +2,7 @@
 // says exactly when every press happens and nothing waits for real time.
 
 import { describe, expect, it } from 'vitest';
-import { newClock, remainingTime, startTurn, stopClock } from './clock';
+import { formatClockTime, newClock, remainingTime, startTurn, stopClock } from './clock';
 
 const TEN_MINUTES = 10 * 60 * 1000;
 
@@ -48,5 +48,14 @@ describe('the chess clock', () => {
     const blackToMove = startTurn(newClock(), 'black', 0);
 
     expect(remainingTime(blackToMove, 'black', TEN_MINUTES + 5_000)).toBe(0);
+  });
+});
+
+describe('formatting a clock time', () => {
+  it('shows minutes and seconds, rounding up so 0:00 appears only when the time is gone', () => {
+    expect(formatClockTime(TEN_MINUTES)).toBe('10:00');
+    expect(formatClockTime(61_500)).toBe('1:02');
+    expect(formatClockTime(999)).toBe('0:01');
+    expect(formatClockTime(0)).toBe('0:00');
   });
 });
