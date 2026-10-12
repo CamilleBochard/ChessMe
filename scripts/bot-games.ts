@@ -6,7 +6,7 @@
 //
 // The Bot is the Move-Selection Engine with the Opening Book, then the served
 // Base Model's move drawn at --temperature. The default, 0, is the top move:
-// the Bot the Style Fingerprint and the style discriminator were measured on,
+// the Bot the Style Fingerprint and the Style Discriminator were measured on,
 // so the recorded games can be played again exactly. The site draws at the
 // served temperature; pass it to play the Bot as the site serves it. With
 // --baseline the Opening Book is left out and the Baseline plays instead: the

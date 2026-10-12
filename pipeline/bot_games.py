@@ -20,10 +20,7 @@ COLOURS = {"white": chess.WHITE, "black": chess.BLACK}
 
 def read_bot_games(path: Path) -> list[Position]:
     positions = []
-    for line in path.read_text(encoding="utf-8").splitlines():
-        if line.strip() == "":
-            continue
-        game = json.loads(line)
+    for game in _read_games(path):
         moves = [chess.Move.from_uci(move) for move in game["moves"]]
         bot_colour = COLOURS[game["bot_colour"]]
         positions.extend(positions_faced(game["game_id"], BOT_SOURCE, moves, bot_colour))
@@ -33,10 +30,7 @@ def read_bot_games(path: Path) -> list[Position]:
 def read_bot_results(path: Path) -> dict[str, int]:
     """How many of the games the Bot won, drew and lost."""
     results = {"won": 0, "drawn": 0, "lost": 0}
-    for line in path.read_text(encoding="utf-8").splitlines():
-        if line.strip() == "":
-            continue
-        game = json.loads(line)
+    for game in _read_games(path):
         winner = game["ending"].get("winner")
         if winner is None:
             results["drawn"] += 1
@@ -45,3 +39,13 @@ def read_bot_results(path: Path) -> dict[str, int]:
         else:
             results["lost"] += 1
     return results
+
+
+def _read_games(path: Path) -> list[dict]:
+    """Every game in the file, one JSON object per line."""
+    games = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.strip() == "":
+            continue
+        games.append(json.loads(line))
+    return games

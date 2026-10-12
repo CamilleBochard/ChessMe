@@ -22,15 +22,30 @@ def loss_distance(bot: list[MoveLoss], camille: list[MoveLoss]) -> float:
     measure how long each player's games last, since the Bot's run on to
     mate where his often end in a resignation.
     """
+    distances = phase_distances(bot, camille)
     distance = 0.0
+    for phase in PHASES:
+        if distances[phase] is None:
+            continue
+        camille_share = len(_losses_in(camille, phase)) / len(camille)
+        distance += camille_share * distances[phase]
+    return distance
+
+
+def phase_distances(bot: list[MoveLoss], camille: list[MoveLoss]) -> dict[str, float | None]:
+    """Each Phase's own distance between the Bot's losses and Camille's, before his shares weigh them.
+
+    None for a Phase in which Camille made no move.
+    """
+    distances = {}
     for phase in PHASES:
         bot_losses = _losses_in(bot, phase)
         camille_losses = _losses_in(camille, phase)
         if not camille_losses:
+            distances[phase] = None
             continue
-        camille_share = len(camille_losses) / len(camille)
-        distance += camille_share * _area_between_cumulative_distributions(bot_losses, camille_losses)
-    return distance
+        distances[phase] = _area_between_cumulative_distributions(bot_losses, camille_losses)
+    return distances
 
 
 def _losses_in(moves: list[MoveLoss], phase: str) -> list[int]:

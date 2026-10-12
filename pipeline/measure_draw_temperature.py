@@ -33,7 +33,7 @@ from pipeline.blunder_profile import (
 )
 from pipeline.bot_games import read_bot_games, read_bot_results
 from pipeline.dataset import PHASE_LABELS, PHASES, Position, read_dataset
-from pipeline.draw_temperature import loss_distance, next_step
+from pipeline.draw_temperature import loss_distance, next_step, phase_distances
 from pipeline.extract_blunder_profile import (
     DATASET_DIR,
     REPOSITORY_ROOT,
@@ -83,6 +83,11 @@ def extract(
             "distance": distance,
             "already_decided_share": bot.already_decided_share(),
             "distance_in_undecided_positions": loss_distance(bot.undecided_losses(), camille.undecided_losses()),
+            "phase_distances": phase_distances(bot.losses, camille.losses),
+            "phase_distances_in_undecided_positions": phase_distances(
+                bot.undecided_losses(), camille.undecided_losses()
+            ),
+            "centipawn_loss_in_undecided_positions": build_blunder_profile(bot.undecided_losses()),
         }
 
     results = {
@@ -92,6 +97,7 @@ def extract(
         "camille": {
             "centipawn_loss": build_blunder_profile(camille.losses),
             "already_decided_share": camille.already_decided_share(),
+            "centipawn_loss_in_undecided_positions": build_blunder_profile(camille.undecided_losses()),
         },
         "camille_test_set_from_training_games": loss_distance(test_set.losses, training_games.losses),
         "temperatures": temperatures,
@@ -148,15 +154,22 @@ def _measure(
 LOSS_THRESHOLDS = [50, 100, 300]
 
 
-def loss_tables(results: dict) -> str:
-    """One Markdown table per Phase: Camille's losses, then the Bot's at each temperature."""
+def loss_tables(results: dict, in_undecided_positions: bool = False) -> str:
+    """One Markdown table per Phase: Camille's losses, then the Bot's at each temperature.
+
+    With in_undecided_positions, only the moves made while the game was still
+    open are counted, for both players.
+    """
     header_cells = ["Player", "Moves", "Mean"]
     header_cells += [f"p{percentile}" for percentile in PERCENTILES]
     header_cells += [f"{threshold} or more" for threshold in LOSS_THRESHOLDS]
 
-    players = [("Camille", results["camille"]["centipawn_loss"])]
+    profile_key = "centipawn_loss"
+    if in_undecided_positions:
+        profile_key = "centipawn_loss_in_undecided_positions"
+    players = [("Camille", results["camille"][profile_key])]
     for temperature, measured in results["temperatures"].items():
-        players.append((f"Bot at {temperature}", measured["centipawn_loss"]))
+        players.append((f"Bot at {temperature}", measured[profile_key]))
 
     lines = []
     for phase in PHASES:
@@ -208,6 +221,22 @@ def summary_table(results: dict) -> str:
     return "\n".join(lines)
 
 
+def phase_distance_table(results: dict) -> str:
+    """Each Phase's own distance at each temperature, with all moves, then without those in decided positions."""
+    temperatures = list(results["temperatures"])
+    header_cells = ["Phase"] + temperatures + [f"{temperature}, undecided positions" for temperature in temperatures]
+    lines = [_table_row(header_cells), "|---|" + "---|" * (len(header_cells) - 1)]
+    for phase in PHASES:
+        cells = [PHASE_LABELS[phase]]
+        for temperature in temperatures:
+            cells.append(_decimal(results["temperatures"][temperature]["phase_distances"][phase]))
+        for temperature in temperatures:
+            undecided = results["temperatures"][temperature]["phase_distances_in_undecided_positions"]
+            cells.append(_decimal(undecided[phase]))
+        lines.append(_table_row(cells))
+    return "\n".join(lines)
+
+
 def _table_row(cells: list[str]) -> str:
     return f"| {' | '.join(cells)} |"
 
@@ -255,6 +284,11 @@ if __name__ == "__main__":
     print(loss_tables(results))
     print(summary_table(results))
     print()
+    print(phase_distance_table(results))
+    print()
+    print("The same moves without those made in positions already decided:")
+    print()
+    print(loss_tables(results, in_undecided_positions=True))
     noise = results["camille_test_set_from_training_games"]
     print(f"Camille's Test Set from his training games: {noise:.1f}")
     step = results["next_step"]

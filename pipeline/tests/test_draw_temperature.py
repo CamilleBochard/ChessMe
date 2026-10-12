@@ -1,7 +1,7 @@
 import pytest
 
 from pipeline.blunder_profile import MoveLoss
-from pipeline.draw_temperature import loss_distance, next_step
+from pipeline.draw_temperature import loss_distance, next_step, phase_distances
 
 
 def losses(phase: str, centipawn_losses: list[int]) -> list[MoveLoss]:
@@ -36,6 +36,15 @@ def test_each_phase_is_compared_on_its_own_and_weighed_by_camilles_share_of_move
     bot = losses("opening", [100]) + losses("endgame", [0])
 
     assert loss_distance(bot, camille) == pytest.approx(25)
+
+
+def test_gives_each_phase_s_own_distance_and_none_where_camille_has_no_move():
+    camille = losses("opening", [0]) + losses("endgame", [0, 0, 0])
+    bot = losses("opening", [100]) + losses("middlegame", [50]) + losses("endgame", [0])
+
+    distances = phase_distances(bot, camille)
+
+    assert distances == {"opening": pytest.approx(100), "middlegame": None, "endgame": pytest.approx(0)}
 
 
 def test_the_search_starts_at_temperature_1():
