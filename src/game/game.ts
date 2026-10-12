@@ -162,11 +162,12 @@ export function timeOut(game: Game, side: Colour): Game {
 /**
  * The game as it stood just before the given side's most recent move, which
  * also removes any reply played after it. Returns null when that side has not
- * moved yet, or when the game was resigned: resigning is final, unlike a
- * checkmate or draw that a misclick may have walked into.
+ * moved yet, or when the game was resigned or lost on time: both are final,
+ * unlike a checkmate or draw that a misclick may have walked into, and taking
+ * back a flag would hand back the time that ran out.
  */
 export function takeBack(game: Game, side: Colour): Game | null {
-  if (game.resignedBy !== undefined) {
+  if (game.resignedBy !== undefined || game.timedOutBy !== undefined) {
     return null;
   }
 

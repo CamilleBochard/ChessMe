@@ -14,6 +14,7 @@ import {
   newGame,
   playMove,
   resign,
+  timeOut,
   sideToMove,
   takeBack,
   type Game,
@@ -342,6 +343,15 @@ describe('takeBack', () => {
     ]);
 
     expect(takeBack(resign(afterOneMoveEach, 'white'), 'white')).toBeNull();
+  });
+
+  it('has nothing to take back once a clock has run out, since a loss on time is final', () => {
+    const afterOneMoveEach = playMoves([
+      { from: 'e2', to: 'e4' },
+      { from: 'e7', to: 'e5' },
+    ]);
+
+    expect(takeBack(timeOut(afterOneMoveEach, 'white'), 'white')).toBeNull();
   });
 
   it('can be repeated to go back several moves', () => {
