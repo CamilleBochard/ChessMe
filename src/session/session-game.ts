@@ -133,6 +133,12 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
     }
   }
 
+  /** Both sides back to ten minutes, neither running until the first move. */
+  function resetTheClock(): void {
+    stopTheClock();
+    clock = newClock();
+  }
+
   function stopTheClock(): void {
     clock = stopClock(clock, Date.now());
     if (flagTimer !== undefined) {
@@ -275,6 +281,7 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
 
     async start(side: Colour): Promise<void> {
       visitor = side;
+      resetTheClock();
       setGame(newGame());
 
       if (sideToMove(game) !== visitor) {
@@ -351,6 +358,7 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
 
     startOver(): void {
       visitor = null;
+      resetTheClock();
       setGame(newGame());
     },
   };

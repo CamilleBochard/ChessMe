@@ -436,4 +436,20 @@ describe('the clock', () => {
     expect(session.timeLeft('black')).toBe(TEN_MINUTES);
     expect(session.status()).toBe('White resigns. Black wins.');
   });
+
+  it('gives both sides ten minutes again with a new game, running neither until its first move', async () => {
+    const session = createSessionGame({ chooseMove: scriptedBot([{ from: 'e7', to: 'e5' }]) });
+    await session.start('white');
+    await session.playVisitorMove({ from: 'e2', to: 'e4' });
+    vi.advanceTimersByTime(30_000);
+
+    session.startOver();
+    await session.start('white');
+    vi.advanceTimersByTime(TEN_MINUTES);
+
+    // The visitor has not moved in the new game, so no time is spent and no flag falls.
+    expect(session.timeLeft('white')).toBe(TEN_MINUTES);
+    expect(session.timeLeft('black')).toBe(TEN_MINUTES);
+    expect(gameStatus(session.game())).toEqual({ kind: 'ongoing' });
+  });
 });
