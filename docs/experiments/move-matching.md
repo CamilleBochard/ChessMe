@@ -165,7 +165,7 @@ The top-move column is the Baseline published by the
 
 **Drawing costs about 13 points of Move-Matching in every Phase**: after
 ply 10, 36.66% against 49.53%. On average the model gives the move Camille
-played a probability of about 0.37, so a draw lands on it a little more
+played a probability of about 0.36, so a draw lands on it a little more
 than one time in three, while the top move is his about half the time.
 
 The loss is the price of the change, not a flaw in it: Move-Matching
