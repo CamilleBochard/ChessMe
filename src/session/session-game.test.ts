@@ -542,4 +542,36 @@ describe('the clock', () => {
     session.resign();
     expect(session.runningClock()).toBeNull();
   });
+
+  it("refuses a move made after the visitor's time ran out, even if the timer has not woken yet", async () => {
+    const session = createSessionGame({
+      chooseMove: scriptedBot([
+        { from: 'e7', to: 'e5' },
+        { from: 'b8', to: 'c6' },
+      ]),
+    });
+    await session.start('white');
+    await session.playVisitorMove({ from: 'e2', to: 'e4' });
+
+    // The time passes without the timer firing, as in a throttled background tab.
+    vi.setSystemTime(TEN_MINUTES + 1_000);
+    const accepted = await session.playVisitorMove({ from: 'g1', to: 'f3' });
+
+    expect(accepted).toBe(false);
+    expect(gameStatus(session.game())).toEqual({ kind: 'time-forfeit', winner: 'black' });
+  });
+
+  it("drops a Bot reply that arrives after the Bot's time ran out, even if the timer has not woken yet", async () => {
+    const bot = slowBot();
+    const session = createSessionGame({ chooseMove: bot.chooseMove });
+    await session.start('white');
+    const visitorMove = session.playVisitorMove({ from: 'e2', to: 'e4' });
+
+    vi.setSystemTime(TEN_MINUTES + 1_000);
+    bot.reply({ from: 'e7', to: 'e5' });
+    await visitorMove;
+
+    expect(gameStatus(session.game())).toEqual({ kind: 'time-forfeit', winner: 'white' });
+    expect(moveList(session.game())).toEqual([{ moveNumber: 1, white: 'e4', black: null }]);
+  });
 });

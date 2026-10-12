@@ -145,10 +145,7 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
 
   function stopTheClock(): void {
     clock = stopClock(clock, Date.now());
-    if (flagTimer !== undefined) {
-      clearTimeout(flagTimer);
-      flagTimer = undefined;
-    }
+    cancelFlagTimer();
   }
 
   function announceGameEnd(): void {
@@ -181,10 +178,7 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
 
   /** Arranges to end the game when the running clock reaches zero. */
   function watchForFlag(): void {
-    if (flagTimer !== undefined) {
-      clearTimeout(flagTimer);
-      flagTimer = undefined;
-    }
+    cancelFlagTimer();
     const running = clock.running;
     if (running === null) {
       return;
@@ -194,12 +188,36 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
     flagTimer = setTimeout(() => {
       flagTimer = undefined;
       // A timer may wake a little early; the clock, not the timer, decides.
-      if (remainingTime(clock, running, Date.now()) > 0) {
+      const flagFell = endOnTimeIfFlagFell();
+      if (!flagFell) {
         watchForFlag();
-        return;
       }
-      setGame(timeOut(game, running));
     }, timeUntilFlag);
+  }
+
+  /**
+   * Ends the game on time if the running clock has reached zero, and says
+   * whether it did. Asked by the timer, and again before any move lands: a
+   * timer can wake late, in a background tab for instance, and a move made
+   * once the time is gone must not count.
+   */
+  function endOnTimeIfFlagFell(): boolean {
+    const running = clock.running;
+    if (running === null) {
+      return false;
+    }
+    if (remainingTime(clock, running, Date.now()) > 0) {
+      return false;
+    }
+    setGame(timeOut(game, running));
+    return true;
+  }
+
+  function cancelFlagTimer(): void {
+    if (flagTimer !== undefined) {
+      clearTimeout(flagTimer);
+      flagTimer = undefined;
+    }
   }
 
   function notifyPage(): void {
@@ -257,6 +275,10 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
     if (game !== askedAbout) {
       return;
     }
+    // Or its time ran out while it chose, and the timer has yet to say so.
+    if (endOnTimeIfFlagFell()) {
+      return;
+    }
 
     const next = playMove(game, reply.move);
     if (next === null) {
@@ -302,6 +324,9 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
       // game must still be going, since the position does not show a
       // resignation; and the current position must be the one on display,
       // or the move would land somewhere other than where it was made.
+      if (endOnTimeIfFlagFell()) {
+        return false;
+      }
       const isVisitorsTurn = sideToMove(game) === visitor;
       const isViewingCurrent = stepsBack === 0;
       if (!isGameInProgress() || !isVisitorsTurn || !isViewingCurrent) {
