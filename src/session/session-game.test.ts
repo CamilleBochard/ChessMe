@@ -422,4 +422,18 @@ describe('the clock', () => {
     expect(gameStatus(session.game())).toEqual({ kind: 'time-forfeit', winner: 'black' });
     expect(session.status()).toBe('White ran out of time. Black wins.');
   });
+
+  it('stops both clocks when the game ends, here by the visitor resigning', async () => {
+    const session = createSessionGame({ chooseMove: scriptedBot([{ from: 'e7', to: 'e5' }]) });
+    await session.start('white');
+    await session.playVisitorMove({ from: 'e2', to: 'e4' });
+    vi.advanceTimersByTime(30_000);
+
+    session.resign();
+    vi.advanceTimersByTime(TEN_MINUTES);
+
+    expect(session.timeLeft('white')).toBe(TEN_MINUTES - 30_000);
+    expect(session.timeLeft('black')).toBe(TEN_MINUTES);
+    expect(session.status()).toBe('White resigns. Black wins.');
+  });
 });

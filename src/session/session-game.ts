@@ -120,11 +120,24 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
     const wasOngoing = gameStatus(game).kind === 'ongoing';
     game = next;
     stepsBack = 0;
+
+    // However the game ended, both clocks stop where they were.
+    const hasEnded = gameStatus(game).kind !== 'ongoing';
+    if (hasEnded) {
+      stopTheClock();
+    }
     notifyPage();
 
-    const hasEnded = gameStatus(game).kind !== 'ongoing';
     if (wasOngoing && hasEnded) {
       announceGameEnd();
+    }
+  }
+
+  function stopTheClock(): void {
+    clock = stopClock(clock, Date.now());
+    if (flagTimer !== undefined) {
+      clearTimeout(flagTimer);
+      flagTimer = undefined;
     }
   }
 
@@ -174,7 +187,6 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
         watchForFlag();
         return;
       }
-      clock = stopClock(clock, Date.now());
       setGame(timeOut(game, running));
     }, timeUntilFlag);
   }
