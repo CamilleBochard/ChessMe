@@ -28,3 +28,20 @@ def read_bot_games(path: Path) -> list[Position]:
         bot_colour = COLOURS[game["bot_colour"]]
         positions.extend(positions_faced(game["game_id"], BOT_SOURCE, moves, bot_colour))
     return positions
+
+
+def read_bot_results(path: Path) -> dict[str, int]:
+    """How many of the games the Bot won, drew and lost."""
+    results = {"won": 0, "drawn": 0, "lost": 0}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.strip() == "":
+            continue
+        game = json.loads(line)
+        winner = game["ending"].get("winner")
+        if winner is None:
+            results["drawn"] += 1
+        elif winner == game["bot_colour"]:
+            results["won"] += 1
+        else:
+            results["lost"] += 1
+    return results
