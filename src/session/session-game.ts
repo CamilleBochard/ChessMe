@@ -12,10 +12,11 @@ import {
   resign,
   sideToMove,
   takeBack,
+  timeOut,
   type Game,
   type MoveRequest,
 } from '../game/game';
-import { newClock, remainingTime, startTurn, type Clock } from '../game/clock';
+import { newClock, remainingTime, startTurn, stopClock, type Clock } from '../game/clock';
 import { describeTurn, gameStatus } from '../game/game-status';
 import type { BotMove, MoveSource } from '../engine/move-selection';
 
@@ -106,6 +107,9 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
   // ply replaces it, and only the plies of the game as it stands are read.
   const botMoveSources = new Map<number, MoveSource>();
   let clock: Clock = newClock();
+  // Wakes the session when the running clock reaches zero, since a flag can
+  // fall while nobody moves.
+  let flagTimer: ReturnType<typeof setTimeout> | undefined = undefined;
 
   /**
    * The only place the game is replaced, so the page never misses a change.
@@ -148,6 +152,31 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
   function playOnBoard(next: Game): void {
     clock = startTurn(clock, sideToMove(next), Date.now());
     setGame(next);
+    watchForFlag();
+  }
+
+  /** Arranges to end the game when the running clock reaches zero. */
+  function watchForFlag(): void {
+    if (flagTimer !== undefined) {
+      clearTimeout(flagTimer);
+      flagTimer = undefined;
+    }
+    const running = clock.running;
+    if (running === null) {
+      return;
+    }
+
+    const timeUntilFlag = remainingTime(clock, running, Date.now());
+    flagTimer = setTimeout(() => {
+      flagTimer = undefined;
+      // A timer may wake a little early; the clock, not the timer, decides.
+      if (remainingTime(clock, running, Date.now()) > 0) {
+        watchForFlag();
+        return;
+      }
+      clock = stopClock(clock, Date.now());
+      setGame(timeOut(game, running));
+    }, timeUntilFlag);
   }
 
   function notifyPage(): void {

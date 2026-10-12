@@ -411,4 +411,15 @@ describe('the clock', () => {
     expect(session.timeLeft('white')).toBe(TEN_MINUTES - 30_000);
     expect(session.timeLeft('black')).toBe(TEN_MINUTES);
   });
+
+  it("ends the game on time when the visitor's clock runs out, with no move to trigger it", async () => {
+    const session = createSessionGame({ chooseMove: scriptedBot([{ from: 'e7', to: 'e5' }]) });
+    await session.start('white');
+    await session.playVisitorMove({ from: 'e2', to: 'e4' });
+
+    vi.advanceTimersByTime(TEN_MINUTES);
+
+    expect(gameStatus(session.game())).toEqual({ kind: 'time-forfeit', winner: 'black' });
+    expect(session.status()).toBe('White ran out of time. Black wins.');
+  });
 });
