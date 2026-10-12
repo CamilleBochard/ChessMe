@@ -42,6 +42,15 @@ In the first two cases the recreated weights go forward, since they are
 what the repository produces: they are the ones converted, measured and,
 if chosen, served.
 
+**Reproduced exactly.** Trained on 2026-10-12 on an eight-core Ryzen 7 X3D
+CPU under WSL2 with PyTorch 2.14.1, in 2.1 minutes. Validation after the
+epoch scored 52.88%, the experiment's figure. On the Test Set the
+recreated model matches the recorded counts in every slice: 3,822 of 7,092
+overall, 3,060 after ply 10, 762, 1,112 and 1,948 in the three Phases. Its
+weights differ from the experiment's by at most 4.9e-06, and the two models
+play the same top move in all 7,092 Test Set positions. The details are in
+`docs/experiments/results/fine-tuned-recreation.json`.
+
 ## The rule, stated before the figures were read
 
 A Bot plays like Camille when its mistakes are his size and frequency
