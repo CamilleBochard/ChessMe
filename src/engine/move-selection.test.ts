@@ -234,6 +234,17 @@ describe('selectMove with an Opening Book', () => {
     expect(move).toEqual({ from: 'e2', to: 'e4' });
   });
 
+  it('plays the book move whatever the draw and the temperature', async () => {
+    // A draw this high, at this temperature, would never give the Base
+    // Model's most likely move; the book is consulted before any draw.
+    const baseModel = await loadBaseModel(await readFile(FIXED_PREFERENCE_MODELS[0].file));
+    const openingBook = bookWith({ 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -': 'd2d4' });
+
+    const move = await selectMove(startingPosition, { openingBook, baseModel, random: () => 0.99, temperature: 2 });
+
+    expect(move).toEqual({ from: 'd2', to: 'd4' });
+  });
+
   it('castles when the book move is castling', async () => {
     const whiteMayCastleKingside = 'r3k2r/pppqbppp/2np1n2/4p3/2B1P3/2NP1N2/PPP2PPP/R2QK2R w Kkq - 0 8';
     const openingBook = bookWith({ 'r3k2r/pppqbppp/2np1n2/4p3/2B1P3/2NP1N2/PPP2PPP/R2QK2R w Kkq -': 'e1g1' });
