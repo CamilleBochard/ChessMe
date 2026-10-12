@@ -5,7 +5,8 @@
 // Free of anything DOM so that it runs unchanged under Node.
 
 import { gameFromFen, legalMoves, type MoveRequest } from '../game/game';
-import type { BaseModel } from './base-model';
+import type { BaseModel, MoveProbability } from './base-model';
+import { drawMove, withTemperature } from './move-draw';
 import type { OpeningBook } from './opening-book';
 
 /** What the engine depends on, supplied by the caller so tests can fix it. */
@@ -19,6 +20,12 @@ export interface EngineOptions {
   baseModel?: BaseModel | Promise<BaseModel>;
   /** Returns a number in [0, 1), like Math.random. */
   random?: () => number;
+  /**
+   * How the Base Model's move is drawn: at 1, each move as often as the model
+   * predicts; below 1 the draw leans towards the most likely move, and at 0
+   * it always plays it. Defaults to 1.
+   */
+  temperature?: number;
 }
 
 /** Where a move of the Bot came from. */
@@ -32,11 +39,11 @@ export interface BotMove {
 
 /**
  * Chooses the Bot's move in the position the FEN describes: Camille's own
- * reply when the Opening Book holds the position, otherwise the move the Base
- * Model ranks highest, otherwise a legal move picked uniformly at random.
- * Asynchronous because the Base Model runs a network. Throws when the side to
- * move has no legal move, since the Bot is never asked to move in a finished
- * game.
+ * reply when the Opening Book holds the position, otherwise a move drawn from
+ * the Base Model's probabilities at the temperature given, otherwise a legal
+ * move picked uniformly at random. Asynchronous because the Base Model runs a
+ * network. Throws when the side to move has no legal move, since the Bot is
+ * never asked to move in a finished game.
  */
 export async function selectMove(fen: string, options: EngineOptions = {}): Promise<MoveRequest> {
   const botMove = await selectMoveWithSource(fen, options);
@@ -46,6 +53,30 @@ export async function selectMove(fen: string, options: EngineOptions = {}): Prom
 /** The same choice as selectMove, also saying which of the three gave the move. */
 export async function selectMoveWithSource(fen: string, options: EngineOptions = {}): Promise<BotMove> {
   const random = options.random ?? Math.random;
+  const choice = await chooseDistribution(fen, options);
+  const move = drawMove(choice.distribution, random);
+  return { move: move, source: choice.source };
+}
+
+/**
+ * How likely the Bot is to play each move in the position, most likely first:
+ * the move selectMove draws, given the same options. A book move has
+ * probability one. Measuring reads this rather than single draws, so the
+ * score it reports is the one the draw earns on average.
+ */
+export async function botMoveDistribution(fen: string, options: EngineOptions = {}): Promise<MoveProbability[]> {
+  const choice = await chooseDistribution(fen, options);
+  return choice.distribution;
+}
+
+/** The moves the Bot may play and their probabilities, with where they come from. */
+interface Choice {
+  distribution: MoveProbability[];
+  source: MoveSource;
+}
+
+async function chooseDistribution(fen: string, options: EngineOptions): Promise<Choice> {
+  const temperature = options.temperature ?? 1;
 
   const game = gameFromFen(fen);
   const candidates = legalMoves(game);
@@ -57,16 +88,16 @@ export async function selectMoveWithSource(fen: string, options: EngineOptions =
   if (options.openingBook !== undefined) {
     const bookMove = options.openingBook.move(game);
     if (bookMove !== undefined) {
-      return { move: bookMove, source: 'opening-book' };
+      return { distribution: [{ move: bookMove, probability: 1 }], source: 'opening-book' };
     }
   }
 
   if (options.baseModel !== undefined) {
     const baseModel = await options.baseModel;
     const policy = await baseModel.movePolicy(game);
-    return { move: policy[0].move, source: 'base-model' };
+    return { distribution: withTemperature(policy, temperature), source: 'base-model' };
   }
 
-  const index = Math.floor(random() * candidates.length);
-  return { move: candidates[index], source: 'random' };
+  const uniform = candidates.map((move) => ({ move: move, probability: 1 / candidates.length }));
+  return { distribution: uniform, source: 'random' };
 }

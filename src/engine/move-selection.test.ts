@@ -7,8 +7,8 @@ import { describe, expect, it } from 'vitest';
 import { parseSquare } from 'chessops/util';
 import { currentFen, legalMoves, newGame, playMove, type Game, type MoveRequest } from '../game/game';
 import { gameStatus } from '../game/game-status';
-import { loadBaseModel } from './base-model';
-import { selectMove, selectMoveWithSource } from './move-selection';
+import { loadBaseModel, type BaseModel, type MoveProbability } from './base-model';
+import { botMoveDistribution, selectMove, selectMoveWithSource } from './move-selection';
 import { readOpeningBook, type OpeningBook } from './opening-book';
 import { seededRandom } from '../evaluation/seeded-random';
 
@@ -90,7 +90,7 @@ describe.each(FIXED_PREFERENCE_MODELS)('selectMove with a $family Base Model', (
     // the model's first legal preference is e2e4.
     const startingPosition = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
-    const move = await selectMove(startingPosition, { baseModel });
+    const move = await selectMove(startingPosition, { baseModel, temperature: 0 });
 
     expect(move).toEqual({ from: 'e2', to: 'e4' });
   });
@@ -101,7 +101,7 @@ describe.each(FIXED_PREFERENCE_MODELS)('selectMove with a $family Base Model', (
     // e2e4 is the pawn on e7 advancing two squares.
     const afterKingsPawn = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1';
 
-    const move = await selectMove(afterKingsPawn, { baseModel });
+    const move = await selectMove(afterKingsPawn, { baseModel, temperature: 0 });
 
     expect(move).toEqual({ from: 'e7', to: 'e5' });
   });
@@ -112,7 +112,7 @@ describe.each(FIXED_PREFERENCE_MODELS)('selectMove with a $family Base Model', (
     // a7, so castling is the first legal preference.
     const whiteMayCastleKingside = 'r3k2r/pppqbppp/2np1n2/4p3/2B1P3/2NP1N2/PPP2PPP/R2QK2R w Kkq - 0 8';
 
-    const move = await selectMove(whiteMayCastleKingside, { baseModel });
+    const move = await selectMove(whiteMayCastleKingside, { baseModel, temperature: 0 });
 
     expect(move).toEqual({ from: 'e1', to: 'g1' });
   });
@@ -123,9 +123,113 @@ describe.each(FIXED_PREFERENCE_MODELS)('selectMove with a $family Base Model', (
     // second: the pawn on a7 promoting to a rook.
     const pawnAboutToPromote = '8/P7/8/8/8/8/k6K/8 w - - 0 1';
 
-    const move = await selectMove(pawnAboutToPromote, { baseModel });
+    const move = await selectMove(pawnAboutToPromote, { baseModel, temperature: 0 });
 
     expect(move).toEqual({ from: 'a7', to: 'a8', promotion: 'rook' });
+  });
+});
+
+/**
+ * A Base Model that gives the same probabilities in every position, most
+ * likely first, so a test can say which move a given random number draws.
+ */
+function modelWithPolicy(policy: MoveProbability[]): BaseModel {
+  return { movePolicy: async () => policy };
+}
+
+describe('selectMove drawing from the Base Model', () => {
+  const startingPosition = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+  // e2e4 owns [0, 0.7) of the random range, d2d4 [0.7, 0.9), g1f3 [0.9, 1).
+  const baseModel = modelWithPolicy([
+    { move: { from: 'e2', to: 'e4' }, probability: 0.7 },
+    { move: { from: 'd2', to: 'd4' }, probability: 0.2 },
+    { move: { from: 'g1', to: 'f3' }, probability: 0.1 },
+  ]);
+
+  it('draws the move from the probabilities, so it can play one other than the most likely', async () => {
+    const move = await selectMove(startingPosition, { baseModel, random: () => 0.75 });
+
+    expect(move).toEqual({ from: 'd2', to: 'd4' });
+  });
+
+  it('plays the most likely move at temperature 0, whatever the random number', async () => {
+    const move = await selectMove(startingPosition, { baseModel, random: () => 0.95, temperature: 0 });
+
+    expect(move).toEqual({ from: 'e2', to: 'e4' });
+  });
+
+  it('leans towards the most likely move below temperature 1', async () => {
+    // At 0.5 each probability is squared and the three rescaled to sum to one:
+    // 0.49, 0.04 and 0.01 become about 0.907, 0.074 and 0.019. At 1, 0.85
+    // would draw d2d4; here e2e4 owns [0, 0.907).
+    const move = await selectMove(startingPosition, { baseModel, random: () => 0.85, temperature: 0.5 });
+
+    expect(move).toEqual({ from: 'e2', to: 'e4' });
+  });
+
+  it('plays the most likely move at a temperature just above 0', async () => {
+    // Raised to the power 10,000, even 0.7 is too small for a floating-point
+    // number (about 10^-1549); the draw must still lean all the way to e2e4.
+    const move = await selectMove(startingPosition, { baseModel, random: () => 0.85, temperature: 0.0001 });
+
+    expect(move).toEqual({ from: 'e2', to: 'e4' });
+  });
+
+  it('refuses a negative temperature', async () => {
+    // Below 0 the reshaping would turn the order of the moves upside down.
+    await expect(selectMove(startingPosition, { baseModel, temperature: -1 })).rejects.toThrow(
+      'A temperature cannot be negative: -1',
+    );
+  });
+
+  it('spreads towards the less likely moves above temperature 1', async () => {
+    // At 2 each probability is replaced by its square root and the three
+    // rescaled: 0.7, 0.2 and 0.1 become about 0.523, 0.280 and 0.198. At 1,
+    // 0.6 would draw e2e4; here it falls in d2d4's stretch, [0.523, 0.802).
+    const move = await selectMove(startingPosition, { baseModel, random: () => 0.6, temperature: 2 });
+
+    expect(move).toEqual({ from: 'd2', to: 'd4' });
+  });
+
+  it('plays each move, over many draws, in proportion to its probability', async () => {
+    const draws = 20000;
+    const random = seededRandom(18);
+    const timesPlayed: Record<string, number> = {};
+    for (let draw = 0; draw < draws; draw++) {
+      const move = await selectMove(startingPosition, { baseModel, random });
+      const name = move.from + move.to;
+      timesPlayed[name] = (timesPlayed[name] ?? 0) + 1;
+    }
+
+    // With 20,000 draws a share strays from its probability by about 0.003
+    // by chance, so 0.015 is a wide margin; the seed makes the run repeatable.
+    expect(Math.abs(timesPlayed['e2e4'] / draws - 0.7)).toBeLessThan(0.015);
+    expect(Math.abs(timesPlayed['d2d4'] / draws - 0.2)).toBeLessThan(0.015);
+    expect(Math.abs(timesPlayed['g1f3'] / draws - 0.1)).toBeLessThan(0.015);
+  });
+});
+
+describe('botMoveDistribution', () => {
+  const startingPosition = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+
+  it('gives the Base Model\'s probabilities as reshaped by the temperature, most likely first', async () => {
+    const baseModel = modelWithPolicy([
+      { move: { from: 'e2', to: 'e4' }, probability: 0.7 },
+      { move: { from: 'd2', to: 'd4' }, probability: 0.2 },
+      { move: { from: 'g1', to: 'f3' }, probability: 0.1 },
+    ]);
+
+    const distribution = await botMoveDistribution(startingPosition, { baseModel, temperature: 0.5 });
+
+    // Squared and rescaled: 0.49, 0.04 and 0.01 over their total of 0.54.
+    expect(distribution.map((candidate) => candidate.move)).toEqual([
+      { from: 'e2', to: 'e4' },
+      { from: 'd2', to: 'd4' },
+      { from: 'g1', to: 'f3' },
+    ]);
+    expect(distribution[0].probability).toBeCloseTo(0.49 / 0.54, 10);
+    expect(distribution[1].probability).toBeCloseTo(0.04 / 0.54, 10);
+    expect(distribution[2].probability).toBeCloseTo(0.01 / 0.54, 10);
   });
 });
 
@@ -153,7 +257,7 @@ describe('selectMove with an Opening Book', () => {
     // The book only knows Black's reply to 1. e4.
     const openingBook = bookWith({ 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -': 'c7c5' });
 
-    const move = await selectMove(startingPosition, { openingBook, baseModel });
+    const move = await selectMove(startingPosition, { openingBook, baseModel, temperature: 0 });
 
     expect(move).toEqual({ from: 'e2', to: 'e4' });
   });
@@ -167,6 +271,17 @@ describe('selectMove with an Opening Book', () => {
     const move = await selectMove(sameKnightsLater, { openingBook, random: () => 0 });
 
     expect(move).toEqual({ from: 'e2', to: 'e4' });
+  });
+
+  it('plays the book move whatever the draw and the temperature', async () => {
+    // A draw this high, at this temperature, would never give the Base
+    // Model's most likely move; the book is consulted before any draw.
+    const baseModel = await loadBaseModel(await readFile(FIXED_PREFERENCE_MODELS[0].file));
+    const openingBook = bookWith({ 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -': 'd2d4' });
+
+    const move = await selectMove(startingPosition, { openingBook, baseModel, random: () => 0.99, temperature: 2 });
+
+    expect(move).toEqual({ from: 'd2', to: 'd4' });
   });
 
   it('castles when the book move is castling', async () => {
@@ -195,7 +310,7 @@ describe('selectMoveWithSource', () => {
     const baseModel = await loadBaseModel(await readFile(FIXED_PREFERENCE_MODELS[0].file));
     const openingBook = bookWith({ 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq -': 'c7c5' });
 
-    const botMove = await selectMoveWithSource(startingPosition, { openingBook, baseModel });
+    const botMove = await selectMoveWithSource(startingPosition, { openingBook, baseModel, temperature: 0 });
 
     expect(botMove).toEqual({ move: { from: 'e2', to: 'e4' }, source: 'base-model' });
   });

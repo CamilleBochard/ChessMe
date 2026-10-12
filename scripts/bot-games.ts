@@ -4,8 +4,11 @@
 //
 //     npm run bot-games -- [--games 400] [--seed 13] [--opponent-rating 2000] [--baseline] [--out data/dataset/bot-games.jsonl]
 //
-// The Bot is the Move-Selection Engine as the site serves it: the Opening Book,
-// then the served Base Model's top move. With --baseline the Opening Book is
+// The Bot is the Move-Selection Engine with the Opening Book, then the served
+// Base Model's top move (temperature 0): the Bot the Style Fingerprint and the
+// style discriminator were measured on, so the recorded games can be played
+// again exactly. The site itself draws the Base Model's move at the served
+// temperature; this script does not play that Bot. With --baseline the Opening Book is
 // left out and the Baseline plays instead: the Base Model alone, against the
 // same opponent, so that what the book changes can be measured on whole
 // games. The Bot plays the same move every time
@@ -34,7 +37,8 @@ import { loadBaseModel } from '../src/engine/base-model';
 import { selectMove } from '../src/engine/move-selection';
 import { readOpeningBook, type OpeningBook } from '../src/engine/opening-book';
 import { SERVED_MODEL_RATING, SERVED_MODEL_SOURCE } from '../src/engine/served-model';
-import { drawMove, playGame, type Player } from '../src/evaluation/bot-games';
+import { drawMove } from '../src/engine/move-draw';
+import { playGame, type Player } from '../src/evaluation/bot-games';
 import { seededRandom } from '../src/evaluation/seeded-random';
 import { gameFromFen } from '../src/game/game';
 
@@ -71,7 +75,7 @@ if (flags.baseline) {
 }
 const random = seededRandom(seed);
 
-const bot: Player = (fen) => selectMove(fen, { openingBook, baseModel });
+const bot: Player = (fen) => selectMove(fen, { openingBook, baseModel, temperature: 0 });
 const opponent: Player = async (fen) => {
   const policy = await opponentModel.movePolicy(gameFromFen(fen));
   return drawMove(policy, random);

@@ -50,6 +50,24 @@ describe('the Bot', () => {
     const channel = openChannel();
     serveBot(channel.workerEnd, {
       download: async () => new Uint8Array(await readFile(FIXED_PREFERENCE_MODEL)),
+      // The bottom of the random range draws the model's most likely move.
+      random: () => 0,
+    });
+    const bot = connectBot(channel.pageEnd, MODEL);
+
+    const botMove = await bot.requestMove(STARTING_POSITION);
+
+    expect(botMove).toEqual({ move: { from: 'e2', to: 'e4' }, source: 'base-model' });
+  });
+
+  it('draws its move at the temperature it is served with', async () => {
+    const channel = openChannel();
+    serveBot(channel.workerEnd, {
+      download: async () => new Uint8Array(await readFile(FIXED_PREFERENCE_MODEL)),
+      // At temperature 0 the top of the random range still plays the
+      // model's most likely move; at 1 it would play its least likely.
+      temperature: 0,
+      random: () => 0.99,
     });
     const bot = connectBot(channel.pageEnd, MODEL);
 
