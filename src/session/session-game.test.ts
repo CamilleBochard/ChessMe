@@ -452,4 +452,52 @@ describe('the clock', () => {
     expect(session.timeLeft('black')).toBe(TEN_MINUTES);
     expect(gameStatus(session.game())).toEqual({ kind: 'ongoing' });
   });
+
+  it('gives no time back with a takeback', async () => {
+    const session = createSessionGame({
+      chooseMove: scriptedBot([
+        { from: 'e7', to: 'e5' },
+        { from: 'b8', to: 'c6' },
+      ]),
+    });
+    await session.start('white');
+    await session.playVisitorMove({ from: 'e2', to: 'e4' });
+    vi.advanceTimersByTime(30_000);
+    await session.playVisitorMove({ from: 'd2', to: 'd4' });
+    vi.advanceTimersByTime(20_000);
+
+    session.takeBack();
+
+    // Back before d4, the visitor keeps the 50 seconds spent and is still on the clock.
+    expect(session.timeLeft('white')).toBe(TEN_MINUTES - 50_000);
+    vi.advanceTimersByTime(10_000);
+    expect(session.timeLeft('white')).toBe(TEN_MINUTES - 60_000);
+  });
+
+  it("runs the Bot's clock while it chooses its move", async () => {
+    const bot = slowBot();
+    const session = createSessionGame({ chooseMove: bot.chooseMove });
+    await session.start('white');
+    const visitorMove = session.playVisitorMove({ from: 'e2', to: 'e4' });
+
+    vi.advanceTimersByTime(5_000);
+    bot.reply({ from: 'e7', to: 'e5' });
+    await visitorMove;
+
+    expect(session.timeLeft('black')).toBe(TEN_MINUTES - 5_000);
+  });
+
+  it('ends the game on time when the Bot runs out while choosing, and drops its late reply', async () => {
+    const bot = slowBot();
+    const session = createSessionGame({ chooseMove: bot.chooseMove });
+    await session.start('white');
+    const visitorMove = session.playVisitorMove({ from: 'e2', to: 'e4' });
+
+    vi.advanceTimersByTime(TEN_MINUTES);
+    bot.reply({ from: 'e7', to: 'e5' });
+    await visitorMove;
+
+    expect(gameStatus(session.game())).toEqual({ kind: 'time-forfeit', winner: 'white' });
+    expect(moveList(session.game())).toEqual([{ moveNumber: 1, white: 'e4', black: null }]);
+  });
 });
