@@ -8,7 +8,7 @@ import { parseSquare } from 'chessops/util';
 import { currentFen, legalMoves, newGame, playMove, type Game, type MoveRequest } from '../game/game';
 import { gameStatus } from '../game/game-status';
 import { loadBaseModel, type BaseModel, type MoveProbability } from './base-model';
-import { selectMove, selectMoveWithSource } from './move-selection';
+import { botMoveDistribution, selectMove, selectMoveWithSource } from './move-selection';
 import { readOpeningBook, type OpeningBook } from './opening-book';
 import { seededRandom } from '../evaluation/seeded-random';
 
@@ -191,6 +191,30 @@ describe('selectMove drawing from the Base Model', () => {
     expect(Math.abs(timesPlayed['e2e4'] / draws - 0.7)).toBeLessThan(0.015);
     expect(Math.abs(timesPlayed['d2d4'] / draws - 0.2)).toBeLessThan(0.015);
     expect(Math.abs(timesPlayed['g1f3'] / draws - 0.1)).toBeLessThan(0.015);
+  });
+});
+
+describe('botMoveDistribution', () => {
+  const startingPosition = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+
+  it('gives the Base Model\'s probabilities as reshaped by the temperature, most likely first', async () => {
+    const baseModel = modelWithPolicy([
+      { move: { from: 'e2', to: 'e4' }, probability: 0.7 },
+      { move: { from: 'd2', to: 'd4' }, probability: 0.2 },
+      { move: { from: 'g1', to: 'f3' }, probability: 0.1 },
+    ]);
+
+    const distribution = await botMoveDistribution(startingPosition, { baseModel, temperature: 0.5 });
+
+    // Squared and rescaled: 0.49, 0.04 and 0.01 over their total of 0.54.
+    expect(distribution.map((candidate) => candidate.move)).toEqual([
+      { from: 'e2', to: 'e4' },
+      { from: 'd2', to: 'd4' },
+      { from: 'g1', to: 'f3' },
+    ]);
+    expect(distribution[0].probability).toBeCloseTo(0.49 / 0.54, 10);
+    expect(distribution[1].probability).toBeCloseTo(0.04 / 0.54, 10);
+    expect(distribution[2].probability).toBeCloseTo(0.01 / 0.54, 10);
   });
 });
 
