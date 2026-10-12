@@ -1,0 +1,265 @@
+{
+ "formatVersion": 1,
+ "measuredOn": "2026-10-12",
+ "runtime": "PyTorch 2.11.0+cu130 on cuda",
+ "baseModel": "maia3-5m",
+ "rating": 1100,
+ "learningRate": 1e-05,
+ "epochs": 1,
+ "batchSize": 64,
+ "validation": {
+  "positions": 2129,
+  "games": 75
+ },
+ "baseline": {
+  "overall": {
+   "matched": 3533,
+   "positions": 7092,
+   "games": 230,
+   "standardError": 0.005732000443445659
+  },
+  "afterPly10": {
+   "matched": 2943,
+   "positions": 5942,
+   "games": 230,
+   "standardError": 0.006679724897633969
+  },
+  "byPhase": {
+   "opening": {
+    "matched": 590,
+    "positions": 1150,
+    "games": 230,
+    "standardError": 0.014595924150522657
+   },
+   "middlegame": {
+    "matched": 1041,
+    "positions": 2187,
+    "games": 230,
+    "standardError": 0.010562173615081013
+   },
+   "endgame": {
+    "matched": 1902,
+    "positions": 3755,
+    "games": 205,
+    "standardError": 0.009448366843367001
+   }
+  }
+ },
+ "baselineCheckedAgainstEngine": {
+  "slices": {
+   "overall": {
+    "pytorch": {
+     "matched": 3533,
+     "standardError": 0.005732000443445659
+    },
+    "engine": {
+     "matched": 3533,
+     "standardError": 0.005732000443445659
+    }
+   },
+   "afterPly10": {
+    "pytorch": {
+     "matched": 2943,
+     "standardError": 0.006679724897633969
+    },
+    "engine": {
+     "matched": 2943,
+     "standardError": 0.006679724897633969
+    }
+   },
+   "opening": {
+    "pytorch": {
+     "matched": 590,
+     "standardError": 0.014595924150522657
+    },
+    "engine": {
+     "matched": 590,
+     "standardError": 0.014595924150522657
+    }
+   },
+   "middlegame": {
+    "pytorch": {
+     "matched": 1041,
+     "standardError": 0.010562173615081013
+    },
+    "engine": {
+     "matched": 1041,
+     "standardError": 0.010562173615081013
+    }
+   },
+   "endgame": {
+    "pytorch": {
+     "matched": 1902,
+     "standardError": 0.009448366843367001
+    },
+    "engine": {
+     "matched": 1902,
+     "standardError": 0.009448366843367001
+    }
+   }
+  },
+  "identical": true
+ },
+ "models": {
+  "camille": {
+   "training": {
+    "positions": 21639,
+    "games": 741
+   },
+   "validationAfterPly10ByEpoch": [
+    0.5065527065527066,
+    0.5287749287749288
+   ],
+   "testSet": {
+    "overall": {
+     "matched": 3822,
+     "positions": 7092,
+     "games": 230,
+     "standardError": 0.006212860132438888
+    },
+    "afterPly10": {
+     "matched": 3060,
+     "positions": 5942,
+     "games": 230,
+     "standardError": 0.006943271912914634
+    },
+    "byPhase": {
+     "opening": {
+      "matched": 762,
+      "positions": 1150,
+      "games": 230,
+      "standardError": 0.016103445487574024
+     },
+     "middlegame": {
+      "matched": 1112,
+      "positions": 2187,
+      "games": 230,
+      "standardError": 0.01094217260427635
+     },
+     "endgame": {
+      "matched": 1948,
+      "positions": 3755,
+      "games": 205,
+      "standardError": 0.009966280080049158
+     }
+    }
+   },
+   "gainOverBaseline": {
+    "overall": {
+     "gain": 0.04075014100394811,
+     "standardError": 0.003822102122723492
+    },
+    "afterPly10": {
+     "gain": 0.01969033995287782,
+     "standardError": 0.003652391719984989
+    },
+    "byPhase": {
+     "opening": {
+      "gain": 0.14956521739130435,
+      "standardError": 0.01236658939092883
+     },
+     "middlegame": {
+      "gain": 0.03246456332876086,
+      "standardError": 0.006920752119694552
+     },
+     "endgame": {
+      "gain": 0.012250332889480693,
+      "standardError": 0.004674897289223407
+     }
+    }
+   }
+  },
+  "otherPlayers": {
+   "training": {
+    "positions": 21677,
+    "games": 683
+   },
+   "validationAfterPly10ByEpoch": [
+    0.5065527065527066,
+    0.5156695156695157
+   ],
+   "testSet": {
+    "overall": {
+     "matched": 3520,
+     "positions": 7092,
+     "games": 230,
+     "standardError": 0.006078490762400237
+    },
+    "afterPly10": {
+     "matched": 2914,
+     "positions": 5942,
+     "games": 230,
+     "standardError": 0.007106820056176203
+    },
+    "byPhase": {
+     "opening": {
+      "matched": 606,
+      "positions": 1150,
+      "games": 230,
+      "standardError": 0.014141376786113278
+     },
+     "middlegame": {
+      "matched": 1039,
+      "positions": 2187,
+      "games": 230,
+      "standardError": 0.0106044919596847
+     },
+     "endgame": {
+      "matched": 1875,
+      "positions": 3755,
+      "games": 205,
+      "standardError": 0.009965543751597292
+     }
+    }
+   },
+   "gainOverBaseline": {
+    "overall": {
+     "gain": -0.0018330513254371122,
+     "standardError": 0.002510183290059183
+    },
+    "afterPly10": {
+     "gain": -0.004880511612251767,
+     "standardError": 0.0028197506378900734
+    },
+    "byPhase": {
+     "opening": {
+      "gain": 0.01391304347826087,
+      "standardError": 0.0060931916314861945
+     },
+     "middlegame": {
+      "gain": -0.0009144947416552355,
+      "standardError": 0.0046278285832782005
+     },
+     "endgame": {
+      "gain": -0.007190412782956059,
+      "standardError": 0.003830291996753419
+     }
+    }
+   }
+  }
+ },
+ "camilleOverControl": {
+  "overall": {
+   "gain": 0.04258319232938522,
+   "standardError": 0.004021198515319386
+  },
+  "afterPly10": {
+   "gain": 0.024570851565129587,
+   "standardError": 0.004159997634930668
+  },
+  "byPhase": {
+   "opening": {
+    "gain": 0.1356521739130435,
+    "standardError": 0.012144041030875147
+   },
+   "middlegame": {
+    "gain": 0.03337905807041609,
+    "standardError": 0.0073761883016816125
+   },
+   "endgame": {
+    "gain": 0.01944074567243675,
+    "standardError": 0.005183284778043409
+   }
+  }
+ }
+}
