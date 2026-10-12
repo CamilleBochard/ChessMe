@@ -174,5 +174,5 @@ The loss is the price of the change, not a flaw in it: Move-Matching
 rewards always playing the most likely move, which is exactly what made
 the Bot stronger than the player it imitates. Whether the drawn Bot plays
 at Camille's Level is a different measurement, of evaluation losses
-against his [Blunder Profile](blunder-profile.md), and is not made here;
-neither is the choice of temperature that it would inform.
+against his [Blunder Profile](blunder-profile.md): it is made in [the
+draw's temperature](draw-temperature.md), which keeps temperature 1.
