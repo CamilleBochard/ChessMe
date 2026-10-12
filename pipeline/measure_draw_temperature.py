@@ -24,25 +24,16 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Callable
 
-from pipeline.blunder_profile import (
-    PERCENTILES,
-    MoveLoss,
-    build_blunder_profile,
-    position_already_decided,
-    share_losing_at_least,
-)
-from pipeline.bot_games import read_bot_games, read_bot_results
-from pipeline.dataset import PHASE_LABELS, PHASES, Position, read_dataset
-from pipeline.draw_temperature import loss_distance, next_step, phase_distances
+from pipeline import bot_losses
+from pipeline.draw_temperature import next_step
 from pipeline.extract_blunder_profile import (
     DATASET_DIR,
     REPOSITORY_ROOT,
     ProgressPrinter,
     add_stockfish_arguments,
-    measure_move_losses,
     running_stockfish,
 )
-from pipeline.stockfish_analysis import Analyser, analyse_positions
+from pipeline.stockfish_analysis import Analyser
 
 # The version of the file's layout. Raise it whenever a reader of the old
 # layout would misread the new one.
@@ -60,197 +51,44 @@ def extract(
     report_progress: Callable[[int, int], None] | None = None,
 ) -> dict:
     """Measures Camille's moves and the Bot's at each temperature, keyed by temperature in `runs`."""
-    dataset = read_dataset(dataset_dir)
-    camille = _measure(dataset.train + dataset.test, analysers, cache_path, report_progress)
-    # The same player on two sets of his own games: how far apart they land
-    # is how far two sets of games drift by chance, the yardstick for whether
-    # the gap between two temperatures means anything.
-    training_games = _measure(dataset.train, analysers, cache_path, report_progress)
-    test_set = _measure(dataset.test, analysers, cache_path, report_progress)
-
-    temperatures = {}
-    distances = {}
+    labelled_runs = {}
     for temperature, games_path in sorted(runs.items()):
-        bot_positions = read_bot_games(games_path)
-        bot = _measure(bot_positions, analysers, cache_path, report_progress)
-        games = {position.game_id for position in bot_positions}
-        distance = loss_distance(bot.losses, camille.losses)
-        distances[temperature] = distance
-        temperatures[f"{temperature:g}"] = {
-            "games": len(games),
-            "results": read_bot_results(games_path),
-            "centipawn_loss": build_blunder_profile(bot.losses),
-            "distance": distance,
-            "already_decided_share": bot.already_decided_share(),
-            "distance_in_undecided_positions": loss_distance(bot.undecided_losses(), camille.undecided_losses()),
-            "phase_distances": phase_distances(bot.losses, camille.losses),
-            "phase_distances_in_undecided_positions": phase_distances(
-                bot.undecided_losses(), camille.undecided_losses()
-            ),
-            "centipawn_loss_in_undecided_positions": build_blunder_profile(bot.undecided_losses()),
-        }
+        labelled_runs[f"{temperature:g}"] = games_path
+    measured = bot_losses.measure_against_camille(dataset_dir, labelled_runs, cache_path, analysers, report_progress)
+
+    distances = {}
+    for temperature in runs:
+        distances[temperature] = measured["runs"][f"{temperature:g}"]["distance"]
 
     results = {
         "format_version": FORMAT_VERSION,
-        "engine": analysers[0].engine,
-        "depth": analysers[0].depth,
-        "camille": {
-            "centipawn_loss": build_blunder_profile(camille.losses),
-            "already_decided_share": camille.already_decided_share(),
-            "centipawn_loss_in_undecided_positions": build_blunder_profile(camille.undecided_losses()),
-        },
-        "camille_test_set_from_training_games": loss_distance(test_set.losses, training_games.losses),
-        "temperatures": temperatures,
+        "engine": measured["engine"],
+        "depth": measured["depth"],
+        "camille": measured["camille"],
+        "camille_test_set_from_training_games": measured["camille_test_set_from_training_games"],
+        "temperatures": measured["runs"],
         "next_step": asdict(next_step(distances)),
     }
     results_path.write_text(json.dumps(results, indent=1), encoding="utf-8")
     return results
 
 
-class _MeasuredMoves:
-    """A player's moves with the evaluation each lost, and whether its position was already decided."""
-
-    def __init__(self, losses: list[MoveLoss], already_decided: list[bool]):
-        self.losses = losses
-        self.already_decided = already_decided
-
-    def undecided_losses(self) -> list[MoveLoss]:
-        """The moves made while the game was still open, the only ones that could be a mistake."""
-        undecided = []
-        for loss, decided in zip(self.losses, self.already_decided):
-            if not decided:
-                undecided.append(loss)
-        return undecided
-
-    def already_decided_share(self) -> dict[str, float | None]:
-        """Per Phase, the share of moves made in a position already decided."""
-        shares = {}
-        for phase in PHASES:
-            flags = [decided for loss, decided in zip(self.losses, self.already_decided) if loss.phase == phase]
-            if not flags:
-                shares[phase] = None
-                continue
-            shares[phase] = sum(flags) / len(flags)
-        return shares
-
-
-def _measure(
-    positions: list[Position],
-    analysers: list[Analyser],
-    cache_path: Path,
-    report_progress: Callable[[int, int], None] | None,
-) -> _MeasuredMoves:
-    losses = measure_move_losses(positions, analysers, cache_path, report_progress)
-    # Every move is in the cache by now, so this analyses nothing again.
-    analyses = analyse_positions(positions, analysers, cache_path)
-    already_decided = []
-    for position in positions:
-        analysis = analyses[(position.fen, position.move)]
-        already_decided.append(position_already_decided(best=analysis.best, played=analysis.played))
-    return _MeasuredMoves(losses, already_decided)
-
-
-# The usual thresholds for an inaccuracy, a mistake and a blunder.
-LOSS_THRESHOLDS = [50, 100, 300]
-
-
 def loss_tables(results: dict, in_undecided_positions: bool = False) -> str:
-    """One Markdown table per Phase: Camille's losses, then the Bot's at each temperature.
-
-    With in_undecided_positions, only the moves made while the game was still
-    open are counted, for both players.
-    """
-    header_cells = ["Player", "Moves", "Mean"]
-    header_cells += [f"p{percentile}" for percentile in PERCENTILES]
-    header_cells += [f"{threshold} or more" for threshold in LOSS_THRESHOLDS]
-
-    profile_key = "centipawn_loss"
-    if in_undecided_positions:
-        profile_key = "centipawn_loss_in_undecided_positions"
-    players = [("Camille", results["camille"][profile_key])]
+    """One Markdown table per Phase: Camille's losses, then the Bot's at each temperature."""
+    runs = {}
     for temperature, measured in results["temperatures"].items():
-        players.append((f"Bot at {temperature}", measured[profile_key]))
-
-    lines = []
-    for phase in PHASES:
-        lines.append(PHASE_LABELS[phase])
-        lines.append("")
-        lines.append(_table_row(header_cells))
-        lines.append("|---|" + "---|" * (len(header_cells) - 1))
-        for name, profile in players:
-            lines.append(_table_row([name] + _loss_cells(profile["phases"][phase])))
-        lines.append("")
-    return "\n".join(lines)
-
-
-def _loss_cells(distribution: dict) -> list[str]:
-    cells = [f"{distribution['moves']:,}", _decimal(distribution["mean"])]
-    for percentile in PERCENTILES:
-        value = distribution["percentiles"][str(percentile)]
-        if value is None:
-            cells.append("-")
-        else:
-            cells.append(str(value))
-    for threshold in LOSS_THRESHOLDS:
-        cells.append(_percent(share_losing_at_least(distribution, threshold)))
-    return cells
+        runs[f"Bot at {temperature}"] = measured
+    return bot_losses.loss_tables(results["camille"], runs, in_undecided_positions)
 
 
 def summary_table(results: dict) -> str:
     """One row per temperature: its games, the Bot's results and how far its losses are from Camille's."""
-    header_cells = [
-        "Temperature",
-        "Games",
-        "Won, drawn, lost",
-        "Distance",
-        "Distance, undecided positions",
-        "Endgame moves in decided positions",
-    ]
-    lines = [_table_row(header_cells), "|---|" + "---|" * (len(header_cells) - 1)]
-    for temperature, measured in results["temperatures"].items():
-        outcome = measured["results"]
-        cells = [
-            temperature,
-            f"{measured['games']:,}",
-            f"{outcome['won']}, {outcome['drawn']}, {outcome['lost']}",
-            _decimal(measured["distance"]),
-            _decimal(measured["distance_in_undecided_positions"]),
-            _percent(measured["already_decided_share"]["endgame"]),
-        ]
-        lines.append(_table_row(cells))
-    return "\n".join(lines)
+    return bot_losses.summary_table(results["temperatures"], "Temperature")
 
 
 def phase_distance_table(results: dict) -> str:
     """Each Phase's own distance at each temperature, with all moves, then without those in decided positions."""
-    temperatures = list(results["temperatures"])
-    header_cells = ["Phase"] + temperatures + [f"{temperature}, undecided positions" for temperature in temperatures]
-    lines = [_table_row(header_cells), "|---|" + "---|" * (len(header_cells) - 1)]
-    for phase in PHASES:
-        cells = [PHASE_LABELS[phase]]
-        for temperature in temperatures:
-            cells.append(_decimal(results["temperatures"][temperature]["phase_distances"][phase]))
-        for temperature in temperatures:
-            undecided = results["temperatures"][temperature]["phase_distances_in_undecided_positions"]
-            cells.append(_decimal(undecided[phase]))
-        lines.append(_table_row(cells))
-    return "\n".join(lines)
-
-
-def _table_row(cells: list[str]) -> str:
-    return f"| {' | '.join(cells)} |"
-
-
-def _decimal(value: float | None) -> str:
-    if value is None:
-        return "-"
-    return f"{value:.1f}"
-
-
-def _percent(share: float | None) -> str:
-    if share is None:
-        return "-"
-    return f"{100 * share:.1f}%"
+    return bot_losses.phase_distance_table(results["temperatures"])
 
 
 def _parse_run(argument: str) -> tuple[float, Path]:
