@@ -1,13 +1,15 @@
 """Receives the Session Games visitors finish on the site and stores them.
 
-Runs on the VPS beside the static site, which the web server keeps serving
-on its own; the web server passes requests under /api/ to this service.
+Runs on the VPS beside the static site; the reverse proxy in front of both
+passes requests under /api/ to this service.
 See docs/adr/0002-session-games-received-beside-the-static-site.md.
 
-    python -m pipeline.serve_session_games --database data/session-games.sqlite [--port 8787]
+    python -m pipeline.serve_session_games --database data/session-games.sqlite [--host 127.0.0.1] [--port 8787]
 
-The service listens on the local machine only: the web server in front of
-it is what the internet reaches.
+The service listens on the local machine by default. In a container it
+listens on every interface of the container, so the reverse proxy can reach
+it; the container itself publishes no port, so the proxy is still the only
+thing the internet reaches.
 """
 
 import argparse
@@ -188,9 +190,10 @@ class AddressFreeServer(ThreadingHTTPServer):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Receive and store the Session Games finished on the site.")
     parser.add_argument("--database", type=Path, required=True, help="the SQLite file the games are stored in")
-    parser.add_argument("--port", type=int, default=DEFAULT_PORT, help=f"local port to listen on (default {DEFAULT_PORT})")
+    parser.add_argument("--host", default="127.0.0.1", help="address to listen on (default 127.0.0.1)")
+    parser.add_argument("--port", type=int, default=DEFAULT_PORT, help=f"port to listen on (default {DEFAULT_PORT})")
     arguments = parser.parse_args()
 
-    server = make_server(arguments.database, host="127.0.0.1", port=arguments.port)
-    print(f"Storing Session Games in {arguments.database}, listening on 127.0.0.1:{arguments.port}")
+    server = make_server(arguments.database, host=arguments.host, port=arguments.port)
+    print(f"Storing Session Games in {arguments.database}, listening on {arguments.host}:{arguments.port}")
     server.serve_forever()
