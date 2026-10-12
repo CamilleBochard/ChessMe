@@ -2,7 +2,7 @@
 // one game. The Bot is replaced by a scripted stand-in, so each test knows which
 // reply comes and, when it matters, exactly when it arrives.
 
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BotMove, MoveSource } from '../engine/move-selection';
 import { currentFen, moveList, type MoveRequest } from '../game/game';
 import { gameStatus } from '../game/game-status';
@@ -383,5 +383,32 @@ describe('the finished game', () => {
       { move: { from: 'e2', to: 'e4' } },
       { move: { from: 'c7', to: 'c5' }, source: 'base-model' },
     ]);
+  });
+});
+
+describe('the clock', () => {
+  const TEN_MINUTES = 10 * 60 * 1000;
+
+  // The session reads the time from the system clock and waits with timers;
+  // fake ones let each test move time forward by hand.
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("runs the visitor's clock only while it is the visitor's turn", async () => {
+    const session = createSessionGame({ chooseMove: scriptedBot([{ from: 'e7', to: 'e5' }]) });
+    await session.start('white');
+    await session.playVisitorMove({ from: 'e2', to: 'e4' });
+
+    // The Bot answered at once; the visitor has been thinking for 30 seconds.
+    vi.advanceTimersByTime(30_000);
+
+    expect(session.timeLeft('white')).toBe(TEN_MINUTES - 30_000);
+    expect(session.timeLeft('black')).toBe(TEN_MINUTES);
   });
 });

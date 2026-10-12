@@ -15,6 +15,7 @@ import {
   type Game,
   type MoveRequest,
 } from '../game/game';
+import { newClock, remainingTime, startTurn, type Clock } from '../game/clock';
 import { describeTurn, gameStatus } from '../game/game-status';
 import type { BotMove, MoveSource } from '../engine/move-selection';
 
@@ -55,6 +56,8 @@ export interface SessionGame {
   visitor(): Colour | null;
   /** The line shown under the board: whose turn it is, or how the game ended. */
   status(): string;
+  /** The time the side has left on its clock right now, in milliseconds. */
+  timeLeft(side: Colour): number;
   /**
    * Starts a fresh game with the visitor on the given side. Resolves once the
    * Bot has played its opening move, if it has the first move.
@@ -102,6 +105,7 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
   // move taken back leaves its entry behind, but the Bot's next move at that
   // ply replaces it, and only the plies of the game as it stands are read.
   const botMoveSources = new Map<number, MoveSource>();
+  let clock: Clock = newClock();
 
   /**
    * The only place the game is replaced, so the page never misses a change.
@@ -138,6 +142,12 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
 
     const visitorResigned = game.resignedBy !== undefined;
     options.onGameEnd({ visitor: visitor, moves: moves, visitorResigned: visitorResigned });
+  }
+
+  /** Plays a move on the game and passes the turn on the clock. */
+  function playOnBoard(next: Game): void {
+    clock = startTurn(clock, sideToMove(next), Date.now());
+    setGame(next);
   }
 
   function notifyPage(): void {
@@ -203,7 +213,7 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
     }
     const ply = movesOf(next).length;
     botMoveSources.set(ply, reply.source);
-    setGame(next);
+    playOnBoard(next);
   }
 
   return {
@@ -216,6 +226,10 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
         return 'Choose a side to start.';
       }
       return describeTurn(game, visitor);
+    },
+
+    timeLeft(side: Colour): number {
+      return remainingTime(clock, side, Date.now());
     },
 
     async start(side: Colour): Promise<void> {
@@ -243,7 +257,7 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
       if (next === null) {
         return false;
       }
-      setGame(next);
+      playOnBoard(next);
 
       if (gameStatus(game).kind === 'ongoing') {
         await playBotMove();
