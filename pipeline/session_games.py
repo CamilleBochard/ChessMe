@@ -112,8 +112,16 @@ def record_session_game(connection: sqlite3.Connection, report: dict, played_on:
         board.push(move)
 
     visitor_resigned = report.get("visitorResigned", False)
+    timed_out = report.get("timedOut")
     has_ended_on_the_board = has_ended_as_the_page_ends_it(board)
-    if visitor_resigned:
+    if timed_out is not None:
+        # The side whose clock ran out loses to an opponent who could
+        # still mate.
+        if timed_out == "white":
+            result = "0-1"
+        else:
+            result = "1-0"
+    elif visitor_resigned:
         if has_ended_on_the_board:
             raise RejectedGame("the game had already ended when the visitor resigned")
         # The Bot never resigns, so a resignation is always the Bot's win.
@@ -144,6 +152,8 @@ def record_session_game(connection: sqlite3.Connection, report: dict, played_on:
     game.headers["Result"] = result
     if visitor_resigned:
         game.headers["Termination"] = "Visitor resigned"
+    if timed_out is not None:
+        game.headers["Termination"] = "Time forfeit"
     # The served Base Model may change, and its games must not be mixed with
     # the next one's without anyone noticing.
     game.headers["BaseModel"] = report["baseModel"]
