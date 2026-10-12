@@ -2,11 +2,11 @@
 // one game. The Bot is replaced by a scripted stand-in, so each test knows which
 // reply comes and, when it matters, exactly when it arrives.
 
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BotMove, MoveSource } from '../engine/move-selection';
 import { currentFen, moveList, type MoveRequest } from '../game/game';
 import { gameStatus } from '../game/game-status';
-import { createSessionGame, type FinishedGame } from './session-game';
+import { clockFaces, createSessionGame, type FinishedGame } from './session-game';
 
 /** A Bot that plays the given moves in order, whatever the position, all from the given source. */
 function scriptedBot(replies: MoveRequest[], source: MoveSource = 'base-model'): (fen: string) => Promise<BotMove> {
@@ -335,6 +335,7 @@ describe('the finished game', () => {
           { move: { from: 'd8', to: 'h4' }, source: 'base-model' },
         ],
         visitorResigned: false,
+        timedOut: null,
       },
     ]);
   });
@@ -357,6 +358,7 @@ describe('the finished game', () => {
         visitor: 'white',
         moves: [{ move: { from: 'e2', to: 'e4' } }, { move: { from: 'e7', to: 'e5' }, source: 'opening-book' }],
         visitorResigned: true,
+        timedOut: null,
       },
     ]);
   });
@@ -383,5 +385,248 @@ describe('the finished game', () => {
       { move: { from: 'e2', to: 'e4' } },
       { move: { from: 'c7', to: 'c5' }, source: 'base-model' },
     ]);
+  });
+});
+
+describe('the clock', () => {
+  const TEN_MINUTES = 10 * 60 * 1000;
+
+  // The session reads the time from the system clock and waits with timers;
+  // fake ones let each test move time forward by hand.
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("runs the visitor's clock only while it is the visitor's turn", async () => {
+    const session = createSessionGame({ chooseMove: scriptedBot([{ from: 'e7', to: 'e5' }]) });
+    await session.start('white');
+    await session.playVisitorMove({ from: 'e2', to: 'e4' });
+
+    // The Bot answered at once; the visitor has been thinking for 30 seconds.
+    vi.advanceTimersByTime(30_000);
+
+    expect(session.timeLeft('white')).toBe(TEN_MINUTES - 30_000);
+    expect(session.timeLeft('black')).toBe(TEN_MINUTES);
+  });
+
+  it("ends the game on time when the visitor's clock runs out, with no move to trigger it", async () => {
+    const session = createSessionGame({ chooseMove: scriptedBot([{ from: 'e7', to: 'e5' }]) });
+    await session.start('white');
+    await session.playVisitorMove({ from: 'e2', to: 'e4' });
+
+    vi.advanceTimersByTime(TEN_MINUTES);
+
+    expect(gameStatus(session.game())).toEqual({ kind: 'time-forfeit', winner: 'black' });
+    expect(session.status()).toBe('White ran out of time. Black wins.');
+  });
+
+  it('stops both clocks when the game ends, here by the visitor resigning', async () => {
+    const session = createSessionGame({ chooseMove: scriptedBot([{ from: 'e7', to: 'e5' }]) });
+    await session.start('white');
+    await session.playVisitorMove({ from: 'e2', to: 'e4' });
+    vi.advanceTimersByTime(30_000);
+
+    session.resign();
+    vi.advanceTimersByTime(TEN_MINUTES);
+
+    expect(session.timeLeft('white')).toBe(TEN_MINUTES - 30_000);
+    expect(session.timeLeft('black')).toBe(TEN_MINUTES);
+    expect(session.status()).toBe('White resigns. Black wins.');
+  });
+
+  it('gives both sides ten minutes again with a new game, running neither until its first move', async () => {
+    const session = createSessionGame({ chooseMove: scriptedBot([{ from: 'e7', to: 'e5' }]) });
+    await session.start('white');
+    await session.playVisitorMove({ from: 'e2', to: 'e4' });
+    vi.advanceTimersByTime(30_000);
+
+    session.startOver();
+    await session.start('white');
+    vi.advanceTimersByTime(TEN_MINUTES);
+
+    // The visitor has not moved in the new game, so no time is spent and no flag falls.
+    expect(session.timeLeft('white')).toBe(TEN_MINUTES);
+    expect(session.timeLeft('black')).toBe(TEN_MINUTES);
+    expect(gameStatus(session.game())).toEqual({ kind: 'ongoing' });
+  });
+
+  it('gives no time back with a takeback', async () => {
+    const session = createSessionGame({
+      chooseMove: scriptedBot([
+        { from: 'e7', to: 'e5' },
+        { from: 'b8', to: 'c6' },
+      ]),
+    });
+    await session.start('white');
+    await session.playVisitorMove({ from: 'e2', to: 'e4' });
+    vi.advanceTimersByTime(30_000);
+    await session.playVisitorMove({ from: 'd2', to: 'd4' });
+    vi.advanceTimersByTime(20_000);
+
+    session.takeBack();
+
+    // Back before d4, the visitor keeps the 50 seconds spent and is still on the clock.
+    expect(session.timeLeft('white')).toBe(TEN_MINUTES - 50_000);
+    vi.advanceTimersByTime(10_000);
+    expect(session.timeLeft('white')).toBe(TEN_MINUTES - 60_000);
+  });
+
+  it("runs the Bot's clock while it chooses its move", async () => {
+    const bot = slowBot();
+    const session = createSessionGame({ chooseMove: bot.chooseMove });
+    await session.start('white');
+    const visitorMove = session.playVisitorMove({ from: 'e2', to: 'e4' });
+
+    vi.advanceTimersByTime(5_000);
+    bot.reply({ from: 'e7', to: 'e5' });
+    await visitorMove;
+
+    expect(session.timeLeft('black')).toBe(TEN_MINUTES - 5_000);
+  });
+
+  it('ends the game on time when the Bot runs out while choosing, and drops its late reply', async () => {
+    const bot = slowBot();
+    const session = createSessionGame({ chooseMove: bot.chooseMove });
+    await session.start('white');
+    const visitorMove = session.playVisitorMove({ from: 'e2', to: 'e4' });
+
+    vi.advanceTimersByTime(TEN_MINUTES);
+    bot.reply({ from: 'e7', to: 'e5' });
+    await visitorMove;
+
+    expect(gameStatus(session.game())).toEqual({ kind: 'time-forfeit', winner: 'white' });
+    expect(moveList(session.game())).toEqual([{ moveNumber: 1, white: 'e4', black: null }]);
+  });
+
+  it('hands over a game lost on time, saying whose clock ran out', async () => {
+    const finishedGames: FinishedGame[] = [];
+    const session = createSessionGame({
+      chooseMove: scriptedBot([{ from: 'e7', to: 'e5' }], 'opening-book'),
+      onGameEnd: (finished) => {
+        finishedGames.push(finished);
+      },
+    });
+    await session.start('white');
+    await session.playVisitorMove({ from: 'e2', to: 'e4' });
+
+    vi.advanceTimersByTime(TEN_MINUTES);
+
+    expect(finishedGames).toEqual([
+      {
+        visitor: 'white',
+        moves: [{ move: { from: 'e2', to: 'e4' } }, { move: { from: 'e7', to: 'e5' }, source: 'opening-book' }],
+        visitorResigned: false,
+        timedOut: 'white',
+      },
+    ]);
+  });
+
+  it('says which clock is running: none before the first move, then the side to move', async () => {
+    const bot = slowBot();
+    const session = createSessionGame({ chooseMove: bot.chooseMove });
+    await session.start('white');
+    expect(session.runningClock()).toBeNull();
+
+    const visitorMove = session.playVisitorMove({ from: 'e2', to: 'e4' });
+    expect(session.runningClock()).toBe('black');
+
+    bot.reply({ from: 'e7', to: 'e5' });
+    await visitorMove;
+    expect(session.runningClock()).toBe('white');
+
+    session.resign();
+    expect(session.runningClock()).toBeNull();
+  });
+
+  it("refuses a move made after the visitor's time ran out, even if the timer has not woken yet", async () => {
+    const session = createSessionGame({
+      chooseMove: scriptedBot([
+        { from: 'e7', to: 'e5' },
+        { from: 'b8', to: 'c6' },
+      ]),
+    });
+    await session.start('white');
+    await session.playVisitorMove({ from: 'e2', to: 'e4' });
+
+    // The time passes without the timer firing, as in a throttled background tab.
+    vi.setSystemTime(TEN_MINUTES + 1_000);
+    const accepted = await session.playVisitorMove({ from: 'g1', to: 'f3' });
+
+    expect(accepted).toBe(false);
+    expect(gameStatus(session.game())).toEqual({ kind: 'time-forfeit', winner: 'black' });
+  });
+
+  it("drops a Bot reply that arrives after the Bot's time ran out, even if the timer has not woken yet", async () => {
+    const bot = slowBot();
+    const session = createSessionGame({ chooseMove: bot.chooseMove });
+    await session.start('white');
+    const visitorMove = session.playVisitorMove({ from: 'e2', to: 'e4' });
+
+    vi.setSystemTime(TEN_MINUTES + 1_000);
+    bot.reply({ from: 'e7', to: 'e5' });
+    await visitorMove;
+
+    expect(gameStatus(session.game())).toEqual({ kind: 'time-forfeit', winner: 'white' });
+    expect(moveList(session.game())).toEqual([{ moveNumber: 1, white: 'e4', black: null }]);
+  });
+
+  it('runs the visitor\'s clock again after taking back a move that lost to checkmate', async () => {
+    const session = createSessionGame({
+      chooseMove: scriptedBot([
+        { from: 'e7', to: 'e5' },
+        { from: 'd8', to: 'h4' },
+      ]),
+    });
+    await session.start('white');
+    await session.playVisitorMove({ from: 'f2', to: 'f3' });
+    vi.advanceTimersByTime(10_000);
+    await session.playVisitorMove({ from: 'g2', to: 'g4' });
+
+    session.takeBack();
+    vi.advanceTimersByTime(5_000);
+
+    // Back before g4, still the visitor's turn: the 10 seconds stay spent, and the clock runs on.
+    expect(session.runningClock()).toBe('white');
+    expect(session.timeLeft('white')).toBe(TEN_MINUTES - 15_000);
+  });
+
+  it('stops the clock when the Bot fails, so the game is never reported as lost on time', async () => {
+    const finishedGames: FinishedGame[] = [];
+    const session = createSessionGame({
+      chooseMove: async () => {
+        throw new Error('The Bot could not be loaded');
+      },
+      onGameEnd: (finished) => {
+        finishedGames.push(finished);
+      },
+    });
+    await session.start('white');
+    await expect(session.playVisitorMove({ from: 'e2', to: 'e4' })).rejects.toThrow('could not be loaded');
+
+    vi.advanceTimersByTime(TEN_MINUTES);
+
+    expect(session.runningClock()).toBeNull();
+    expect(finishedGames).toEqual([]);
+  });
+});
+
+describe('the clock faces', () => {
+  it('puts the visitor under the board as You and the Bot above it', () => {
+    expect(clockFaces('black')).toEqual({
+      top: { side: 'white', name: 'Bot' },
+      bottom: { side: 'black', name: 'You' },
+    });
+  });
+
+  it('shows White under the board and Black above it until a side is chosen', () => {
+    expect(clockFaces(null)).toEqual({
+      top: { side: 'black', name: 'Black' },
+      bottom: { side: 'white', name: 'White' },
+    });
   });
 });

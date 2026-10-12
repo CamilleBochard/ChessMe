@@ -45,6 +45,8 @@ export interface Game {
   readonly previous?: Game;
   /** The side that resigned, which ends the game whatever the position. */
   readonly resignedBy?: Colour;
+  /** The side whose clock ran out, which ends the game whatever the position. */
+  readonly timedOutBy?: Colour;
 }
 
 /** One line of the move list: a move number, White's move and Black's reply. */
@@ -151,14 +153,21 @@ export function resign(game: Game, side: Colour): Game {
   return resigned;
 }
 
+/** The same game, ended by the given side's clock running out. */
+export function timeOut(game: Game, side: Colour): Game {
+  const timedOut: Game = { ...game, timedOutBy: side };
+  return timedOut;
+}
+
 /**
  * The game as it stood just before the given side's most recent move, which
  * also removes any reply played after it. Returns null when that side has not
- * moved yet, or when the game was resigned: resigning is final, unlike a
- * checkmate or draw that a misclick may have walked into.
+ * moved yet, or when the game was resigned or lost on time: both are final,
+ * unlike a checkmate or draw that a misclick may have walked into, and taking
+ * back a flag would hand back the time that ran out.
  */
 export function takeBack(game: Game, side: Colour): Game | null {
-  if (game.resignedBy !== undefined) {
+  if (game.resignedBy !== undefined || game.timedOutBy !== undefined) {
     return null;
   }
 

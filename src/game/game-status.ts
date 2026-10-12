@@ -6,15 +6,17 @@
 import type { Colour } from '../board/starting-position';
 import type { Game } from './game';
 
-/** Every way a game can stand. Only checkmate and resignation have a winner. */
+/** Every way a game can stand. Only checkmate, resignation and a loss on time have a winner. */
 export type GameStatus =
   | { kind: 'ongoing' }
   | { kind: 'checkmate'; winner: Colour }
   | { kind: 'resignation'; winner: Colour }
+  | { kind: 'time-forfeit'; winner: Colour }
   | { kind: 'stalemate' }
   | { kind: 'insufficient-material' }
   | { kind: 'fifty-move-rule' }
-  | { kind: 'threefold-repetition' };
+  | { kind: 'threefold-repetition' }
+  | { kind: 'draw-on-time' };
 
 /**
  * How the game stands right now. The draw rules end the game automatically
@@ -25,6 +27,16 @@ export function gameStatus(game: Game): GameStatus {
 
   if (game.resignedBy !== undefined) {
     return { kind: 'resignation', winner: opponentOf(game.resignedBy) };
+  }
+
+  if (game.timedOutBy !== undefined) {
+    // Running out of time loses only to an opponent who could still mate;
+    // against one who never could, whatever the other side did, it is a draw.
+    const opponent = opponentOf(game.timedOutBy);
+    if (position.hasInsufficientMaterial(opponent)) {
+      return { kind: 'draw-on-time' };
+    }
+    return { kind: 'time-forfeit', winner: opponent };
   }
 
   if (position.isCheckmate()) {
@@ -68,6 +80,11 @@ export function describeResult(status: GameStatus): string | null {
         return 'Black resigns. White wins.';
       }
       return 'White resigns. Black wins.';
+    case 'time-forfeit':
+      if (status.winner === 'white') {
+        return 'Black ran out of time. White wins.';
+      }
+      return 'White ran out of time. Black wins.';
     case 'stalemate':
       return 'Draw by stalemate.';
     case 'insufficient-material':
@@ -76,6 +93,8 @@ export function describeResult(status: GameStatus): string | null {
       return 'Draw by the fifty-move rule.';
     case 'threefold-repetition':
       return 'Draw by threefold repetition.';
+    case 'draw-on-time':
+      return 'Draw: out of time, but the opponent could not have mated.';
   }
 }
 

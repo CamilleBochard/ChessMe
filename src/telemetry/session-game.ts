@@ -33,6 +33,8 @@ export interface SessionGameReport extends PlayedModel {
   readonly moves: readonly ReportedMove[];
   /** True when the game ended with the visitor resigning rather than on the board. */
   readonly visitorResigned: boolean;
+  /** The side whose clock ran out, or null when the game ended otherwise. */
+  readonly timedOut: Colour | null;
 }
 
 /** The report of a finished game, the Bot playing the side the visitor did not take. */
@@ -57,6 +59,7 @@ export function sessionGameReport(model: PlayedModel, finished: FinishedGame): S
     rating: model.rating,
     moves: moves,
     visitorResigned: finished.visitorResigned,
+    timedOut: finished.timedOut,
   };
 }
 

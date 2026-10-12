@@ -80,9 +80,9 @@ def open_store(path: Path) -> sqlite3.Connection:
 def record_session_game(connection: sqlite3.Connection, report: dict, played_on: date) -> str:
     """
     Stores the game the page reported and returns the id it was stored under.
-    A game is finished when it ended on the board or when the visitor resigned
-    it. Raises RejectedGame, storing nothing, when the report is not a
-    finished, legal game shaped as the page sends it.
+    A game is finished when it ended on the board, when the visitor resigned
+    it, or when a clock ran out. Raises RejectedGame, storing nothing, when
+    the report is not a finished, legal game shaped as the page sends it.
     """
     check_shape(report)
 
@@ -112,8 +112,28 @@ def record_session_game(connection: sqlite3.Connection, report: dict, played_on:
         board.push(move)
 
     visitor_resigned = report.get("visitorResigned", False)
+    timed_out = report.get("timedOut")
     has_ended_on_the_board = has_ended_as_the_page_ends_it(board)
-    if visitor_resigned:
+    if timed_out is not None:
+        if has_ended_on_the_board:
+            raise RejectedGame("the game had already ended when a clock ran out")
+        # Only the side to move has its clock running, so only it can run
+        # out of time.
+        side_out_of_time = chess.WHITE
+        if timed_out == "black":
+            side_out_of_time = chess.BLACK
+        if board.turn != side_out_of_time:
+            raise RejectedGame(f"{timed_out} ran out of time while not to move")
+        # The side whose clock ran out loses to an opponent who could still
+        # mate, and draws against one who never could, as the page decides it.
+        opponent = not side_out_of_time
+        if board.has_insufficient_material(opponent):
+            result = "1/2-1/2"
+        elif opponent == chess.WHITE:
+            result = "1-0"
+        else:
+            result = "0-1"
+    elif visitor_resigned:
         if has_ended_on_the_board:
             raise RejectedGame("the game had already ended when the visitor resigned")
         # The Bot never resigns, so a resignation is always the Bot's win.
@@ -144,6 +164,8 @@ def record_session_game(connection: sqlite3.Connection, report: dict, played_on:
     game.headers["Result"] = result
     if visitor_resigned:
         game.headers["Termination"] = "Visitor resigned"
+    if timed_out is not None:
+        game.headers["Termination"] = "Time forfeit"
     # The served Base Model may change, and its games must not be mixed with
     # the next one's without anyone noticing.
     game.headers["BaseModel"] = report["baseModel"]
@@ -234,6 +256,14 @@ def check_shape(report: object) -> None:
     visitor_resigned = report.get("visitorResigned", False)
     if not isinstance(visitor_resigned, bool):
         raise RejectedGame("the report says neither yes nor no about a resignation")
+
+    # Absent or null unless a clock ran out. Only a side's name may end a
+    # game on time: a truthy value of any other kind would end one by mistake.
+    timed_out = report.get("timedOut")
+    if timed_out is not None and timed_out not in ("white", "black"):
+        raise RejectedGame(f"the report says {timed_out!r} ran out of time, which is neither white nor black")
+    if timed_out is not None and visitor_resigned:
+        raise RejectedGame("the report says the game was both resigned and lost on time")
 
 
 def session_game_pgns(connection: sqlite3.Connection) -> list[str]:

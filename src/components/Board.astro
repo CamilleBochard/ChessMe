@@ -32,7 +32,15 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
   data-base-model={baseModelName}
 >
   <div class="play">
+    <div class="clock" data-clock="top">
+      <span class="clock-name" data-clock-name></span>
+      <span class="clock-time" data-clock-time></span>
+    </div>
     <div class="board"></div>
+    <div class="clock" data-clock="bottom">
+      <span class="clock-name" data-clock-name></span>
+      <span class="clock-time" data-clock-time></span>
+    </div>
     <p class="status" data-status aria-live="polite"></p>
 
     <div class="model-status" data-model-status hidden>
@@ -106,12 +114,13 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
     type MoveRequest,
     type PromotionPiece,
   } from '../game/game';
+  import { formatClockTime } from '../game/clock';
   import { gameStatus } from '../game/game-status';
   import { connectBot, type Bot } from '../engine/bot-client';
   import type { BotStatus } from '../engine/bot-protocol';
   import type { BotMove } from '../engine/move-selection';
   import type { DownloadProgress } from '../engine/model-download';
-  import { createSessionGame, type FinishedGame } from '../session/session-game';
+  import { clockFaces, createSessionGame, type ClockFace, type FinishedGame } from '../session/session-game';
   import { connectTelemetry, sessionGameReport } from '../telemetry/session-game';
   import { SESSION_GAMES_CHANGED } from '../telemetry/session-game-summary';
 
@@ -155,6 +164,8 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
     const impressionChoices = impression.querySelector<HTMLElement>('[data-impression-choices]')!;
     const impressionButtons = impressionChoices.querySelectorAll<HTMLButtonElement>('button');
     const impressionThanks = impression.querySelector<HTMLElement>('[data-impression-thanks]')!;
+    const topClock = frame.querySelector<HTMLElement>('[data-clock="top"]')!;
+    const bottomClock = frame.querySelector<HTMLElement>('[data-clock="bottom"]')!;
 
     const telemetry = connectTelemetry((input, init) => window.fetch(input, init));
     const servedModel = { baseModel: frame.dataset.baseModel!, rating: Number(frame.dataset.modelRating) };
@@ -193,6 +204,9 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
       },
     });
     showGame();
+    // The clocks change every moment, not only when the game does. A few
+    // redraws a second keep the seconds turning on time.
+    setInterval(showClocks, 200);
 
     for (const button of frame.querySelectorAll<HTMLButtonElement>('[data-play-as]')) {
       button.addEventListener('click', () => {
@@ -434,6 +448,25 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
       viewForwardButton.disabled = !session.canViewForward();
 
       showMoveList(moveListElement, moveList(game), moveList(shown));
+      showClocks();
+    }
+
+    /** The visitor's clock under the board and the Bot's above it, the running one marked. */
+    function showClocks(): void {
+      const faces = clockFaces(session.visitor());
+      showClock(topClock, faces.top);
+      showClock(bottomClock, faces.bottom);
+    }
+
+    function showClock(element: HTMLElement, face: ClockFace): void {
+      const nameElement = element.querySelector<HTMLElement>('[data-clock-name]')!;
+      const timeElement = element.querySelector<HTMLElement>('[data-clock-time]')!;
+      const timeLeft = session.timeLeft(face.side);
+      const isRunning = session.runningClock() === face.side;
+
+      nameElement.textContent = face.name;
+      timeElement.textContent = formatClockTime(timeLeft);
+      element.classList.toggle('running', isRunning);
     }
   }
 
@@ -710,6 +743,33 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
     aspect-ratio: 1;
   }
 
+  /* A clock sits right above and right below the board, as wide as it, with
+     the name on the left and the time on the right. The running clock is
+     filled so the eye finds whose time is going without reading it. */
+  .clock {
+    width: 100%;
+    max-width: 40rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border: 1px solid var(--divider);
+    border-radius: 0.5rem;
+    color: var(--text-2);
+  }
+
+  .clock-time {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    font-size: 1.25rem;
+  }
+
+  .clock.running {
+    background: var(--brand);
+    border-color: var(--brand);
+    color: var(--bg);
+  }
+
   .status {
     margin: 0;
     min-height: 1.5em;
@@ -919,15 +979,23 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
       grid-row: 1 / -1;
       padding: 2rem 2rem 2rem 0;
       min-height: 0;
+      /* The board and the two clocks share this width. */
+      --board-size: min(calc(100dvh - 15rem), calc(100vw - 17rem - 14rem - 2rem));
     }
 
-    /* As large as the screen height allows while leaving room under the board
-       for the status line and one row of buttons, so the controls never fall
-       below the fold. On a wide but short screen the width caps it instead,
+    /* As large as the screen height allows while leaving room for the two
+       clocks, the status line and one row of buttons, so the controls never
+       fall below the fold. On a wide but short screen the width caps it instead,
        keeping room for the title column (14rem), the moves column (17rem) and
        the padding around the board. */
     .board {
-      width: min(calc(100dvh - 9.5rem), calc(100vw - 17rem - 14rem - 2rem));
+      width: var(--board-size);
+      max-width: none;
+    }
+
+    /* As wide as the board above and below it. */
+    .clock {
+      width: var(--board-size);
       max-width: none;
     }
 
