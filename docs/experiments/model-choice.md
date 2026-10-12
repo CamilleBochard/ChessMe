@@ -51,6 +51,31 @@ weights differ from the experiment's by at most 4.9e-06, and the two models
 play the same top move in all 7,092 Test Set positions. The details are in
 `docs/experiments/results/fine-tuned-recreation.json`.
 
+## Converting it and running it in the engine
+
+```sh
+python -m pipeline.convert_maia3 --fine-tuned models/fine-tuned/maia3-5m-full-recreated.pt
+python -m pipeline.verify_maia3 --fine-tuned models/fine-tuned/maia3-5m-full-recreated.pt
+npm run check-models
+npm run drawn-move -- models/onnx/maia3-5m-fine-tuned.onnx --rating 1100 --record docs/experiments/results/drawn-move-fine-tuned.json
+python -m pipeline.model_sizes
+```
+
+**The conversion passes the original's test.** On the 50 verification
+positions the ONNX file plays the same top move as the PyTorch model at
+every rating from 1100 to 1900. The largest difference in raw scores is
+2.3e-05, against 2.4e-05 for the original conversion: the rounding of
+32-bit arithmetic done in another order. onnxruntime-web, the runtime
+visitors' browsers use, loads and runs it.
+
+**The engine reproduces it.** Under Node, the Move-Selection Engine with
+the converted file plays the model's top move on the Test Set and matches
+Camille's in exactly the positions PyTorch did: 3,822 of 7,092, and 762,
+1,112 and 1,948 in the opening, middlegame and endgame.
+
+**Same download.** Both files weigh 22.20 MB, 19.17 MB with Brotli: the
+same network with other values in its weights.
+
 ## The rule, stated before the figures were read
 
 A Bot plays like Camille when its mistakes are his size and frequency
