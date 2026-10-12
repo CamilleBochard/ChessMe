@@ -318,3 +318,12 @@ def test_stores_a_game_lost_on_time_as_won_by_the_other_side(tmp_path):
     assert '[Result "0-1"]' in pgn
     assert '[Termination "Time forfeit"]' in pgn
     assert session_game_counts(store)["bot_wins"] == 1
+
+
+def test_refuses_a_loss_on_time_after_the_game_ended_on_the_board(tmp_path):
+    store = open_store(tmp_path / "session-games.sqlite")
+    report = fools_mate_reported_by_the_page()
+    report["timedOut"] = "white"
+
+    with pytest.raises(RejectedGame, match="already ended"):
+        record_session_game(store, report, played_on=PLAYED_ON)

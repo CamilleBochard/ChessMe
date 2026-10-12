@@ -115,6 +115,8 @@ def record_session_game(connection: sqlite3.Connection, report: dict, played_on:
     timed_out = report.get("timedOut")
     has_ended_on_the_board = has_ended_as_the_page_ends_it(board)
     if timed_out is not None:
+        if has_ended_on_the_board:
+            raise RejectedGame("the game had already ended when a clock ran out")
         # The side whose clock ran out loses to an opponent who could
         # still mate.
         if timed_out == "white":
