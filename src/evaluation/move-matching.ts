@@ -4,6 +4,7 @@
 // Free of anything DOM or Node, so the same code could score the engine
 // wherever it runs; reading files is left to the caller.
 
+import type { MoveProbability } from '../engine/base-model';
 import { uciName, type MoveRequest } from '../game/game';
 
 /** A position where Camille moved, as the Python pipeline writes it to the dataset. */
@@ -28,6 +29,11 @@ export const PHASES: readonly Phase[] = ['opening', 'middlegame', 'endgame'];
 
 /** How many positions were scored and in how many the engine played Camille's move. */
 export interface MoveMatchingScore {
+  /**
+   * The positions where the engine played Camille's move. For a drawn move,
+   * the number it is expected to match: the sum over positions of the
+   * probability the draw lands on his move, which need not be whole.
+   */
   matched: number;
   positions: number;
   /** How many games the positions come from. */
@@ -64,6 +70,21 @@ const LAST_OPENING_PLY = 10;
 /** Whatever chooses a move for a position, usually the Move-Selection Engine. */
 export type ChooseMove = (fen: string) => Promise<MoveRequest>;
 
+/** How likely the engine is to play each move in a position, most likely first. */
+export type MoveDistributionOf = (fen: string) => Promise<MoveProbability[]>;
+
+/** The same positions scored two ways from one distribution per position. */
+export interface DrawnMoveMatchingReport {
+  /** Whether the most likely move is Camille's: what an engine always playing it scores. */
+  topMove: MoveMatchingReport;
+  /**
+   * The probability the draw lands on Camille's move: what an engine drawing
+   * from the distribution scores on average. One random run would add the
+   * luck of the draw to the luck of the sample; the expectation leaves it out.
+   */
+  drawn: MoveMatchingReport;
+}
+
 /** Reads positions in JSON Lines, one per line, as in the Test Set and the training file. */
 export function readPositions(jsonLines: string): PlayedPosition[] {
   const positions: PlayedPosition[] = [];
@@ -82,10 +103,13 @@ export function share(score: MoveMatchingScore): number {
   return score.matched / score.positions;
 }
 
-/** Whether the engine played Camille's move in one position. */
+/**
+ * How far the engine matched Camille in one position: 1 or 0 for a move it
+ * played, or the probability of his move for a move it would draw.
+ */
 interface Outcome {
   position: PlayedPosition;
-  isMatch: boolean;
+  value: number;
 }
 
 /** Asks the engine for its move in every position and counts the ones that match Camille's. */
@@ -93,10 +117,47 @@ export async function measureMoveMatching(positions: PlayedPosition[], chooseMov
   const outcomes: Outcome[] = [];
   for (const position of positions) {
     const engineMove = await chooseMove(position.fen);
-    const isMatch = uciName(engineMove) === position.move;
-    outcomes.push({ position: position, isMatch: isMatch });
+    let value = 0;
+    if (uciName(engineMove) === position.move) {
+      value = 1;
+    }
+    outcomes.push({ position: position, value: value });
   }
+  return report(outcomes);
+}
 
+/**
+ * Asks the engine how likely it is to play each move in every position, and
+ * scores both the most likely move and the draw against Camille's move.
+ */
+export async function measureDrawnMoveMatching(
+  positions: PlayedPosition[],
+  distributionOf: MoveDistributionOf,
+): Promise<DrawnMoveMatchingReport> {
+  const topMoveOutcomes: Outcome[] = [];
+  const drawnOutcomes: Outcome[] = [];
+  for (const position of positions) {
+    const distribution = await distributionOf(position.fen);
+
+    let topMoveValue = 0;
+    if (uciName(distribution[0].move) === position.move) {
+      topMoveValue = 1;
+    }
+    topMoveOutcomes.push({ position: position, value: topMoveValue });
+
+    let probabilityOfHisMove = 0;
+    for (const candidate of distribution) {
+      if (uciName(candidate.move) === position.move) {
+        probabilityOfHisMove = probabilityOfHisMove + candidate.probability;
+      }
+    }
+    drawnOutcomes.push({ position: position, value: probabilityOfHisMove });
+  }
+  return { topMove: report(topMoveOutcomes), drawn: report(drawnOutcomes) };
+}
+
+/** Scores every position, the positions after ply 10, and each Phase's positions. */
+function report(outcomes: Outcome[]): MoveMatchingReport {
   const afterOpening = outcomes.filter((outcome) => outcome.position.ply > LAST_OPENING_PLY);
   const byPhase = {} as Record<Phase, MoveMatchingScore>;
   for (const phase of PHASES) {
@@ -121,9 +182,7 @@ function score(outcomes: Outcome[]): MoveMatchingScore {
       tallies.set(outcome.position.game, tally);
     }
     tally.positions = tally.positions + 1;
-    if (outcome.isMatch) {
-      tally.matched = tally.matched + 1;
-    }
+    tally.matched = tally.matched + outcome.value;
   }
 
   let matched = 0;
