@@ -175,6 +175,23 @@ describe('selectMove drawing from the Base Model', () => {
 
     expect(move).toEqual({ from: 'd2', to: 'd4' });
   });
+
+  it('plays each move, over many draws, in proportion to its probability', async () => {
+    const draws = 20000;
+    const random = seededRandom(18);
+    const timesPlayed: Record<string, number> = {};
+    for (let draw = 0; draw < draws; draw++) {
+      const move = await selectMove(startingPosition, { baseModel, random });
+      const name = move.from + move.to;
+      timesPlayed[name] = (timesPlayed[name] ?? 0) + 1;
+    }
+
+    // With 20,000 draws a share strays from its probability by about 0.003
+    // by chance, so 0.015 is a wide margin; the seed makes the run repeatable.
+    expect(Math.abs(timesPlayed['e2e4'] / draws - 0.7)).toBeLessThan(0.015);
+    expect(Math.abs(timesPlayed['d2d4'] / draws - 0.2)).toBeLessThan(0.015);
+    expect(Math.abs(timesPlayed['g1f3'] / draws - 0.1)).toBeLessThan(0.015);
+  });
 });
 
 /** An Opening Book holding the given positions, each mapped to a move in UCI form. */
