@@ -24,3 +24,24 @@ export function drawMove(policy: MoveProbability[], random: () => number): MoveR
   // of the range; it belongs to the last move.
   return policy[policy.length - 1].move;
 }
+
+/**
+ * The probabilities reshaped by a temperature, most likely first as given.
+ *
+ * Each probability is raised to the power 1 / temperature and the set is
+ * rescaled to sum to one. This is exactly what dividing the network's raw
+ * scores by the temperature before its softmax would give, so the Base
+ * Model's own probabilities are all the draw needs. At 1 nothing changes;
+ * below 1 the likely moves gain at the expense of the unlikely ones; above 1
+ * they lose to them. At 0, the limit, the most likely move takes everything.
+ */
+export function withTemperature(policy: MoveProbability[], temperature: number): MoveProbability[] {
+  if (temperature === 0) {
+    return [{ move: policy[0].move, probability: 1 }];
+  }
+
+  const exponent = 1 / temperature;
+  const reshaped = policy.map((candidate) => candidate.probability ** exponent);
+  const total = reshaped.reduce((sum, value) => sum + value, 0);
+  return policy.map((candidate, index) => ({ move: candidate.move, probability: reshaped[index] / total }));
+}

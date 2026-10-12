@@ -157,6 +157,24 @@ describe('selectMove drawing from the Base Model', () => {
 
     expect(move).toEqual({ from: 'e2', to: 'e4' });
   });
+
+  it('leans towards the most likely move below temperature 1', async () => {
+    // At 0.5 each probability is squared and the three rescaled to sum to one:
+    // 0.49, 0.04 and 0.01 become about 0.907, 0.074 and 0.019. At 1, 0.85
+    // would draw d2d4; here e2e4 owns [0, 0.907).
+    const move = await selectMove(startingPosition, { baseModel, random: () => 0.85, temperature: 0.5 });
+
+    expect(move).toEqual({ from: 'e2', to: 'e4' });
+  });
+
+  it('spreads towards the less likely moves above temperature 1', async () => {
+    // At 2 each probability is replaced by its square root and the three
+    // rescaled: 0.7, 0.2 and 0.1 become about 0.523, 0.280 and 0.198. At 1,
+    // 0.6 would draw e2e4; here it falls in d2d4's stretch, [0.523, 0.802).
+    const move = await selectMove(startingPosition, { baseModel, random: () => 0.6, temperature: 2 });
+
+    expect(move).toEqual({ from: 'd2', to: 'd4' });
+  });
 });
 
 /** An Opening Book holding the given positions, each mapped to a move in UCI form. */

@@ -6,7 +6,7 @@
 
 import { gameFromFen, legalMoves, type MoveRequest } from '../game/game';
 import type { BaseModel } from './base-model';
-import { drawMove } from './move-draw';
+import { drawMove, withTemperature } from './move-draw';
 import type { OpeningBook } from './opening-book';
 
 /** What the engine depends on, supplied by the caller so tests can fix it. */
@@ -53,6 +53,7 @@ export async function selectMove(fen: string, options: EngineOptions = {}): Prom
 /** The same choice as selectMove, also saying which of the three gave the move. */
 export async function selectMoveWithSource(fen: string, options: EngineOptions = {}): Promise<BotMove> {
   const random = options.random ?? Math.random;
+  const temperature = options.temperature ?? 1;
 
   const game = gameFromFen(fen);
   const candidates = legalMoves(game);
@@ -71,10 +72,8 @@ export async function selectMoveWithSource(fen: string, options: EngineOptions =
   if (options.baseModel !== undefined) {
     const baseModel = await options.baseModel;
     const policy = await baseModel.movePolicy(game);
-    if (options.temperature === 0) {
-      return { move: policy[0].move, source: 'base-model' };
-    }
-    return { move: drawMove(policy, random), source: 'base-model' };
+    const reshaped = withTemperature(policy, temperature);
+    return { move: drawMove(reshaped, random), source: 'base-model' };
   }
 
   const index = Math.floor(random() * candidates.length);
