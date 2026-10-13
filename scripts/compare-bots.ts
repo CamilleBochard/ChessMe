@@ -1,7 +1,7 @@
 // Measures two Bots side by side on the Test Set: each is the Opening Book,
 // then its own Base Model, as the site serves the Bot. Per Phase it reports
-// Move-Matching for the most likely move and for the move drawn at the
-// temperature, and what the second Bot gains over the first, measured
+// Move-Matching for the most likely move and for the move drawn at each
+// Bot's temperature, and what the second Bot gains over the first, measured
 // position by position.
 //
 //     npm run compare-bots -- models/onnx/maia3-5m.onnx models/onnx/maia3-5m-fine-tuned.onnx
@@ -10,8 +10,9 @@
 // Both models play at the served rating. Each Bot draws at its own
 // temperature, by default the served one, since each model has the
 // temperature that brings its mistakes to Camille's Level. The drawn move is
-// scored by the probability the draw lands on Camille's move. The tables go to standard output as Markdown, progress to
-// standard error; --record also writes the raw counts as JSON.
+// scored by the probability the draw lands on Camille's move. The tables go
+// to standard output as Markdown, progress to standard error; --record also
+// writes the raw counts as JSON.
 
 import { readFile, writeFile } from 'node:fs/promises';
 import { basename } from 'node:path';

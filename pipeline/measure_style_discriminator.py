@@ -157,23 +157,23 @@ def separation(candidate_scored: list[dict], other_scored: list[dict]) -> dict:
     }
 
 
-def compare_mean_scores(bot_scored: list[dict], baseline_scored: list[dict]) -> dict:
+def compare_mean_scores(first_scored: list[dict], second_scored: list[dict]) -> dict:
     """How much more like Camille's the first group of games scores than the second, with intervals."""
-    bot_values = _values(bot_scored)
-    baseline_values = _values(baseline_scored)
+    first_values = _values(first_scored)
+    second_values = _values(second_scored)
 
-    def difference_of_means(bot: list[float], baseline: list[float]) -> float:
-        return mean(bot) - mean(baseline)
+    def difference_of_means(first: list[float], second: list[float]) -> float:
+        return mean(first) - mean(second)
 
-    difference_low, difference_high = bootstrap_interval([bot_values, baseline_values], difference_of_means)
-    # The probability that a Bot game looks more like Camille's than a
-    # Baseline game does: 0.5 when the book changes nothing the
-    # discriminator can see.
-    auc_low, auc_high = bootstrap_interval([bot_values, baseline_values], area_under_curve)
+    difference_low, difference_high = bootstrap_interval([first_values, second_values], difference_of_means)
+    # The probability that a game of the first group looks more like
+    # Camille's than a game of the second: 0.5 when nothing the
+    # discriminator can see tells the two groups apart.
+    auc_low, auc_high = bootstrap_interval([first_values, second_values], area_under_curve)
     return {
-        "mean_score_difference": difference_of_means(bot_values, baseline_values),
+        "mean_score_difference": difference_of_means(first_values, second_values),
         "mean_score_difference_interval": [difference_low, difference_high],
-        "area_under_curve": area_under_curve(bot_values, baseline_values),
+        "area_under_curve": area_under_curve(first_values, second_values),
         "area_under_curve_interval": [auc_low, auc_high],
     }
 

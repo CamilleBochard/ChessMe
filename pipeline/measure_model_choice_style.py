@@ -10,9 +10,10 @@ sample fetched and each Bot's games played with `npm run bot-games`:
 The discriminator is trained exactly as in the style discriminator experiment,
 on Camille's training games against the other players' training games, and
 checked on his Test Set. It then scores both Bots' games. Both sets were
-played against the same opponent with the same seed, so they differ only by
-the Bot's model; what the experiment reports is the fine-tuned Bot's mean
-score minus the original's, with a 95% bootstrap interval. Written to
+played against the same opponent with the same seed, each Bot drawing at its
+own temperature, so they differ by the Bot's model and by that temperature;
+what the experiment reports is the fine-tuned Bot's mean score minus the
+original's, with a 95% bootstrap interval. Written to
 docs/experiments/results/model-choice-style.json; a Markdown table goes to
 standard output.
 """

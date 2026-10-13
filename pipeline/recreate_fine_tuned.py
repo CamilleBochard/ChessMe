@@ -87,19 +87,27 @@ def recreate(device: str) -> dict:
 
     if EXPERIMENT_WEIGHTS_PATH.exists():
         progress(f"Comparing with the experiment's weights at {EXPERIMENT_WEIGHTS_PATH}")
-        experiment_model = load_reference()
-        experiment_model.load_state_dict(torch.load(EXPERIMENT_WEIGHTS_PATH, map_location="cpu"))
-        experiment_model = experiment_model.to(device)
+        experiment_model = load_reference(EXPERIMENT_WEIGHTS_PATH).to(device)
         experiment_moves = top_moves(experiment_model, test_fens, RATING)
-        different_moves = sum(1 for ours, theirs in zip(moves, experiment_moves) if ours != theirs)
+        different_moves = 0
+        for recreated_move, experiment_move in zip(moves, experiment_moves):
+            if recreated_move != experiment_move:
+                different_moves += 1
+        recreated_weights = _on_cpu(model.state_dict())
+        experiment_weights = _on_cpu(experiment_model.state_dict())
         results["againstExperimentWeights"] = {
-            "largestWeightDifference": largest_weight_difference(
-                {name: weights.cpu() for name, weights in model.state_dict().items()},
-                {name: weights.cpu() for name, weights in experiment_model.state_dict().items()},
-            ),
+            "largestWeightDifference": largest_weight_difference(recreated_weights, experiment_weights),
             "testSetPositionsWithAnotherTopMove": different_moves,
         }
     return results
+
+
+def _on_cpu(state: dict[str, torch.Tensor]) -> dict[str, torch.Tensor]:
+    """A model's weights copied to the CPU, so two models trained on different devices compare."""
+    weights = {}
+    for name, tensor in state.items():
+        weights[name] = tensor.cpu()
+    return weights
 
 
 if __name__ == "__main__":
