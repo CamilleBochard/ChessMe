@@ -357,3 +357,64 @@ opening gap is the one the recommended follow-up addresses.
 it already does. A cut in the engine is still worth having for the
 opening, and for the fine-tuned model if it is chosen again with a
 higher temperature, which makes the far tail more likely.
+
+## The fine-tuned Base Model
+
+The same measurement for the Base Model fine-tuned on Camille's training
+games (see [the model choice](model-choice.md)), at 1100, with its 200
+games at temperature 1 as context. It decides nothing: the site serves
+the original model. Full figures in
+`docs/experiments/results/move-cut-fine-tuned.json`.
+
+**The rule would choose no cut for it too,** at a distance of 0.49
+points; the next best, top-p 0.98, is at 0.99 and top-10 at 1.56. No
+Phase has a cut of its own that beats no cut by more than chance: in the
+opening, top-10 is closer by 0.70 points, but the resamples range from
+-0.11 to 0.84.
+
+| Phase | Camille under 1% | Bot under 1%, no cut | Gap, training | Gap, Test Set |
+|---|---|---|---|---|
+| Opening (1-10) | 1.52% | 2.27% | +0.75 ± 0.19 | +0.52 ± 0.39 |
+| Middlegame (11-30) | 3.09% | 3.24% | +0.15 ± 0.21 | +0.79 ± 0.32 |
+| Endgame (31+) | 2.67% | 3.30% | +0.63 ± 0.15 | +0.17 ± 0.27 |
+
+Read as stated, the check on the Test Set fails here as well, on the
+middlegame (+0.79, about two and a half standard errors), while the
+distance moves from 0.49 on the training games to 0.42 on the Test Set.
+
+**Fine-tuning closed most of the opening gap.** Trained on Camille's own
+games, the model gives his opening moves more weight: under 5% fall
+6.09% of his opening moves against 13.40% for the original, and the
+uncut Bot's share of opening moves under 1% drops from 3.58% to 2.27%.
+That is why the opening no longer asks for a cut of its own.
+
+**Its mistakes too sit where Camille's do.** In its 200 games, 7,506 of
+its 8,058 moves were drawn from the model and 569 of those were mistakes;
+top-10 would have removed 6.68% of them and top-3 38.66%, against 8.95%
+and 40.32% of Camille's mistakes under the same cuts of the same model.
+
+## Known limitations
+
+**Improbable means improbable to this model.** A move under 1% is one
+the Base Model finds unlikely for a player at 1100, which is not the
+same as a move no human would play. The comparison is fair because both
+players are measured on the same scale, but the scale is the model's.
+
+**The Base Model alone.** The cut would apply to the model's draws
+only. On Camille's positions the model is measured without the Opening
+Book in front, so the opening figures describe the model in positions
+the Bot would partly answer from the book.
+
+**Expected, not played.** The Bot's figures are what its draw would
+give on average on Camille's positions, not counts from games played
+with a cut. The Bot's own games, played without a cut, agree with them:
+its share of moves under 1% there is 2.95% in the middlegame and 2.99%
+in the endgame.
+
+**The clock is not measured.** Camille's mistakes come more often short
+of time, and a cut that depends on the time left cannot be measured: the
+games store no time left per move.
+
+**One threshold decides.** The rule reads the share under 1%; the 2% and
+5% figures are reported beside it and tell the same story for the
+original model.
