@@ -2,7 +2,8 @@
 // for what cutting the least likely moves would change.
 
 import { describe, expect, it } from 'vitest';
-import { chooseCut, improbabilityProfile, measureCut, type PlacedMove } from './improbability';
+import { chooseCut, improbabilityProfile, measureCut, phaseCutAdvantage, type PlacedMove } from './improbability';
+import { seededRandom } from './seeded-random';
 import type { Phase } from './move-matching';
 
 /** A move of the given rank in a position whose policy, most likely first, is given. */
@@ -144,5 +145,52 @@ describe('choosing the cut', () => {
     const choice = chooseCut(camille, [{ kind: 'top-k', k: 3 }, { kind: 'none' }]);
 
     expect(choice.chosen).toEqual({ kind: 'none' });
+  });
+});
+
+describe("how far a Phase's own best cut beats the chosen one", () => {
+  const twoImprobable = [0.6, 0.39, 0.005, 0.005];
+
+  it('resamples whole games, so identical games leave no room for chance', () => {
+    // In every game Camille plays a likely move: no cut is 0.01 from him,
+    // keeping two moves is exactly at his share.
+    const camille = [
+      placed('a', 'middlegame', twoImprobable, 1),
+      placed('b', 'middlegame', twoImprobable, 2),
+      placed('c', 'middlegame', twoImprobable, 1),
+    ];
+
+    const advantage = phaseCutAdvantage(camille, 'middlegame', {
+      chosen: { kind: 'none' },
+      phaseBest: { kind: 'top-k', k: 2 },
+      resamples: 200,
+      random: seededRandom(13),
+    });
+
+    expect(advantage.difference).toBeCloseTo(0.01);
+    expect(advantage.low).toBeCloseTo(0.01);
+    expect(advantage.high).toBeCloseTo(0.01);
+  });
+
+  it('spreads with the games drawn: the middle 95% of the resampled differences', () => {
+    // Over all three games Camille plays a third of his moves under 1%, so
+    // no cut, at 0.01, is closer than the cut, at 0. A resample without
+    // game a has him at 0 and reverses that; one in four or so draws it.
+    const camille = [
+      placed('a', 'middlegame', twoImprobable, 3),
+      placed('b', 'middlegame', twoImprobable, 1),
+      placed('c', 'middlegame', twoImprobable, 1),
+    ];
+
+    const advantage = phaseCutAdvantage(camille, 'middlegame', {
+      chosen: { kind: 'none' },
+      phaseBest: { kind: 'top-k', k: 2 },
+      resamples: 200,
+      random: seededRandom(13),
+    });
+
+    expect(advantage.difference).toBeCloseTo(-0.01);
+    expect(advantage.low).toBeCloseTo(-0.01);
+    expect(advantage.high).toBeCloseTo(0.01);
   });
 });

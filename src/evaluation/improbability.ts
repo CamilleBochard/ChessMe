@@ -221,3 +221,93 @@ function candidateDistance(camilleMoves: PlacedMove[], cut: MoveCut): CandidateD
   }
   return { cut: cut, distance: distance, phaseGaps: phaseGaps, movesKept: 1 - bot.all.movesMadeImpossible };
 }
+
+export interface AdvantageSetup {
+  /** The cut chosen for every Phase. */
+  chosen: MoveCut;
+  /** The candidate closest to Camille in the Phase alone. */
+  phaseBest: MoveCut;
+  resamples: number;
+  /** Returns a number in [0, 1), seeded so the interval is the same every run. */
+  random: () => number;
+}
+
+/** How much closer to Camille a Phase's own best cut is than the chosen one. */
+export interface PhaseAdvantage {
+  /** The chosen cut's gap in the Phase minus the best cut's, both in absolute value, on all the games. */
+  difference: number;
+  /** The 2.5th and 97.5th percentiles of the difference over resamples of whole games. */
+  low: number;
+  high: number;
+}
+
+/**
+ * Whether a cut chosen for one Phase alone beats the cut chosen for all of
+ * them by more than chance. The games are resampled whole, with
+ * replacement: a game's moves share an opening, an opponent and a mood, so
+ * they are not independent, and resampling moves one by one would make the
+ * interval too narrow.
+ */
+export function phaseCutAdvantage(camilleMoves: PlacedMove[], phase: Phase, setup: AdvantageSetup): PhaseAdvantage {
+  const inPhase = camilleMoves.filter((move) => move.phase === phase);
+  const games = gameTallies(inPhase, setup.chosen, setup.phaseBest);
+
+  const differences: number[] = [];
+  for (let resample = 0; resample < setup.resamples; resample++) {
+    const drawn: GameTally[] = [];
+    for (let draw = 0; draw < games.length; draw++) {
+      const index = Math.floor(setup.random() * games.length);
+      drawn.push(games[index]);
+    }
+    differences.push(advantageOver(drawn));
+  }
+  differences.sort((first, second) => first - second);
+
+  return {
+    difference: advantageOver(games),
+    low: differences[Math.floor(0.025 * differences.length)],
+    high: differences[Math.ceil(0.975 * differences.length) - 1],
+  };
+}
+
+/** One game's moves in a Phase, summed: how many, how many improbable, and each cut's expected count. */
+interface GameTally {
+  moves: number;
+  camilleImprobable: number;
+  chosenImprobable: number;
+  phaseBestImprobable: number;
+}
+
+function gameTallies(moves: PlacedMove[], chosen: MoveCut, phaseBest: MoveCut): GameTally[] {
+  const tallies = new Map<string, GameTally>();
+  for (const move of moves) {
+    let tally = tallies.get(move.game);
+    if (tally === undefined) {
+      tally = { moves: 0, camilleImprobable: 0, chosenImprobable: 0, phaseBestImprobable: 0 };
+      tallies.set(move.game, tally);
+    }
+    tally.moves += 1;
+    if (move.probability < IMPROBABILITY_THRESHOLDS[CHOSEN_ON]) {
+      tally.camilleImprobable += 1;
+    }
+    tally.chosenImprobable += positionUnderCut(move, chosen).botBelow[CHOSEN_ON];
+    tally.phaseBestImprobable += positionUnderCut(move, phaseBest).botBelow[CHOSEN_ON];
+  }
+  return [...tallies.values()];
+}
+
+function advantageOver(games: GameTally[]): number {
+  let moves = 0;
+  let camilleImprobable = 0;
+  let chosenImprobable = 0;
+  let phaseBestImprobable = 0;
+  for (const game of games) {
+    moves += game.moves;
+    camilleImprobable += game.camilleImprobable;
+    chosenImprobable += game.chosenImprobable;
+    phaseBestImprobable += game.phaseBestImprobable;
+  }
+  const chosenGap = Math.abs(chosenImprobable - camilleImprobable) / moves;
+  const phaseBestGap = Math.abs(phaseBestImprobable - camilleImprobable) / moves;
+  return chosenGap - phaseBestGap;
+}
