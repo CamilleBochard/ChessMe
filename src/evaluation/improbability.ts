@@ -199,10 +199,16 @@ function closest(candidates: CandidateDistance[]): CandidateDistance {
   return chosen;
 }
 
-/** The share under 1%, the threshold the cut is chosen on. */
-const CHOSEN_ON = 0;
+/** Where the 1% threshold, the one the cut is chosen on, sits in IMPROBABILITY_THRESHOLDS. */
+const ONE_PERCENT_INDEX = 0;
 
-function candidateDistance(camilleMoves: PlacedMove[], cut: MoveCut): CandidateDistance {
+/** Whether the model gave the move played less than 1%. */
+function isImprobable(move: PlacedMove): boolean {
+  return move.probability < IMPROBABILITY_THRESHOLDS[ONE_PERCENT_INDEX];
+}
+
+/** How far one cut brings the Bot from Camille on his moves given, by the rule's distance. */
+export function candidateDistance(camilleMoves: PlacedMove[], cut: MoveCut): CandidateDistance {
   const camille = improbabilityProfile(camilleMoves);
   const bot = measureCut(camilleMoves, cut);
 
@@ -214,7 +220,7 @@ function candidateDistance(camilleMoves: PlacedMove[], cut: MoveCut): CandidateD
       phaseGaps[phase] = Number.NaN;
       continue;
     }
-    const gap = bot.byPhase[phase].botBelow[CHOSEN_ON] - camille[phase].below[CHOSEN_ON];
+    const gap = bot.byPhase[phase].botBelow[ONE_PERCENT_INDEX] - camille[phase].below[ONE_PERCENT_INDEX];
     phaseGaps[phase] = gap;
     const weight = moves / camilleMoves.length;
     distance += weight * Math.abs(gap);
@@ -287,11 +293,11 @@ function gameTallies(moves: PlacedMove[], chosen: MoveCut, phaseBest: MoveCut): 
       tallies.set(move.game, tally);
     }
     tally.moves += 1;
-    if (move.probability < IMPROBABILITY_THRESHOLDS[CHOSEN_ON]) {
+    if (isImprobable(move)) {
       tally.camilleImprobable += 1;
     }
-    tally.chosenImprobable += positionUnderCut(move, chosen).botBelow[CHOSEN_ON];
-    tally.phaseBestImprobable += positionUnderCut(move, phaseBest).botBelow[CHOSEN_ON];
+    tally.chosenImprobable += positionUnderCut(move, chosen).botBelow[ONE_PERCENT_INDEX];
+    tally.phaseBestImprobable += positionUnderCut(move, phaseBest).botBelow[ONE_PERCENT_INDEX];
   }
   return [...tallies.values()];
 }
@@ -335,10 +341,10 @@ export function cutGap(camilleMoves: PlacedMove[], cut: MoveCut): Record<Phase, 
     let total = 0;
     for (const move of inPhase) {
       let camilleImprobable = 0;
-      if (move.probability < IMPROBABILITY_THRESHOLDS[CHOSEN_ON]) {
+      if (isImprobable(move)) {
         camilleImprobable = 1;
       }
-      const difference = positionUnderCut(move, cut).botBelow[CHOSEN_ON] - camilleImprobable;
+      const difference = positionUnderCut(move, cut).botBelow[ONE_PERCENT_INDEX] - camilleImprobable;
 
       let game = games.get(move.game);
       if (game === undefined) {

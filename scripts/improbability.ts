@@ -24,6 +24,7 @@ import type { MoveCut } from '../src/engine/move-cut';
 import { readOpeningBook } from '../src/engine/opening-book';
 import {
   CANDIDATE_CUTS,
+  candidateDistance,
   chooseCut,
   cutGap,
   cutName,
@@ -33,6 +34,7 @@ import {
   MISTAKE_CENTIPAWNS,
   phaseCutAdvantage,
   type CutMeasurement,
+  type PhaseAdvantage,
   type PhaseGap,
   type PlacedMove,
 } from '../src/evaluation/improbability';
@@ -68,7 +70,10 @@ if (
 
 const losses = new Map<string, number>();
 for (const lossesPath of flags.losses) {
-  readLosses(await readFile(lossesPath, 'utf-8'), losses);
+  const lossesInFile = readLosses(await readFile(lossesPath, 'utf-8'));
+  for (const [move, loss] of lossesInFile) {
+    losses.set(move, loss);
+  }
 }
 const training = readPlacedMoves(await readFile(flags.training, 'utf-8'), losses);
 const testSet = readPlacedMoves(await readFile(flags.test, 'utf-8'), losses);
@@ -100,8 +105,12 @@ const candidates = choice.candidates.map((candidate) => {
 });
 
 // Each Phase's own best cut, and whether it beats the chosen one by more than chance.
+interface PhaseBest extends PhaseAdvantage {
+  cut: MoveCut;
+  name: string;
+}
 const random = seededRandom(SEED);
-const phaseBest = {} as Record<Phase, { cut: MoveCut; name: string; difference: number; low: number; high: number }>;
+const phaseBest = {} as Record<Phase, PhaseBest>;
 for (const phase of PHASES) {
   const inPhase = training.filter((move) => move.phase === phase);
   const best = chooseCut(inPhase, [...CANDIDATE_CUTS]).chosen;
@@ -119,9 +128,8 @@ const beyondChance = PHASES.filter((phase) => phaseBest[phase].low > 0);
 const testSetCheck = {
   training: cutGap(training, choice.chosen),
   testSet: cutGap(testSet, choice.chosen),
-  trainingDistance: chooseCut(training, [choice.chosen]).candidates[0].distance,
-  testSetDistance: chooseCut(testSet, [choice.chosen]).candidates[0].distance,
-  uncutTestSet: cutGap(testSet, { kind: 'none' }),
+  trainingDistance: candidateDistance(training, choice.chosen).distance,
+  testSetDistance: candidateDistance(testSet, choice.chosen).distance,
 };
 const holds = PHASES.every((phase) => Math.abs(testSetCheck.testSet[phase].gap) <= 2 * testSetCheck.testSet[phase].standardError);
 
@@ -221,14 +229,13 @@ function printReport(): void {
 
   console.log(`The check on the Test Set, ${cutName(choice.chosen)}: the Bot's share under 1% minus Camille's, ± one standard error.`);
   console.log('');
-  console.log('| Phase | Training games | Test Set | Test Set, no cut |');
-  console.log('|---|---|---|---|');
+  console.log('| Phase | Training games | Test Set |');
+  console.log('|---|---|---|');
   for (const phase of PHASES) {
     const cells = [PHASE_LABELS[phase], withError(testSetCheck.training[phase]), withError(testSetCheck.testSet[phase])];
-    cells.push(withError(testSetCheck.uncutTestSet[phase]));
     console.log(row(cells));
   }
-  console.log(row(['Distance', points(testSetCheck.trainingDistance), points(testSetCheck.testSetDistance), '']));
+  console.log(row(['Distance', points(testSetCheck.trainingDistance), points(testSetCheck.testSetDistance)]));
   console.log('');
   if (holds) {
     console.log('On the Test Set the gap is within two standard errors of zero in every Phase: the match holds.');
@@ -238,9 +245,11 @@ function printReport(): void {
   console.log('');
 
   console.log(`Context: the Bot's games, ${count(botModelMoves.length)} of its ${count(botMoves.length)} moves drawn from the Base Model.`);
-  console.log(
-    `Its own share under 1%: ${PHASES.map((phase) => `${phase} ${percent(botGamesProfile[phase].below[0])}`).join(', ')}.`,
-  );
+  const botShares = PHASES.map((phase) => {
+    const shareUnderOnePercent = botGamesProfile[phase].below[0];
+    return `${phase} ${percent(shareUnderOnePercent)}`;
+  });
+  console.log(`Its own share under 1%: ${botShares.join(', ')}.`);
   console.log('Per cut: the share of its mistakes the cut would have made impossible, then of all its moves.');
   console.log('');
   const mistakeCounts = PHASES.map((phase) => count(candidates[0].botGames.byPhase[phase].mistakes));
@@ -277,8 +286,9 @@ function readPlacedMoves(jsonLines: string, lossesByMove: Map<string, number>): 
   return moves;
 }
 
-/** Adds the losses of a file with one move per line, each with its game, ply and centipawn loss. */
-function readLosses(jsonLines: string, lossesByMove: Map<string, number>): void {
+/** The losses of a file with one move per line, each with its game, ply and centipawn loss. */
+function readLosses(jsonLines: string): Map<string, number> {
+  const lossesByMove = new Map<string, number>();
   for (const line of jsonLines.split('\n')) {
     if (line.trim() === '') {
       continue;
@@ -286,6 +296,7 @@ function readLosses(jsonLines: string, lossesByMove: Map<string, number>): void 
     const record = JSON.parse(line);
     lossesByMove.set(moveKey(record.game_id, record.ply), record.centipawn_loss);
   }
+  return lossesByMove;
 }
 
 function moveKey(game: string, ply: number): string {
