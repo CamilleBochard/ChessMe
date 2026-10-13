@@ -355,3 +355,41 @@ export function cutGap(camilleMoves: PlacedMove[], cut: MoveCut): Record<Phase, 
   }
   return gaps;
 }
+
+/**
+ * The cuts measured, in the order the rule prefers them on a tie: no cut,
+ * then each family from the cut that keeps the most moves to the one that
+ * keeps the fewest.
+ */
+export const CANDIDATE_CUTS: readonly MoveCut[] = [
+  { kind: 'none' },
+  { kind: 'top-k', k: 10 },
+  { kind: 'top-k', k: 8 },
+  { kind: 'top-k', k: 6 },
+  { kind: 'top-k', k: 5 },
+  { kind: 'top-k', k: 4 },
+  { kind: 'top-k', k: 3 },
+  { kind: 'top-p', p: 0.98 },
+  { kind: 'top-p', p: 0.95 },
+  { kind: 'top-p', p: 0.9 },
+  { kind: 'top-p', p: 0.85 },
+  { kind: 'top-p', p: 0.8 },
+  { kind: 'min-p', fraction: 0.02 },
+  { kind: 'min-p', fraction: 0.05 },
+  { kind: 'min-p', fraction: 0.1 },
+  { kind: 'min-p', fraction: 0.2 },
+];
+
+/** How a cut is named in a table: no cut, top-5, top-p 0.90, min-p 0.05. */
+export function cutName(cut: MoveCut): string {
+  if (cut.kind === 'none') {
+    return 'no cut';
+  }
+  if (cut.kind === 'top-k') {
+    return `top-${cut.k}`;
+  }
+  if (cut.kind === 'top-p') {
+    return `top-p ${cut.p.toFixed(2)}`;
+  }
+  return `min-p ${cut.fraction.toFixed(2)}`;
+}
