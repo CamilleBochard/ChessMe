@@ -2,7 +2,10 @@
 // Bot only draws among moves a player at its rating would plausibly play.
 // Free of anything DOM so that it runs unchanged under Node.
 
-import type { MoveProbability } from './base-model';
+/** A move, or anything standing for one, with the probability the Base Model gives it. */
+interface Weighed {
+  probability: number;
+}
 
 /** Which of the Base Model's moves the draw keeps. */
 export type MoveCut =
@@ -21,14 +24,16 @@ export type MoveCut =
 /**
  * The moves the cut keeps, most likely first as given, with their
  * probabilities rescaled to sum to one: what the Bot would draw from.
- * The policy must be sorted most likely first, as the Base Model gives it.
+ * The policy must be sorted most likely first, as the Base Model gives it;
+ * every cut then keeps a run of moves from the top, the most likely always.
+ * Whatever else describes a move is carried through unchanged.
  */
-export function cutPolicy(policy: MoveProbability[], cut: MoveCut): MoveProbability[] {
+export function cutPolicy<Candidate extends Weighed>(policy: Candidate[], cut: MoveCut): Candidate[] {
   if (cut.kind === 'none') {
     return policy;
   }
 
-  let kept: MoveProbability[];
+  let kept: Candidate[];
   if (cut.kind === 'top-k') {
     kept = policy.slice(0, cut.k);
   } else if (cut.kind === 'top-p') {
@@ -41,8 +46,8 @@ export function cutPolicy(policy: MoveProbability[], cut: MoveCut): MoveProbabil
 }
 
 /** The shortest run of most likely moves whose probabilities add up to the share or more. */
-function mostLikelyCovering(policy: MoveProbability[], share: number): MoveProbability[] {
-  const kept: MoveProbability[] = [];
+function mostLikelyCovering<Candidate extends Weighed>(policy: Candidate[], share: number): Candidate[] {
+  const kept: Candidate[] = [];
   let covered = 0;
   for (const candidate of policy) {
     kept.push(candidate);
@@ -54,7 +59,7 @@ function mostLikelyCovering(policy: MoveProbability[], share: number): MoveProba
   return kept;
 }
 
-function rescaled(kept: MoveProbability[]): MoveProbability[] {
+function rescaled<Candidate extends Weighed>(kept: Candidate[]): Candidate[] {
   const total = kept.reduce((sum, candidate) => sum + candidate.probability, 0);
-  return kept.map((candidate) => ({ move: candidate.move, probability: candidate.probability / total }));
+  return kept.map((candidate) => ({ ...candidate, probability: candidate.probability / total }));
 }
