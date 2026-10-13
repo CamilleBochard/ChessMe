@@ -1,0 +1,1601 @@
+{
+ "format_version": 1,
+ "engine": "Stockfish 19",
+ "depth": 18,
+ "camille": {
+  "centipawn_loss": {
+   "phases": {
+    "opening": {
+     "moves": 5225,
+     "mean": 25.699712918660286,
+     "percentiles": {
+      "50": 1,
+      "75": 27,
+      "90": 62,
+      "95": 104,
+      "99": 315
+     },
+     "histogram": [
+      {
+       "from": 0,
+       "to": 1,
+       "moves": 2558
+      },
+      {
+       "from": 1,
+       "to": 10,
+       "moves": 511
+      },
+      {
+       "from": 10,
+       "to": 25,
+       "moves": 734
+      },
+      {
+       "from": 25,
+       "to": 50,
+       "moves": 763
+      },
+      {
+       "from": 50,
+       "to": 100,
+       "moves": 378
+      },
+      {
+       "from": 100,
+       "to": 200,
+       "moves": 191
+      },
+      {
+       "from": 200,
+       "to": 300,
+       "moves": 34
+      },
+      {
+       "from": 300,
+       "to": 500,
+       "moves": 25
+      },
+      {
+       "from": 500,
+       "to": 1000,
+       "moves": 27
+      },
+      {
+       "from": 1000,
+       "to": null,
+       "moves": 4
+      }
+     ]
+    },
+    "middlegame": {
+     "moves": 9822,
+     "mean": 103.13571574017512,
+     "percentiles": {
+      "50": 24,
+      "75": 115,
+      "90": 313,
+      "95": 526,
+      "99": 878
+     },
+     "histogram": [
+      {
+       "from": 0,
+       "to": 1,
+       "moves": 3832
+      },
+      {
+       "from": 1,
+       "to": 10,
+       "moves": 393
+      },
+      {
+       "from": 10,
+       "to": 25,
+       "moves": 692
+      },
+      {
+       "from": 25,
+       "to": 50,
+       "moves": 967
+      },
+      {
+       "from": 50,
+       "to": 100,
+       "moves": 1222
+      },
+      {
+       "from": 100,
+       "to": 200,
+       "moves": 1158
+      },
+      {
+       "from": 200,
+       "to": 300,
+       "moves": 513
+      },
+      {
+       "from": 300,
+       "to": 500,
+       "moves": 514
+      },
+      {
+       "from": 500,
+       "to": 1000,
+       "moves": 467
+      },
+      {
+       "from": 1000,
+       "to": null,
+       "moves": 64
+      }
+     ]
+    },
+    "endgame": {
+     "moves": 15813,
+     "mean": 104.4522228546133,
+     "percentiles": {
+      "50": 0,
+      "75": 95,
+      "90": 320,
+      "95": 563,
+      "99": 1184
+     },
+     "histogram": [
+      {
+       "from": 0,
+       "to": 1,
+       "moves": 8261
+      },
+      {
+       "from": 1,
+       "to": 10,
+       "moves": 460
+      },
+      {
+       "from": 10,
+       "to": 25,
+       "moves": 723
+      },
+      {
+       "from": 25,
+       "to": 50,
+       "moves": 1094
+      },
+      {
+       "from": 50,
+       "to": 100,
+       "moves": 1426
+      },
+      {
+       "from": 100,
+       "to": 200,
+       "moves": 1409
+      },
+      {
+       "from": 200,
+       "to": 300,
+       "moves": 752
+      },
+      {
+       "from": 300,
+       "to": 500,
+       "moves": 766
+      },
+      {
+       "from": 500,
+       "to": 1000,
+       "moves": 650
+      },
+      {
+       "from": 1000,
+       "to": null,
+       "moves": 272
+      }
+     ]
+    }
+   },
+   "all_phases": {
+    "moves": 30860,
+    "mean": 90.69938431626701,
+    "percentiles": {
+     "50": 6,
+     "75": 81,
+     "90": 273,
+     "95": 487,
+     "99": 1000
+    },
+    "histogram": [
+     {
+      "from": 0,
+      "to": 1,
+      "moves": 14651
+     },
+     {
+      "from": 1,
+      "to": 10,
+      "moves": 1364
+     },
+     {
+      "from": 10,
+      "to": 25,
+      "moves": 2149
+     },
+     {
+      "from": 25,
+      "to": 50,
+      "moves": 2824
+     },
+     {
+      "from": 50,
+      "to": 100,
+      "moves": 3026
+     },
+     {
+      "from": 100,
+      "to": 200,
+      "moves": 2758
+     },
+     {
+      "from": 200,
+      "to": 300,
+      "moves": 1299
+     },
+     {
+      "from": 300,
+      "to": 500,
+      "moves": 1305
+     },
+     {
+      "from": 500,
+      "to": 1000,
+      "moves": 1144
+     },
+     {
+      "from": 1000,
+      "to": null,
+      "moves": 340
+     }
+    ]
+   }
+  },
+  "already_decided_share": {
+   "opening": 0.00019138755980861245,
+   "middlegame": 0.009366727754021585,
+   "endgame": 0.18484790994751155
+  },
+  "centipawn_loss_in_undecided_positions": {
+   "phases": {
+    "opening": {
+     "moves": 5224,
+     "mean": 25.704632465543646,
+     "percentiles": {
+      "50": 1,
+      "75": 27,
+      "90": 62,
+      "95": 104,
+      "99": 315
+     },
+     "histogram": [
+      {
+       "from": 0,
+       "to": 1,
+       "moves": 2557
+      },
+      {
+       "from": 1,
+       "to": 10,
+       "moves": 511
+      },
+      {
+       "from": 10,
+       "to": 25,
+       "moves": 734
+      },
+      {
+       "from": 25,
+       "to": 50,
+       "moves": 763
+      },
+      {
+       "from": 50,
+       "to": 100,
+       "moves": 378
+      },
+      {
+       "from": 100,
+       "to": 200,
+       "moves": 191
+      },
+      {
+       "from": 200,
+       "to": 300,
+       "moves": 34
+      },
+      {
+       "from": 300,
+       "to": 500,
+       "moves": 25
+      },
+      {
+       "from": 500,
+       "to": 1000,
+       "moves": 27
+      },
+      {
+       "from": 1000,
+       "to": null,
+       "moves": 4
+      }
+     ]
+    },
+    "middlegame": {
+     "moves": 9730,
+     "mean": 104.11089414182939,
+     "percentiles": {
+      "50": 25,
+      "75": 117,
+      "90": 315,
+      "95": 528,
+      "99": 883
+     },
+     "histogram": [
+      {
+       "from": 0,
+       "to": 1,
+       "moves": 3740
+      },
+      {
+       "from": 1,
+       "to": 10,
+       "moves": 393
+      },
+      {
+       "from": 10,
+       "to": 25,
+       "moves": 692
+      },
+      {
+       "from": 25,
+       "to": 50,
+       "moves": 967
+      },
+      {
+       "from": 50,
+       "to": 100,
+       "moves": 1222
+      },
+      {
+       "from": 100,
+       "to": 200,
+       "moves": 1158
+      },
+      {
+       "from": 200,
+       "to": 300,
+       "moves": 513
+      },
+      {
+       "from": 300,
+       "to": 500,
+       "moves": 514
+      },
+      {
+       "from": 500,
+       "to": 1000,
+       "moves": 467
+      },
+      {
+       "from": 1000,
+       "to": null,
+       "moves": 64
+      }
+     ]
+    },
+    "endgame": {
+     "moves": 12890,
+     "mean": 128.13832428238945,
+     "percentiles": {
+      "50": 23,
+      "75": 136,
+      "90": 382,
+      "95": 641,
+      "99": 1300
+     },
+     "histogram": [
+      {
+       "from": 0,
+       "to": 1,
+       "moves": 5338
+      },
+      {
+       "from": 1,
+       "to": 10,
+       "moves": 460
+      },
+      {
+       "from": 10,
+       "to": 25,
+       "moves": 723
+      },
+      {
+       "from": 25,
+       "to": 50,
+       "moves": 1094
+      },
+      {
+       "from": 50,
+       "to": 100,
+       "moves": 1426
+      },
+      {
+       "from": 100,
+       "to": 200,
+       "moves": 1409
+      },
+      {
+       "from": 200,
+       "to": 300,
+       "moves": 752
+      },
+      {
+       "from": 300,
+       "to": 500,
+       "moves": 766
+      },
+      {
+       "from": 500,
+       "to": 1000,
+       "moves": 650
+      },
+      {
+       "from": 1000,
+       "to": null,
+       "moves": 272
+      }
+     ]
+    }
+   },
+   "all_phases": {
+    "moves": 27844,
+    "mean": 100.52373940525787,
+    "percentiles": {
+     "50": 16,
+     "75": 96,
+     "90": 300,
+     "95": 524,
+     "99": 1042
+    },
+    "histogram": [
+     {
+      "from": 0,
+      "to": 1,
+      "moves": 11635
+     },
+     {
+      "from": 1,
+      "to": 10,
+      "moves": 1364
+     },
+     {
+      "from": 10,
+      "to": 25,
+      "moves": 2149
+     },
+     {
+      "from": 25,
+      "to": 50,
+      "moves": 2824
+     },
+     {
+      "from": 50,
+      "to": 100,
+      "moves": 3026
+     },
+     {
+      "from": 100,
+      "to": 200,
+      "moves": 2758
+     },
+     {
+      "from": 200,
+      "to": 300,
+      "moves": 1299
+     },
+     {
+      "from": 300,
+      "to": 500,
+      "moves": 1305
+     },
+     {
+      "from": 500,
+      "to": 1000,
+      "moves": 1144
+     },
+     {
+      "from": 1000,
+      "to": null,
+      "moves": 340
+     }
+    ]
+   }
+  }
+ },
+ "camille_test_set_from_training_games": 3.6250511011120823,
+ "bots": {
+  "original": {
+   "games": 400,
+   "results": {
+    "won": 195,
+    "drawn": 42,
+    "lost": 163
+   },
+   "centipawn_loss": {
+    "phases": {
+     "opening": {
+      "moves": 2000,
+      "mean": 27.8815,
+      "percentiles": {
+       "50": 0,
+       "75": 27,
+       "90": 71,
+       "95": 134,
+       "99": 400
+      },
+      "histogram": [
+       {
+        "from": 0,
+        "to": 1,
+        "moves": 1084
+       },
+       {
+        "from": 1,
+        "to": 10,
+        "moves": 115
+       },
+       {
+        "from": 10,
+        "to": 25,
+        "moves": 266
+       },
+       {
+        "from": 25,
+        "to": 50,
+        "moves": 262
+       },
+       {
+        "from": 50,
+        "to": 100,
+        "moves": 125
+       },
+       {
+        "from": 100,
+        "to": 200,
+        "moves": 102
+       },
+       {
+        "from": 200,
+        "to": 300,
+        "moves": 22
+       },
+       {
+        "from": 300,
+        "to": 500,
+        "moves": 10
+       },
+       {
+        "from": 500,
+        "to": 1000,
+        "moves": 13
+       },
+       {
+        "from": 1000,
+        "to": null,
+        "moves": 1
+       }
+      ]
+     },
+     "middlegame": {
+      "moves": 3919,
+      "mean": 108.01275835672365,
+      "percentiles": {
+       "50": 25,
+       "75": 120,
+       "90": 343,
+       "95": 548,
+       "99": 913
+      },
+      "histogram": [
+       {
+        "from": 0,
+        "to": 1,
+        "moves": 1555
+       },
+       {
+        "from": 1,
+        "to": 10,
+        "moves": 138
+       },
+       {
+        "from": 10,
+        "to": 25,
+        "moves": 261
+       },
+       {
+        "from": 25,
+        "to": 50,
+        "moves": 357
+       },
+       {
+        "from": 50,
+        "to": 100,
+        "moves": 493
+       },
+       {
+        "from": 100,
+        "to": 200,
+        "moves": 464
+       },
+       {
+        "from": 200,
+        "to": 300,
+        "moves": 198
+       },
+       {
+        "from": 300,
+        "to": 500,
+        "moves": 222
+       },
+       {
+        "from": 500,
+        "to": 1000,
+        "moves": 206
+       },
+       {
+        "from": 1000,
+        "to": null,
+        "moves": 25
+       }
+      ]
+     },
+     "endgame": {
+      "moves": 10683,
+      "mean": 67.72975755873819,
+      "percentiles": {
+       "50": 0,
+       "75": 40,
+       "90": 191,
+       "95": 384,
+       "99": 1000
+      },
+      "histogram": [
+       {
+        "from": 0,
+        "to": 1,
+        "moves": 6807
+       },
+       {
+        "from": 1,
+        "to": 10,
+        "moves": 310
+       },
+       {
+        "from": 10,
+        "to": 25,
+        "moves": 492
+       },
+       {
+        "from": 25,
+        "to": 50,
+        "moves": 611
+       },
+       {
+        "from": 50,
+        "to": 100,
+        "moves": 765
+       },
+       {
+        "from": 100,
+        "to": 200,
+        "moves": 662
+       },
+       {
+        "from": 200,
+        "to": 300,
+        "moves": 322
+       },
+       {
+        "from": 300,
+        "to": 500,
+        "moves": 319
+       },
+       {
+        "from": 500,
+        "to": 1000,
+        "moves": 283
+       },
+       {
+        "from": 1000,
+        "to": null,
+        "moves": 112
+       }
+      ]
+     }
+    },
+    "all_phases": {
+     "moves": 16602,
+     "mean": 72.4383809179617,
+     "percentiles": {
+      "50": 0,
+      "75": 54,
+      "90": 209,
+      "95": 412,
+      "99": 934
+     },
+     "histogram": [
+      {
+       "from": 0,
+       "to": 1,
+       "moves": 9446
+      },
+      {
+       "from": 1,
+       "to": 10,
+       "moves": 563
+      },
+      {
+       "from": 10,
+       "to": 25,
+       "moves": 1019
+      },
+      {
+       "from": 25,
+       "to": 50,
+       "moves": 1230
+      },
+      {
+       "from": 50,
+       "to": 100,
+       "moves": 1383
+      },
+      {
+       "from": 100,
+       "to": 200,
+       "moves": 1228
+      },
+      {
+       "from": 200,
+       "to": 300,
+       "moves": 542
+      },
+      {
+       "from": 300,
+       "to": 500,
+       "moves": 551
+      },
+      {
+       "from": 500,
+       "to": 1000,
+       "moves": 502
+      },
+      {
+       "from": 1000,
+       "to": null,
+       "moves": 138
+      }
+     ]
+    }
+   },
+   "distance": 21.090097300941466,
+   "already_decided_share": {
+    "opening": 0.0,
+    "middlegame": 0.028833886195458024,
+    "endgame": 0.36197697276046054
+   },
+   "distance_in_undecided_positions": 13.449626306147561,
+   "phase_distances": {
+    "opening": 3.900375598086113,
+    "middlegame": 5.043335313463534,
+    "endgame": 36.73719729072377
+   },
+   "phase_distances_in_undecided_positions": {
+    "opening": 3.9005505359877426,
+    "middlegame": 7.145376289614663,
+    "endgame": 22.078386933314356
+   },
+   "centipawn_loss_in_undecided_positions": {
+    "phases": {
+     "opening": {
+      "moves": 2000,
+      "mean": 27.8815,
+      "percentiles": {
+       "50": 0,
+       "75": 27,
+       "90": 71,
+       "95": 134,
+       "99": 400
+      },
+      "histogram": [
+       {
+        "from": 0,
+        "to": 1,
+        "moves": 1084
+       },
+       {
+        "from": 1,
+        "to": 10,
+        "moves": 115
+       },
+       {
+        "from": 10,
+        "to": 25,
+        "moves": 266
+       },
+       {
+        "from": 25,
+        "to": 50,
+        "moves": 262
+       },
+       {
+        "from": 50,
+        "to": 100,
+        "moves": 125
+       },
+       {
+        "from": 100,
+        "to": 200,
+        "moves": 102
+       },
+       {
+        "from": 200,
+        "to": 300,
+        "moves": 22
+       },
+       {
+        "from": 300,
+        "to": 500,
+        "moves": 10
+       },
+       {
+        "from": 500,
+        "to": 1000,
+        "moves": 13
+       },
+       {
+        "from": 1000,
+        "to": null,
+        "moves": 1
+       }
+      ]
+     },
+     "middlegame": {
+      "moves": 3806,
+      "mean": 111.21965317919076,
+      "percentiles": {
+       "50": 28,
+       "75": 125,
+       "90": 349,
+       "95": 550,
+       "99": 922
+      },
+      "histogram": [
+       {
+        "from": 0,
+        "to": 1,
+        "moves": 1442
+       },
+       {
+        "from": 1,
+        "to": 10,
+        "moves": 138
+       },
+       {
+        "from": 10,
+        "to": 25,
+        "moves": 261
+       },
+       {
+        "from": 25,
+        "to": 50,
+        "moves": 357
+       },
+       {
+        "from": 50,
+        "to": 100,
+        "moves": 493
+       },
+       {
+        "from": 100,
+        "to": 200,
+        "moves": 464
+       },
+       {
+        "from": 200,
+        "to": 300,
+        "moves": 198
+       },
+       {
+        "from": 300,
+        "to": 500,
+        "moves": 222
+       },
+       {
+        "from": 500,
+        "to": 1000,
+        "moves": 206
+       },
+       {
+        "from": 1000,
+        "to": null,
+        "moves": 25
+       }
+      ]
+     },
+     "endgame": {
+      "moves": 6816,
+      "mean": 106.1556631455399,
+      "percentiles": {
+       "50": 14,
+       "75": 99,
+       "90": 311,
+       "95": 569,
+       "99": 1084
+      },
+      "histogram": [
+       {
+        "from": 0,
+        "to": 1,
+        "moves": 2940
+       },
+       {
+        "from": 1,
+        "to": 10,
+        "moves": 310
+       },
+       {
+        "from": 10,
+        "to": 25,
+        "moves": 492
+       },
+       {
+        "from": 25,
+        "to": 50,
+        "moves": 611
+       },
+       {
+        "from": 50,
+        "to": 100,
+        "moves": 765
+       },
+       {
+        "from": 100,
+        "to": 200,
+        "moves": 662
+       },
+       {
+        "from": 200,
+        "to": 300,
+        "moves": 322
+       },
+       {
+        "from": 300,
+        "to": 500,
+        "moves": 319
+       },
+       {
+        "from": 500,
+        "to": 1000,
+        "moves": 283
+       },
+       {
+        "from": 1000,
+        "to": null,
+        "moves": 112
+       }
+      ]
+     }
+    },
+    "all_phases": {
+     "moves": 12622,
+     "mean": 95.2798288702266,
+     "percentiles": {
+      "50": 14,
+      "75": 90,
+      "90": 284,
+      "95": 505,
+      "99": 1000
+     },
+     "histogram": [
+      {
+       "from": 0,
+       "to": 1,
+       "moves": 5466
+      },
+      {
+       "from": 1,
+       "to": 10,
+       "moves": 563
+      },
+      {
+       "from": 10,
+       "to": 25,
+       "moves": 1019
+      },
+      {
+       "from": 25,
+       "to": 50,
+       "moves": 1230
+      },
+      {
+       "from": 50,
+       "to": 100,
+       "moves": 1383
+      },
+      {
+       "from": 100,
+       "to": 200,
+       "moves": 1228
+      },
+      {
+       "from": 200,
+       "to": 300,
+       "moves": 542
+      },
+      {
+       "from": 300,
+       "to": 500,
+       "moves": 551
+      },
+      {
+       "from": 500,
+       "to": 1000,
+       "moves": 502
+      },
+      {
+       "from": 1000,
+       "to": null,
+       "moves": 138
+      }
+     ]
+    }
+   }
+  },
+  "fine-tuned": {
+   "games": 400,
+   "results": {
+    "won": 114,
+    "drawn": 67,
+    "lost": 219
+   },
+   "centipawn_loss": {
+    "phases": {
+     "opening": {
+      "moves": 2000,
+      "mean": 24.6615,
+      "percentiles": {
+       "50": 0,
+       "75": 24,
+       "90": 72,
+       "95": 124,
+       "99": 239
+      },
+      "histogram": [
+       {
+        "from": 0,
+        "to": 1,
+        "moves": 1120
+       },
+       {
+        "from": 1,
+        "to": 10,
+        "moves": 110
+       },
+       {
+        "from": 10,
+        "to": 25,
+        "moves": 277
+       },
+       {
+        "from": 25,
+        "to": 50,
+        "moves": 219
+       },
+       {
+        "from": 50,
+        "to": 100,
+        "moves": 133
+       },
+       {
+        "from": 100,
+        "to": 200,
+        "moves": 110
+       },
+       {
+        "from": 200,
+        "to": 300,
+        "moves": 16
+       },
+       {
+        "from": 300,
+        "to": 500,
+        "moves": 6
+       },
+       {
+        "from": 500,
+        "to": 1000,
+        "moves": 9
+       },
+       {
+        "from": 1000,
+        "to": null,
+        "moves": 0
+       }
+      ]
+     },
+     "middlegame": {
+      "moves": 3942,
+      "mean": 130.4753932014206,
+      "percentiles": {
+       "50": 40,
+       "75": 154,
+       "90": 401,
+       "95": 633,
+       "99": 1031
+      },
+      "histogram": [
+       {
+        "from": 0,
+        "to": 1,
+        "moves": 1404
+       },
+       {
+        "from": 1,
+        "to": 10,
+        "moves": 124
+       },
+       {
+        "from": 10,
+        "to": 25,
+        "moves": 210
+       },
+       {
+        "from": 25,
+        "to": 50,
+        "moves": 369
+       },
+       {
+        "from": 50,
+        "to": 100,
+        "moves": 517
+       },
+       {
+        "from": 100,
+        "to": 200,
+        "moves": 513
+       },
+       {
+        "from": 200,
+        "to": 300,
+        "moves": 259
+       },
+       {
+        "from": 300,
+        "to": 500,
+        "moves": 241
+       },
+       {
+        "from": 500,
+        "to": 1000,
+        "moves": 261
+       },
+       {
+        "from": 1000,
+        "to": null,
+        "moves": 44
+       }
+      ]
+     },
+     "endgame": {
+      "moves": 10755,
+      "mean": 81.53231055323106,
+      "percentiles": {
+       "50": 0,
+       "75": 46,
+       "90": 231,
+       "95": 499,
+       "99": 1171
+      },
+      "histogram": [
+       {
+        "from": 0,
+        "to": 1,
+        "moves": 6889
+       },
+       {
+        "from": 1,
+        "to": 10,
+        "moves": 264
+       },
+       {
+        "from": 10,
+        "to": 25,
+        "moves": 416
+       },
+       {
+        "from": 25,
+        "to": 50,
+        "moves": 552
+       },
+       {
+        "from": 50,
+        "to": 100,
+        "moves": 696
+       },
+       {
+        "from": 100,
+        "to": 200,
+        "moves": 739
+       },
+       {
+        "from": 200,
+        "to": 300,
+        "moves": 338
+       },
+       {
+        "from": 300,
+        "to": 500,
+        "moves": 326
+       },
+       {
+        "from": 500,
+        "to": 1000,
+        "moves": 361
+       },
+       {
+        "from": 1000,
+        "to": null,
+        "moves": 174
+       }
+      ]
+     }
+    },
+    "all_phases": {
+     "moves": 16697,
+     "mean": 86.27519913756963,
+     "percentiles": {
+      "50": 0,
+      "75": 67,
+      "90": 253,
+      "95": 507,
+      "99": 1045
+     },
+     "histogram": [
+      {
+       "from": 0,
+       "to": 1,
+       "moves": 9413
+      },
+      {
+       "from": 1,
+       "to": 10,
+       "moves": 498
+      },
+      {
+       "from": 10,
+       "to": 25,
+       "moves": 903
+      },
+      {
+       "from": 25,
+       "to": 50,
+       "moves": 1140
+      },
+      {
+       "from": 50,
+       "to": 100,
+       "moves": 1346
+      },
+      {
+       "from": 100,
+       "to": 200,
+       "moves": 1362
+      },
+      {
+       "from": 200,
+       "to": 300,
+       "moves": 613
+      },
+      {
+       "from": 300,
+       "to": 500,
+       "moves": 573
+      },
+      {
+       "from": 500,
+       "to": 1000,
+       "moves": 631
+      },
+      {
+       "from": 1000,
+       "to": null,
+       "moves": 218
+      }
+     ]
+    }
+   },
+   "distance": 21.500726813167987,
+   "already_decided_share": {
+    "opening": 0.0,
+    "middlegame": 0.027143581938102485,
+    "endgame": 0.40158066015806604
+   },
+   "distance_in_undecided_positions": 15.433029605095221,
+   "phase_distances": {
+    "opening": 4.700820574162685,
+    "middlegame": 27.408664021717502,
+    "endgame": 23.382200969648693
+   },
+   "phase_distances_in_undecided_positions": {
+    "opening": 4.702604134762643,
+    "middlegame": 30.074223459749636,
+    "endgame": 8.729920718456743
+   },
+   "centipawn_loss_in_undecided_positions": {
+    "phases": {
+     "opening": {
+      "moves": 2000,
+      "mean": 24.6615,
+      "percentiles": {
+       "50": 0,
+       "75": 24,
+       "90": 72,
+       "95": 124,
+       "99": 239
+      },
+      "histogram": [
+       {
+        "from": 0,
+        "to": 1,
+        "moves": 1120
+       },
+       {
+        "from": 1,
+        "to": 10,
+        "moves": 110
+       },
+       {
+        "from": 10,
+        "to": 25,
+        "moves": 277
+       },
+       {
+        "from": 25,
+        "to": 50,
+        "moves": 219
+       },
+       {
+        "from": 50,
+        "to": 100,
+        "moves": 133
+       },
+       {
+        "from": 100,
+        "to": 200,
+        "moves": 110
+       },
+       {
+        "from": 200,
+        "to": 300,
+        "moves": 16
+       },
+       {
+        "from": 300,
+        "to": 500,
+        "moves": 6
+       },
+       {
+        "from": 500,
+        "to": 1000,
+        "moves": 9
+       },
+       {
+        "from": 1000,
+        "to": null,
+        "moves": 0
+       }
+      ]
+     },
+     "middlegame": {
+      "moves": 3835,
+      "mean": 134.11577574967404,
+      "percentiles": {
+       "50": 43,
+       "75": 161,
+       "90": 410,
+       "95": 641,
+       "99": 1034
+      },
+      "histogram": [
+       {
+        "from": 0,
+        "to": 1,
+        "moves": 1297
+       },
+       {
+        "from": 1,
+        "to": 10,
+        "moves": 124
+       },
+       {
+        "from": 10,
+        "to": 25,
+        "moves": 210
+       },
+       {
+        "from": 25,
+        "to": 50,
+        "moves": 369
+       },
+       {
+        "from": 50,
+        "to": 100,
+        "moves": 517
+       },
+       {
+        "from": 100,
+        "to": 200,
+        "moves": 513
+       },
+       {
+        "from": 200,
+        "to": 300,
+        "moves": 259
+       },
+       {
+        "from": 300,
+        "to": 500,
+        "moves": 241
+       },
+       {
+        "from": 500,
+        "to": 1000,
+        "moves": 261
+       },
+       {
+        "from": 1000,
+        "to": null,
+        "moves": 44
+       }
+      ]
+     },
+     "endgame": {
+      "moves": 6436,
+      "mean": 136.2461155997514,
+      "percentiles": {
+       "50": 23,
+       "75": 135,
+       "90": 417,
+       "95": 699,
+       "99": 1411
+      },
+      "histogram": [
+       {
+        "from": 0,
+        "to": 1,
+        "moves": 2570
+       },
+       {
+        "from": 1,
+        "to": 10,
+        "moves": 264
+       },
+       {
+        "from": 10,
+        "to": 25,
+        "moves": 416
+       },
+       {
+        "from": 25,
+        "to": 50,
+        "moves": 552
+       },
+       {
+        "from": 50,
+        "to": 100,
+        "moves": 696
+       },
+       {
+        "from": 100,
+        "to": 200,
+        "moves": 739
+       },
+       {
+        "from": 200,
+        "to": 300,
+        "moves": 338
+       },
+       {
+        "from": 300,
+        "to": 500,
+        "moves": 326
+       },
+       {
+        "from": 500,
+        "to": 1000,
+        "moves": 361
+       },
+       {
+        "from": 1000,
+        "to": null,
+        "moves": 174
+       }
+      ]
+     }
+    },
+    "all_phases": {
+     "moves": 12271,
+     "mean": 117.3936109526526,
+     "percentiles": {
+      "50": 20,
+      "75": 117,
+      "90": 349,
+      "95": 617,
+      "99": 1209
+     },
+     "histogram": [
+      {
+       "from": 0,
+       "to": 1,
+       "moves": 4987
+      },
+      {
+       "from": 1,
+       "to": 10,
+       "moves": 498
+      },
+      {
+       "from": 10,
+       "to": 25,
+       "moves": 903
+      },
+      {
+       "from": 25,
+       "to": 50,
+       "moves": 1140
+      },
+      {
+       "from": 50,
+       "to": 100,
+       "moves": 1346
+      },
+      {
+       "from": 100,
+       "to": 200,
+       "moves": 1362
+      },
+      {
+       "from": 200,
+       "to": 300,
+       "moves": 613
+      },
+      {
+       "from": 300,
+       "to": 500,
+       "moves": 573
+      },
+      {
+       "from": 500,
+       "to": 1000,
+       "moves": 631
+      },
+      {
+       "from": 1000,
+       "to": null,
+       "moves": 218
+      }
+     ]
+    }
+   }
+  }
+ }
+}
