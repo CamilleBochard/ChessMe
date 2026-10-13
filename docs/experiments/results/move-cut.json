@@ -1,0 +1,1957 @@
+{
+ "measuredOn": "2026-10-13",
+ "model": "original",
+ "thresholds": [
+  0.01,
+  0.02,
+  0.05
+ ],
+ "mistakeCentipawns": 300,
+ "camille": {
+  "training": {
+   "opening": {
+    "moves": 4075,
+    "below": [
+     0.013987730061349693,
+     0.044171779141104296,
+     0.1339877300613497
+    ]
+   },
+   "middlegame": {
+    "moves": 7635,
+    "below": [
+     0.03287491814014407,
+     0.06666666666666667,
+     0.14394237066142765
+    ]
+   },
+   "endgame": {
+    "moves": 12058,
+    "below": [
+     0.03466578205340853,
+     0.06576546690993532,
+     0.13999004810084592
+    ]
+   }
+  },
+  "testSet": {
+   "opening": {
+    "moves": 1150,
+    "below": [
+     0.013043478260869565,
+     0.0391304347826087,
+     0.11826086956521739
+    ]
+   },
+   "middlegame": {
+    "moves": 2187,
+    "below": [
+     0.027434842249657063,
+     0.05715592135345222,
+     0.14037494284407864
+    ]
+   },
+   "endgame": {
+    "moves": 3755,
+    "below": [
+     0.03275632490013316,
+     0.06631158455392809,
+     0.14087882822902797
+    ]
+   }
+  }
+ },
+ "chosen": {
+  "cut": {
+   "kind": "none"
+  },
+  "name": "no cut"
+ },
+ "candidates": [
+  {
+   "cut": {
+    "kind": "none"
+   },
+   "name": "no cut",
+   "distance": 0.0054973566879996045,
+   "phaseGaps": {
+    "opening": 0.02180546883452328,
+    "middlegame": 0.004810797311575778,
+    "endgame": 0.00042075392153020225
+   },
+   "movesKept": 1,
+   "improbableRemoved": 0,
+   "training": {
+    "byPhase": {
+     "opening": {
+      "moves": 4075,
+      "botBelow": [
+       0.03579319889587297,
+       0.06459155803517719,
+       0.1373821837692793
+      ],
+      "movesMadeImpossible": 0,
+      "mistakes": 43,
+      "mistakesMadeImpossible": 0
+     },
+     "middlegame": {
+      "moves": 7635,
+      "botBelow": [
+       0.03768571545171985,
+       0.06887940597479843,
+       0.14506211828325422
+      ],
+      "movesMadeImpossible": 0,
+      "mistakes": 804,
+      "mistakesMadeImpossible": 0
+     },
+     "endgame": {
+      "moves": 12058,
+      "botBelow": [
+       0.03508653597493873,
+       0.06415285368479919,
+       0.13461540771140348
+      ],
+      "movesMadeImpossible": 0,
+      "mistakes": 1286,
+      "mistakesMadeImpossible": 0
+     }
+    },
+    "all": {
+     "moves": 23768,
+     "botBelow": [
+      0.03604262764054056,
+      0.06574638056808589,
+      0.13844556791217433
+     ],
+     "movesMadeImpossible": 0,
+     "mistakes": 2133,
+     "mistakesMadeImpossible": 0
+    }
+   },
+   "botGames": {
+    "byPhase": {
+     "opening": {
+      "moves": 880,
+      "botBelow": [
+       0.03699682803779929,
+       0.06890768266911293,
+       0.13750179075604355
+      ],
+      "movesMadeImpossible": 0,
+      "mistakes": 24,
+      "mistakesMadeImpossible": 0
+     },
+     "middlegame": {
+      "moves": 3904,
+      "botBelow": [
+       0.03685009508111478,
+       0.06683267603112417,
+       0.1399150487244129
+      ],
+      "movesMadeImpossible": 0,
+      "mistakes": 452,
+      "mistakesMadeImpossible": 0
+     },
+     "endgame": {
+      "moves": 10683,
+      "botBelow": [
+       0.030328032230507278,
+       0.055755962808288956,
+       0.11816963928025309
+      ],
+      "movesMadeImpossible": 0,
+      "mistakes": 714,
+      "mistakesMadeImpossible": 0
+     }
+    },
+    "all": {
+     "moves": 15467,
+     "botBelow": [
+      0.03235367868290205,
+      0.05930008913527364,
+      0.12475827132064242
+     ],
+     "movesMadeImpossible": 0,
+     "mistakes": 1190,
+     "mistakesMadeImpossible": 0
+    }
+   }
+  },
+  {
+   "cut": {
+    "kind": "top-k",
+    "k": 10
+   },
+   "name": "top-10",
+   "distance": 0.020809462063018168,
+   "phaseGaps": {
+    "opening": -0.0026640201339574697,
+    "middlegame": -0.023705570946582072,
+    "endgame": -0.025107926529340276
+   },
+   "movesKept": 0.9652053180747223,
+   "improbableRemoved": 0.7298807127321609,
+   "training": {
+    "byPhase": {
+     "opening": {
+      "moves": 4075,
+      "botBelow": [
+       0.011323709927392223,
+       0.03770463730290579,
+       0.11256410429582059
+      ],
+      "movesMadeImpossible": 0.012269938650306749,
+      "mistakes": 43,
+      "mistakesMadeImpossible": 0.16279069767441862
+     },
+     "middlegame": {
+      "moves": 7635,
+      "botBelow": [
+       0.009169347193562001,
+       0.03114579838788626,
+       0.10896648123595261
+      ],
+      "movesMadeImpossible": 0.03824492468893255,
+      "mistakes": 804,
+      "mistakesMadeImpossible": 0.10696517412935323
+     },
+     "endgame": {
+      "moves": 12058,
+      "botBelow": [
+       0.00955785552406825,
+       0.02954466212987513,
+       0.10095248920053365
+      ],
+      "movesMadeImpossible": 0.04022225908110798,
+      "mistakes": 1286,
+      "mistakesMadeImpossible": 0.10342146189735614
+     }
+    },
+    "all": {
+     "moves": 23768,
+     "botBelow": [
+      0.00973580888952293,
+      0.03145801513223215,
+      0.1055176255478789
+     ],
+     "movesMadeImpossible": 0.03479468192527768,
+     "mistakes": 2133,
+     "mistakesMadeImpossible": 0.10595405532114392
+    }
+   },
+   "botGames": {
+    "byPhase": {
+     "opening": {
+      "moves": 880,
+      "botBelow": [
+       0.010104575674368878,
+       0.03672961377950462,
+       0.10724107053606279
+      ],
+      "movesMadeImpossible": 0.03636363636363636,
+      "mistakes": 24,
+      "mistakesMadeImpossible": 0.08333333333333333
+     },
+     "middlegame": {
+      "moves": 3904,
+      "botBelow": [
+       0.009683458293398495,
+       0.031452619694182525,
+       0.10616640372564005
+      ],
+      "movesMadeImpossible": 0.03201844262295082,
+      "mistakes": 452,
+      "mistakesMadeImpossible": 0.08849557522123894
+     },
+     "endgame": {
+      "moves": 10683,
+      "botBelow": [
+       0.009314189500423809,
+       0.027490433345315247,
+       0.09088622379214212
+      ],
+      "movesMadeImpossible": 0.029298886080688945,
+      "mistakes": 714,
+      "mistakesMadeImpossible": 0.07282913165266107
+     }
+    },
+    "all": {
+     "moves": 15467,
+     "botBelow": [
+      0.009452365307034296,
+      0.02901618845542472,
+      0.09567358317631647
+     ],
+     "movesMadeImpossible": 0.030387276136290164,
+     "mistakes": 1190,
+     "mistakesMadeImpossible": 0.07899159663865546
+    }
+   }
+  },
+  {
+   "cut": {
+    "kind": "top-k",
+    "k": 8
+   },
+   "name": "top-8",
+   "distance": 0.02537892699053778,
+   "phaseGaps": {
+    "opening": -0.009069202752838991,
+    "middlegame": -0.028061626856618633,
+    "endgame": -0.029192139197462257
+   },
+   "movesKept": 0.9449259508582969,
+   "improbableRemoved": 0.8566601743488765,
+   "training": {
+    "byPhase": {
+     "opening": {
+      "moves": 4075,
+      "botBelow": [
+       0.004918527308510702,
+       0.022928876456461918,
+       0.09501860576887096
+      ],
+      "movesMadeImpossible": 0.0301840490797546,
+      "mistakes": 43,
+      "mistakesMadeImpossible": 0.20930232558139536
+     },
+     "middlegame": {
+      "moves": 7635,
+      "botBelow": [
+       0.004813291283525441,
+       0.018236867486325595,
+       0.08781063392986238
+      ],
+      "movesMadeImpossible": 0.06234446627373936,
+      "mistakes": 804,
+      "mistakesMadeImpossible": 0.14676616915422885
+     },
+     "endgame": {
+      "moves": 12058,
+      "botBelow": [
+       0.00547364285594627,
+       0.01887169436787238,
+       0.08205340605976467
+      ],
+      "movesMadeImpossible": 0.05888206999502405,
+      "mistakes": 1286,
+      "mistakesMadeImpossible": 0.14307931570762053
+     }
+    },
+    "all": {
+     "moves": 23768,
+     "botBelow": [
+      0.005166343962003446,
+      0.019363368626134997,
+      0.08612567228337581
+     ],
+     "movesMadeImpossible": 0.05507404914170313,
+     "mistakes": 2133,
+     "mistakesMadeImpossible": 0.14580403187998126
+    }
+   },
+   "botGames": {
+    "byPhase": {
+     "opening": {
+      "moves": 880,
+      "botBelow": [
+       0.003864070726191299,
+       0.021900487243272215,
+       0.08820346760748518
+      ],
+      "movesMadeImpossible": 0.05909090909090909,
+      "mistakes": 24,
+      "mistakesMadeImpossible": 0.16666666666666666
+     },
+     "middlegame": {
+      "moves": 3904,
+      "botBelow": [
+       0.005276683530020025,
+       0.019011051874064107,
+       0.08602707355380862
+      ],
+      "movesMadeImpossible": 0.052510245901639344,
+      "mistakes": 452,
+      "mistakesMadeImpossible": 0.1415929203539823
+     },
+     "endgame": {
+      "moves": 10683,
+      "botBelow": [
+       0.0054560018724398385,
+       0.018127698234272797,
+       0.0748061697798016
+      ],
+      "movesMadeImpossible": 0.04670972573247215,
+      "mistakes": 714,
+      "mistakesMadeImpossible": 0.12745098039215685
+     }
+    },
+    "all": {
+     "moves": 15467,
+     "botBelow": [
+      0.005320166984128876,
+      0.018565318130675794,
+      0.07840066324473197
+     ],
+     "movesMadeImpossible": 0.0488782569341178,
+     "mistakes": 1190,
+     "mistakesMadeImpossible": 0.13361344537815126
+    }
+   }
+  },
+  {
+   "cut": {
+    "kind": "top-k",
+    "k": 6
+   },
+   "name": "top-6",
+   "distance": 0.02841550436215575,
+   "phaseGaps": {
+    "opening": -0.013037206791458743,
+    "middlegame": -0.03072359426718872,
+    "endgame": -0.032151140137214936
+   },
+   "movesKept": 0.9093739481656008,
+   "improbableRemoved": 0.940909785723005,
+   "training": {
+    "byPhase": {
+     "opening": {
+      "moves": 4075,
+      "botBelow": [
+       0.0009505232698909504,
+       0.008263240548476145,
+       0.06273835536006586
+      ],
+      "movesMadeImpossible": 0.06969325153374233,
+      "mistakes": 43,
+      "mistakesMadeImpossible": 0.27906976744186046
+     },
+     "middlegame": {
+      "moves": 7635,
+      "botBelow": [
+       0.002151323872955354,
+       0.007758698149546999,
+       0.05380391706355084
+      ],
+      "movesMadeImpossible": 0.09993451211525868,
+      "mistakes": 804,
+      "mistakesMadeImpossible": 0.208955223880597
+     },
+     "endgame": {
+      "moves": 12058,
+      "botBelow": [
+       0.002514641916193593,
+       0.009395246582519497,
+       0.05242131130380847
+      ],
+      "movesMadeImpossible": 0.09180626969646707,
+      "mistakes": 1286,
+      "mistakesMadeImpossible": 0.21384136858475894
+     }
+    },
+    "all": {
+     "moves": 23768,
+     "botBelow": [
+      0.002129766590385483,
+      0.008675456449800192,
+      0.05463429302313178
+     ],
+     "movesMadeImpossible": 0.09062605183439919,
+     "mistakes": 2133,
+     "mistakesMadeImpossible": 0.213314580403188
+    }
+   },
+   "botGames": {
+    "byPhase": {
+     "opening": {
+      "moves": 880,
+      "botBelow": [
+       0.0012507718077335002,
+       0.007233093684836186,
+       0.05473705429069458
+      ],
+      "movesMadeImpossible": 0.10227272727272728,
+      "mistakes": 24,
+      "mistakesMadeImpossible": 0.375
+     },
+     "middlegame": {
+      "moves": 3904,
+      "botBelow": [
+       0.002373832570953136,
+       0.008429305786703173,
+       0.05365982340904531
+      ],
+      "movesMadeImpossible": 0.08990778688524591,
+      "mistakes": 452,
+      "mistakesMadeImpossible": 0.2168141592920354
+     },
+     "endgame": {
+      "moves": 10683,
+      "botBelow": [
+       0.0025005914799735066,
+       0.009423521855254427,
+       0.048938084695285794
+      ],
+      "movesMadeImpossible": 0.07563418515398296,
+      "mistakes": 714,
+      "mistakesMadeImpossible": 0.20028011204481794
+     }
+    },
+    "all": {
+     "moves": 15467,
+     "botBelow": [
+      0.002397487575377487,
+      0.009047948290788654,
+      0.050459825251468145
+     ],
+     "movesMadeImpossible": 0.08075256998771578,
+     "mistakes": 1190,
+     "mistakesMadeImpossible": 0.21008403361344538
+    }
+   }
+  },
+  {
+   "cut": {
+    "kind": "top-k",
+    "k": 5
+   },
+   "name": "top-5",
+   "distance": 0.029275426274680334,
+   "phaseGaps": {
+    "opening": -0.013461008402694196,
+    "middlegame": -0.0315444998102266,
+    "endgame": -0.03318315362452673
+   },
+   "movesKept": 0.8837091888253114,
+   "improbableRemoved": 0.9647682546754006,
+   "training": {
+    "byPhase": {
+     "opening": {
+      "moves": 4075,
+      "botBelow": [
+       0.0005267216586554965,
+       0.004481830593556645,
+       0.03802487083847874
+      ],
+      "movesMadeImpossible": 0.0905521472392638,
+      "mistakes": 43,
+      "mistakesMadeImpossible": 0.27906976744186046
+     },
+     "middlegame": {
+      "moves": 7635,
+      "botBelow": [
+       0.001330418329917474,
+       0.00455721214536496,
+       0.03404218523668371
+      ],
+      "movesMadeImpossible": 0.12901113294040603,
+      "mistakes": 804,
+      "mistakesMadeImpossible": 0.2574626865671642
+     },
+     "endgame": {
+      "moves": 12058,
+      "botBelow": [
+       0.0014826284288817948,
+       0.005794861977686822,
+       0.03550807858900137
+      ],
+      "movesMadeImpossible": 0.11693481506054072,
+      "mistakes": 1286,
+      "mistakesMadeImpossible": 0.27060653188180406
+     }
+    },
+    "all": {
+     "moves": 23768,
+     "botBelow": [
+      0.0012698446778608933,
+      0.005172173515884856,
+      0.03546869086902851
+     ],
+     "movesMadeImpossible": 0.11629081117468866,
+     "mistakes": 2133,
+     "mistakesMadeImpossible": 0.26582278481012656
+    }
+   },
+   "botGames": {
+    "byPhase": {
+     "opening": {
+      "moves": 880,
+      "botBelow": [
+       0.0007479792393019622,
+       0.0033966193141853457,
+       0.032762496888439
+      ],
+      "movesMadeImpossible": 0.13068181818181818,
+      "mistakes": 24,
+      "mistakesMadeImpossible": 0.4583333333333333
+     },
+     "middlegame": {
+      "moves": 3904,
+      "botBelow": [
+       0.0014710737257155324,
+       0.005068304203125926,
+       0.03462141806255639
+      ],
+      "movesMadeImpossible": 0.11834016393442623,
+      "mistakes": 452,
+      "mistakesMadeImpossible": 0.2676991150442478
+     },
+     "endgame": {
+      "moves": 10683,
+      "botBelow": [
+       0.001492691481067212,
+       0.005874807170200439,
+       0.03391777915697448
+      ],
+      "movesMadeImpossible": 0.1004399513245343,
+      "mistakes": 714,
+      "mistakesMadeImpossible": 0.2507002801120448
+     }
+    },
+    "all": {
+     "moves": 15467,
+     "botBelow": [
+      0.001444864333614803,
+      0.0055302417795783316,
+      0.0340296533336785
+     ],
+     "movesMadeImpossible": 0.1066787353720825,
+     "mistakes": 1190,
+     "mistakesMadeImpossible": 0.26134453781512607
+    }
+   }
+  },
+  {
+   "cut": {
+    "kind": "top-k",
+    "k": 4
+   },
+   "name": "top-4",
+   "distance": 0.02987785448286296,
+   "phaseGaps": {
+    "opening": -0.013726200769758666,
+    "middlegame": -0.03211989743170163,
+    "endgame": -0.033916666140394625
+   },
+   "movesKept": 0.8378071356445641,
+   "improbableRemoved": 0.9814825801177836,
+   "training": {
+    "byPhase": {
+     "opening": {
+      "moves": 4075,
+      "botBelow": [
+       0.000261529291591028,
+       0.0011572577271327434,
+       0.01640160499776515
+      ],
+      "movesMadeImpossible": 0.1607361963190184,
+      "mistakes": 43,
+      "mistakesMadeImpossible": 0.37209302325581395
+     },
+     "middlegame": {
+      "moves": 7635,
+      "botBelow": [
+       0.0007550207084424482,
+       0.0024241947307224064,
+       0.017270807062331535
+      ],
+      "movesMadeImpossible": 0.1736738703339882,
+      "mistakes": 804,
+      "mistakesMadeImpossible": 0.3383084577114428
+     },
+     "endgame": {
+      "moves": 12058,
+      "botBelow": [
+       0.0007491159130138994,
+       0.0030998813680768226,
+       0.020267167318385234
+      ],
+      "movesMadeImpossible": 0.1554154917896832,
+      "mistakes": 1286,
+      "mistakesMadeImpossible": 0.3429237947122862
+     }
+    },
+    "all": {
+     "moves": 23768,
+     "botBelow": [
+      0.0006674164696782704,
+      0.002549769502835824,
+      0.018641899015983083
+     ],
+     "movesMadeImpossible": 0.16219286435543587,
+     "mistakes": 2133,
+     "mistakesMadeImpossible": 0.34177215189873417
+    }
+   },
+   "botGames": {
+    "byPhase": {
+     "opening": {
+      "moves": 880,
+      "botBelow": [
+       0.0004502390004253361,
+       0.0017083423193190173,
+       0.013244232571390952
+      ],
+      "movesMadeImpossible": 0.17045454545454544,
+      "mistakes": 24,
+      "mistakesMadeImpossible": 0.5
+     },
+     "middlegame": {
+      "moves": 3904,
+      "botBelow": [
+       0.0007871184439331436,
+       0.002682454607353355,
+       0.018324412848562583
+      ],
+      "movesMadeImpossible": 0.15496926229508196,
+      "mistakes": 452,
+      "mistakesMadeImpossible": 0.3495575221238938
+     },
+     "endgame": {
+      "moves": 10683,
+      "botBelow": [
+       0.0007597873565633397,
+       0.0031545502972318705,
+       0.019825823435102596
+      ],
+      "movesMadeImpossible": 0.13217261068988112,
+      "mistakes": 714,
+      "mistakesMadeImpossible": 0.3011204481792717
+     }
+    },
+    "all": {
+     "moves": 15467,
+     "botBelow": [
+      0.0007490740968290851,
+      0.002953106927874599,
+      0.019072393106666637
+     ],
+     "movesMadeImpossible": 0.1401047391220017,
+     "mistakes": 1190,
+     "mistakesMadeImpossible": 0.3235294117647059
+    }
+   }
+  },
+  {
+   "cut": {
+    "kind": "top-k",
+    "k": 3
+   },
+   "name": "top-3",
+   "distance": 0.03027021147563718,
+   "phaseGaps": {
+    "opening": -0.013866414989121131,
+    "middlegame": -0.03253971668002206,
+    "endgame": -0.03437684594628524
+   },
+   "movesKept": 0.7729720632783574,
+   "improbableRemoved": 0.9923684954480214,
+   "training": {
+    "byPhase": {
+     "opening": {
+      "moves": 4075,
+      "botBelow": [
+       0.00012131507222856232,
+       0.00032041240406851216,
+       0.006184876545942422
+      ],
+      "movesMadeImpossible": 0.2522699386503067,
+      "mistakes": 43,
+      "mistakesMadeImpossible": 0.3953488372093023
+     },
+     "middlegame": {
+      "moves": 7635,
+      "botBelow": [
+       0.00033520146012201187,
+       0.0011173152511735206,
+       0.006558615972552288
+      ],
+      "movesMadeImpossible": 0.23313686967910938,
+      "mistakes": 804,
+      "mistakesMadeImpossible": 0.42412935323383083
+     },
+     "endgame": {
+      "moves": 12058,
+      "botBelow": [
+       0.00028893610712328664,
+       0.0012836172177560156,
+       0.008783580589564438
+      ],
+      "movesMadeImpossible": 0.2146292917565102,
+      "mistakes": 1286,
+      "mistakesMadeImpossible": 0.4447900466562986
+     }
+    },
+    "all": {
+     "moves": 23768,
+     "botBelow": [
+      0.00027505947690405354,
+      0.0010650554906172633,
+      0.007623309475939025
+     ],
+     "movesMadeImpossible": 0.22702793672164254,
+     "mistakes": 2133,
+     "mistakesMadeImpossible": 0.4360056258790436
+    }
+   },
+   "botGames": {
+    "byPhase": {
+     "opening": {
+      "moves": 880,
+      "botBelow": [
+       0.0001983315610302516,
+       0.0007752818176264099,
+       0.004353616113339764
+      ],
+      "movesMadeImpossible": 0.23977272727272728,
+      "mistakes": 24,
+      "mistakesMadeImpossible": 0.5833333333333334
+     },
+     "middlegame": {
+      "moves": 3904,
+      "botBelow": [
+       0.0003445274161761549,
+       0.0012367720818609398,
+       0.007524447671154683
+      ],
+      "movesMadeImpossible": 0.21004098360655737,
+      "mistakes": 452,
+      "mistakesMadeImpossible": 0.4247787610619469
+     },
+     "endgame": {
+      "moves": 10683,
+      "botBelow": [
+       0.0002988433417323051,
+       0.001307754319370638,
+       0.009038348226055712
+      ],
+      "movesMadeImpossible": 0.1843115229804362,
+      "mistakes": 714,
+      "mistakesMadeImpossible": 0.3949579831932773
+     }
+    },
+    "all": {
+     "moves": 15467,
+     "botBelow": [
+      0.0003046557332504397,
+      0.0012595426133660617,
+      0.008389687721399119
+     ],
+     "movesMadeImpossible": 0.19396133704015,
+     "mistakes": 1190,
+     "mistakesMadeImpossible": 0.41008403361344536
+    }
+   }
+  },
+  {
+   "cut": {
+    "kind": "top-p",
+    "p": 0.98
+   },
+   "name": "top-p 0.98",
+   "distance": 0.011596585289395472,
+   "phaseGaps": {
+    "opening": 0.004908916450151561,
+    "middlegame": -0.011216246649471844,
+    "endgame": -0.014097508828600634
+   },
+   "movesKept": 0.9873779872096937,
+   "improbableRemoved": 0.4275682791157346,
+   "training": {
+    "byPhase": {
+     "opening": {
+      "moves": 4075,
+      "botBelow": [
+       0.018896646511501254,
+       0.048100762267298564,
+       0.12221122591130829
+      ],
+      "movesMadeImpossible": 0.0051533742331288344,
+      "mistakes": 43,
+      "mistakesMadeImpossible": 0.046511627906976744
+     },
+     "middlegame": {
+      "moves": 7635,
+      "botBelow": [
+       0.02165867149067223,
+       0.05323557651688748,
+       0.13077327433059954
+      ],
+      "movesMadeImpossible": 0.013883431565160446,
+      "mistakes": 804,
+      "mistakesMadeImpossible": 0.046019900497512436
+     },
+     "endgame": {
+      "moves": 12058,
+      "botBelow": [
+       0.020568273224807893,
+       0.04972769167363488,
+       0.12141442564700229
+      ],
+      "movesMadeImpossible": 0.014347321280477691,
+      "mistakes": 1286,
+      "mistakesMadeImpossible": 0.04743390357698289
+     }
+    },
+    "all": {
+     "moves": 23768,
+     "botBelow": [
+      0.02063194336546542,
+      0.05057559488162098,
+      0.12455738133432437
+     ],
+     "movesMadeImpossible": 0.012622012790306295,
+     "mistakes": 2133,
+     "mistakesMadeImpossible": 0.04688232536333802
+    }
+   },
+   "botGames": {
+    "byPhase": {
+     "opening": {
+      "moves": 880,
+      "botBelow": [
+       0.020433792506824006,
+       0.05274063069571418,
+       0.12254610650575434
+      ],
+      "movesMadeImpossible": 0.014772727272727272,
+      "mistakes": 24,
+      "mistakesMadeImpossible": 0.08333333333333333
+     },
+     "middlegame": {
+      "moves": 3904,
+      "botBelow": [
+       0.020959210641244855,
+       0.05127916652908658,
+       0.1256561751430363
+      ],
+      "movesMadeImpossible": 0.013575819672131147,
+      "mistakes": 452,
+      "mistakesMadeImpossible": 0.06858407079646017
+     },
+     "endgame": {
+      "moves": 10683,
+      "botBelow": [
+       0.017292292140510482,
+       0.04247130246379613,
+       0.10593851191404936
+      ],
+      "movesMadeImpossible": 0.013011326406440139,
+      "mistakes": 714,
+      "mistakesMadeImpossible": 0.05042016806722689
+     }
+    },
+    "all": {
+     "moves": 15467,
+     "botBelow": [
+      0.01839658968684941,
+      0.04527875770107415,
+      0.11186030932056987
+     ],
+     "movesMadeImpossible": 0.013254024697743583,
+     "mistakes": 1190,
+     "mistakesMadeImpossible": 0.05798319327731093
+    }
+   }
+  },
+  {
+   "cut": {
+    "kind": "top-p",
+    "p": 0.95
+   },
+   "name": "top-p 0.95",
+   "distance": 0.026277249449322283,
+   "phaseGaps": {
+    "opening": -0.011642933181931193,
+    "middlegame": -0.02874502990069086,
+    "endgame": -0.029660342420247784
+   },
+   "movesKept": 0.9670144732413328,
+   "improbableRemoved": 0.8815840635764769,
+   "training": {
+    "byPhase": {
+     "opening": {
+      "moves": 4075,
+      "botBelow": [
+       0.0023447968794185,
+       0.024668524707606877,
+       0.10018789229195742
+      ],
+      "movesMadeImpossible": 0.016687116564417178,
+      "mistakes": 43,
+      "mistakesMadeImpossible": 0.23255813953488372
+     },
+     "middlegame": {
+      "moves": 7635,
+      "botBelow": [
+       0.004129888239453213,
+       0.03111429374767125,
+       0.1096133433986198
+      ],
+      "movesMadeImpossible": 0.03628028814669286,
+      "mistakes": 804,
+      "mistakesMadeImpossible": 0.12189054726368159
+     },
+     "endgame": {
+      "moves": 12058,
+      "botBelow": [
+       0.005005439633160743,
+       0.029610215853243468,
+       0.10116083753612894
+      ],
+      "movesMadeImpossible": 0.036407364405374024,
+      "mistakes": 1286,
+      "mistakesMadeImpossible": 0.104199066874028
+     }
+    },
+    "all": {
+     "moves": 23768,
+     "botBelow": [
+      0.0042680215032189685,
+      0.02924612309430238,
+      0.10370922740444473
+     ],
+     "movesMadeImpossible": 0.032985526758667116,
+     "mistakes": 2133,
+     "mistakesMadeImpossible": 0.11345522737927802
+    }
+   },
+   "botGames": {
+    "byPhase": {
+     "opening": {
+      "moves": 880,
+      "botBelow": [
+       0.002784974367745698,
+       0.02912708070897958,
+       0.1001043096432399
+      ],
+      "movesMadeImpossible": 0.04431818181818182,
+      "mistakes": 24,
+      "mistakesMadeImpossible": 0.20833333333333334
+     },
+     "middlegame": {
+      "moves": 3904,
+      "botBelow": [
+       0.003966099065184636,
+       0.029527990318511242,
+       0.10458857064803781
+      ],
+      "movesMadeImpossible": 0.03381147540983607,
+      "mistakes": 452,
+      "mistakesMadeImpossible": 0.13495575221238937
+     },
+     "endgame": {
+      "moves": 10683,
+      "botBelow": [
+       0.004277917752799658,
+       0.024539301204024075,
+       0.08677499969781935
+      ],
+      "movesMadeImpossible": 0.03285593934288121,
+      "mistakes": 714,
+      "mistakesMadeImpossible": 0.11904761904761904
+     }
+    },
+    "all": {
+     "moves": 15467,
+     "botBelow": [
+      0.0041142706114473265,
+      0.026059511216781527,
+      0.09202966923564936
+     ],
+     "movesMadeImpossible": 0.033749272644986096,
+     "mistakes": 1190,
+     "mistakesMadeImpossible": 0.126890756302521
+    }
+   }
+  },
+  {
+   "cut": {
+    "kind": "top-p",
+    "p": 0.9
+   },
+   "name": "top-p 0.90",
+   "distance": 0.0304418062496197,
+   "phaseGaps": {
+    "opening": -0.013987730061349693,
+    "middlegame": -0.032870890270156695,
+    "endgame": -0.03446438909672539
+   },
+   "movesKept": 0.9281807472231571,
+   "improbableRemoved": 0.9971293795792748,
+   "training": {
+    "byPhase": {
+     "opening": {
+      "moves": 4075,
+      "botBelow": [
+       0,
+       0.002465631499454018,
+       0.0619340942102218
+      ],
+      "movesMadeImpossible": 0.05374233128834356,
+      "mistakes": 43,
+      "mistakesMadeImpossible": 0.27906976744186046
+     },
+     "middlegame": {
+      "moves": 7635,
+      "botBelow": [
+       0.0000040278699873804665,
+       0.006365745808585419,
+       0.07550646213063425
+      ],
+      "movesMadeImpossible": 0.07439423706614276,
+      "mistakes": 804,
+      "mistakesMadeImpossible": 0.22388059701492538
+     },
+     "endgame": {
+      "moves": 12058,
+      "botBelow": [
+       0.00020139295668313424,
+       0.007797026971770874,
+       0.06963157528331333
+      ],
+      "movesMadeImpossible": 0.07629789351467905,
+      "mistakes": 1286,
+      "mistakesMadeImpossible": 0.19751166407465007
+     }
+    },
+    "all": {
+     "moves": 23768,
+     "botBelow": [
+      0.00010346470292152823,
+      0.006423193740930564,
+      0.0701990410232349
+     ],
+     "movesMadeImpossible": 0.07181925277684281,
+     "mistakes": 2133,
+     "mistakesMadeImpossible": 0.2090951711204876
+    }
+   },
+   "botGames": {
+    "byPhase": {
+     "opening": {
+      "moves": 880,
+      "botBelow": [
+       0,
+       0.004407262638061709,
+       0.06350914919759128
+      ],
+      "movesMadeImpossible": 0.08295454545454546,
+      "mistakes": 24,
+      "mistakesMadeImpossible": 0.3333333333333333
+     },
+     "middlegame": {
+      "moves": 3904,
+      "botBelow": [
+       0,
+       0.005851996148791985,
+       0.07080567432772214
+      ],
+      "movesMadeImpossible": 0.06941598360655737,
+      "mistakes": 452,
+      "mistakesMadeImpossible": 0.21460176991150443
+     },
+     "endgame": {
+      "moves": 10683,
+      "botBelow": [
+       0.0002298459835087615,
+       0.006402999167469678,
+       0.05778786417895785
+      ],
+      "movesMadeImpossible": 0.06758401198165309,
+      "mistakes": 714,
+      "mistakesMadeImpossible": 0.20728291316526612
+     }
+    },
+    "all": {
+     "moves": 15467,
+     "botBelow": [
+      0.0001587537752520915,
+      0.006150373323363077,
+      0.06139918257536163
+     ],
+     "movesMadeImpossible": 0.06892092842826664,
+     "mistakes": 1190,
+     "mistakesMadeImpossible": 0.21260504201680672
+    }
+   }
+  },
+  {
+   "cut": {
+    "kind": "top-p",
+    "p": 0.85
+   },
+   "name": "top-p 0.85",
+   "distance": 0.030494871988427937,
+   "phaseGaps": {
+    "opening": -0.013987730061349693,
+    "middlegame": -0.03287491814014407,
+    "endgame": -0.034566438664866084
+   },
+   "movesKept": 0.8893470212049814,
+   "improbableRemoved": 0.9986016845215634,
+   "training": {
+    "byPhase": {
+     "opening": {
+      "moves": 4075,
+      "botBelow": [
+       0,
+       0.000053313360477767234,
+       0.029344974368457115
+      ],
+      "movesMadeImpossible": 0.09840490797546013,
+      "mistakes": 43,
+      "mistakesMadeImpossible": 0.37209302325581395
+     },
+     "middlegame": {
+      "moves": 7635,
+      "botBelow": [
+       0,
+       0.00045375599772576493,
+       0.04535135368862048
+      ],
+      "movesMadeImpossible": 0.11172233136869679,
+      "mistakes": 804,
+      "mistakesMadeImpossible": 0.29850746268656714
+     },
+     "endgame": {
+      "moves": 12058,
+      "botBelow": [
+       0.0000993433885424448,
+       0.0011348379906337476,
+       0.04315203819874461
+      ],
+      "movesMadeImpossible": 0.11411511030021562,
+      "mistakes": 1286,
+      "mistakesMadeImpossible": 0.276049766718507
+     }
+    },
+    "all": {
+     "moves": 23768,
+     "botBelow": [
+      0.00005039896411329516,
+      0.0007306275444986892,
+      0.04149131742530031
+     ],
+     "movesMadeImpossible": 0.11065297879501851,
+     "mistakes": 2133,
+     "mistakesMadeImpossible": 0.2864510079699953
+    }
+   },
+   "botGames": {
+    "byPhase": {
+     "opening": {
+      "moves": 880,
+      "botBelow": [
+       0,
+       0.00012537854013969872,
+       0.03259595363279773
+      ],
+      "movesMadeImpossible": 0.11477272727272728,
+      "mistakes": 24,
+      "mistakesMadeImpossible": 0.4166666666666667
+     },
+     "middlegame": {
+      "moves": 3904,
+      "botBelow": [
+       0,
+       0.00037965859857956607,
+       0.041713430271259
+      ],
+      "movesMadeImpossible": 0.10476434426229508,
+      "mistakes": 452,
+      "mistakesMadeImpossible": 0.3030973451327434
+     },
+     "endgame": {
+      "moves": 10683,
+      "botBelow": [
+       0.00003775208039814413,
+       0.001117316314393317,
+       0.034518076029441534
+      ],
+      "movesMadeImpossible": 0.10165683796686324,
+      "mistakes": 714,
+      "mistakesMadeImpossible": 0.2759103641456583
+     }
+    },
+    "all": {
+     "moves": 15467,
+     "botBelow": [
+      0.000026075223048643805,
+      0.0008746887224957237,
+      0.03622488376533147
+     ],
+     "movesMadeImpossible": 0.1031874313053598,
+     "mistakes": 1190,
+     "mistakesMadeImpossible": 0.28907563025210087
+    }
+   }
+  },
+  {
+   "cut": {
+    "kind": "top-p",
+    "p": 0.8
+   },
+   "name": "top-p 0.80",
+   "distance": 0.030518783501117988,
+   "phaseGaps": {
+    "opening": -0.013987730061349693,
+    "middlegame": -0.03287491814014407,
+    "endgame": -0.034613571591853735
+   },
+   "movesKept": 0.8555200269269606,
+   "improbableRemoved": 0.9992651076473278,
+   "training": {
+    "byPhase": {
+     "opening": {
+      "moves": 4075,
+      "botBelow": [
+       0,
+       0,
+       0.010974061532725597
+      ],
+      "movesMadeImpossible": 0.11975460122699387,
+      "mistakes": 43,
+      "mistakesMadeImpossible": 0.4418604651162791
+     },
+     "middlegame": {
+      "moves": 7635,
+      "botBelow": [
+       0,
+       0.000006326980812002111,
+       0.02295172748794439
+      ],
+      "movesMadeImpossible": 0.15140798952193843,
+      "mistakes": 804,
+      "mistakesMadeImpossible": 0.3656716417910448
+     },
+     "endgame": {
+      "moves": 12058,
+      "botBelow": [
+       0.00005221046155479,
+       0.000274303284184111,
+       0.023713064643028733
+      ],
+      "movesMadeImpossible": 0.1484491623818212,
+      "mistakes": 1286,
+      "mistakesMadeImpossible": 0.3499222395023328
+     }
+    },
+    "all": {
+     "moves": 23768,
+     "botBelow": [
+      0.000026487451423243766,
+      0.00014119217011072225,
+      0.021284410702707444
+     ],
+     "movesMadeImpossible": 0.1444799730730394,
+     "mistakes": 2133,
+     "mistakesMadeImpossible": 0.3577121425222691
+    }
+   },
+   "botGames": {
+    "byPhase": {
+     "opening": {
+      "moves": 880,
+      "botBelow": [
+       0,
+       0,
+       0.014158241993498138
+      ],
+      "movesMadeImpossible": 0.14545454545454545,
+      "mistakes": 24,
+      "mistakesMadeImpossible": 0.5
+     },
+     "middlegame": {
+      "moves": 3904,
+      "botBelow": [
+       0,
+       0.000005891064478995573,
+       0.02011773714580458
+      ],
+      "movesMadeImpossible": 0.14293032786885246,
+      "mistakes": 452,
+      "mistakesMadeImpossible": 0.37610619469026546
+     },
+     "endgame": {
+      "moves": 10683,
+      "botBelow": [
+       0.00000449481443632558,
+       0.00021512139629875236,
+       0.018615681081321465
+      ],
+      "movesMadeImpossible": 0.1340447439857718,
+      "mistakes": 714,
+      "mistakesMadeImpossible": 0.33753501400560226
+     }
+    },
+    "all": {
+     "moves": 15467,
+     "botBelow": [
+      0.0000031045517956466136,
+      0.00015007051091909032,
+      0.018741205131134465
+     ],
+     "movesMadeImpossible": 0.1369367039503459,
+     "mistakes": 1190,
+     "mistakesMadeImpossible": 0.3554621848739496
+    }
+   }
+  },
+  {
+   "cut": {
+    "kind": "min-p",
+    "fraction": 0.02
+   },
+   "name": "min-p 0.02",
+   "distance": 0.02288773322203488,
+   "phaseGaps": {
+    "opening": -0.0072790492346591846,
+    "middlegame": -0.024468714925948636,
+    "endgame": -0.02716162540474963
+   },
+   "movesKept": 0.9723157186132615,
+   "improbableRemoved": 0.78754219012897,
+   "training": {
+    "byPhase": {
+     "opening": {
+      "moves": 4075,
+      "botBelow": [
+       0.0067086808266905084,
+       0.033728554731660844,
+       0.10880359171029401
+      ],
+      "movesMadeImpossible": 0.012269938650306749,
+      "mistakes": 43,
+      "mistakesMadeImpossible": 0.16279069767441862
+     },
+     "middlegame": {
+      "moves": 7635,
+      "botBelow": [
+       0.008406203214195437,
+       0.037963642674530625,
+       0.11677785756875733
+      ],
+      "movesMadeImpossible": 0.028683693516699412,
+      "mistakes": 804,
+      "mistakesMadeImpossible": 0.09701492537313433
+     },
+     "endgame": {
+      "moves": 12058,
+      "botBelow": [
+       0.007504156648658896,
+       0.03403266900688549,
+       0.10696782007209799
+      ],
+      "movesMadeImpossible": 0.03226073975783712,
+      "mistakes": 1286,
+      "mistakesMadeImpossible": 0.1057542768273717
+     }
+    },
+    "all": {
+     "moves": 23768,
+     "botBelow": [
+      0.007657537730506297,
+      0.03524327647410754,
+      0.11043384185401693
+     ],
+     "movesMadeImpossible": 0.027684281386738473,
+     "mistakes": 2133,
+     "mistakesMadeImpossible": 0.10360993905297702
+    }
+   },
+   "botGames": {
+    "byPhase": {
+     "opening": {
+      "moves": 880,
+      "botBelow": [
+       0.008231608077725848,
+       0.03910422867212744,
+       0.10984632057903194
+      ],
+      "movesMadeImpossible": 0.03295454545454545,
+      "mistakes": 24,
+      "mistakesMadeImpossible": 0.125
+     },
+     "middlegame": {
+      "moves": 3904,
+      "botBelow": [
+       0.008021425622398106,
+       0.03599394970640146,
+       0.11157491644450293
+      ],
+      "movesMadeImpossible": 0.02817622950819672,
+      "mistakes": 452,
+      "mistakesMadeImpossible": 0.1172566371681416
+     },
+     "endgame": {
+      "moves": 10683,
+      "botBelow": [
+       0.006129312632330237,
+       0.028907654076238284,
+       0.09341527428865626
+      ],
+      "movesMadeImpossible": 0.027613966114387344,
+      "mistakes": 714,
+      "mistakesMadeImpossible": 0.10784313725490197
+     }
+    },
+    "all": {
+     "moves": 15467,
+     "botBelow": [
+      0.006726508540080487,
+      0.03127643171796195,
+      0.09893376938867265
+     ],
+     "movesMadeImpossible": 0.028059740091808366,
+     "mistakes": 1190,
+     "mistakesMadeImpossible": 0.11176470588235295
+    }
+   }
+  },
+  {
+   "cut": {
+    "kind": "min-p",
+    "fraction": 0.05
+   },
+   "name": "min-p 0.05",
+   "distance": 0.030320716371349855,
+   "phaseGaps": {
+    "opening": -0.01394771517192205,
+    "middlegame": -0.032654178948023554,
+    "endgame": -0.03437644643560302
+   },
+   "movesKept": 0.9349545607539549,
+   "improbableRemoved": 0.9937697499907361,
+   "training": {
+    "byPhase": {
+     "opening": {
+      "moves": 4075,
+      "botBelow": [
+       0.000040014889427642587,
+       0.005632750491673996,
+       0.07159127699090252
+      ],
+      "movesMadeImpossible": 0.04269938650306748,
+      "mistakes": 43,
+      "mistakesMadeImpossible": 0.27906976744186046
+     },
+     "middlegame": {
+      "moves": 7635,
+      "botBelow": [
+       0.00022073919212051745,
+       0.008842869064174218,
+       0.08049702616643745
+      ],
+      "movesMadeImpossible": 0.068762278978389,
+      "mistakes": 804,
+      "mistakesMadeImpossible": 0.20522388059701493
+     },
+     "endgame": {
+      "moves": 12058,
+      "botBelow": [
+       0.0002893356178055073,
+       0.008615885617682527,
+       0.07321748280193986
+      ],
+      "movesMadeImpossible": 0.07024382152927516,
+      "mistakes": 1286,
+      "mistakesMadeImpossible": 0.18973561430793157
+     }
+    },
+    "all": {
+     "moves": 23768,
+     "botBelow": [
+      0.0002245545811913748,
+      0.008177344006082056,
+      0.07527708078696022
+     ],
+     "movesMadeImpossible": 0.0650454392460451,
+     "mistakes": 2133,
+     "mistakesMadeImpossible": 0.19737458977965308
+    }
+   },
+   "botGames": {
+    "byPhase": {
+     "opening": {
+      "moves": 880,
+      "botBelow": [
+       0.00010838707021674986,
+       0.008378890318306955,
+       0.07375616140333287
+      ],
+      "movesMadeImpossible": 0.0715909090909091,
+      "mistakes": 24,
+      "mistakesMadeImpossible": 0.3333333333333333
+     },
+     "middlegame": {
+      "moves": 3904,
+      "botBelow": [
+       0.00022074053172452173,
+       0.008675946562719493,
+       0.07641156608819465
+      ],
+      "movesMadeImpossible": 0.05942622950819672,
+      "mistakes": 452,
+      "mistakesMadeImpossible": 0.20353982300884957
+     },
+     "endgame": {
+      "moves": 10683,
+      "botBelow": [
+       0.00025307459549383474,
+       0.0070248003492371135,
+       0.0625569090088342
+      ],
+      "movesMadeImpossible": 0.05897219882055602,
+      "mistakes": 714,
+      "mistakesMadeImpossible": 0.18907563025210083
+     }
+    },
+    "all": {
+     "moves": 15467,
+     "botBelow": [
+      0.00023668116385232494,
+      0.007518604835576853,
+      0.06669112529802931
+     ],
+     "movesMadeImpossible": 0.05980474558737958,
+     "mistakes": 1190,
+     "mistakesMadeImpossible": 0.19747899159663865
+    }
+   }
+  },
+  {
+   "cut": {
+    "kind": "min-p",
+    "fraction": 0.1
+   },
+   "name": "min-p 0.10",
+   "distance": 0.030542678493715093,
+   "phaseGaps": {
+    "opening": -0.013987730061349693,
+    "middlegame": -0.03287260577209956,
+    "endgame": -0.03466213612279318
+   },
+   "movesKept": 0.8803433187478963,
+   "improbableRemoved": 0.9999280724243528,
+   "training": {
+    "byPhase": {
+     "opening": {
+      "moves": 4075,
+      "botBelow": [
+       0,
+       0.000019544008639867435,
+       0.024754512659712225
+      ],
+      "movesMadeImpossible": 0.11803680981595092,
+      "mistakes": 43,
+      "mistakesMadeImpossible": 0.37209302325581395
+     },
+     "middlegame": {
+      "moves": 7635,
+      "botBelow": [
+       0.000002312368044516962,
+       0.00045574652244276546,
+       0.035101342325303125
+      ],
+      "movesMadeImpossible": 0.12141453831041257,
+      "mistakes": 804,
+      "mistakesMadeImpossible": 0.32338308457711445
+     },
+     "endgame": {
+      "moves": 12058,
+      "botBelow": [
+       0.0000036459306153461365,
+       0.0005943666527701185,
+       0.03295858753500284
+      ],
+      "movesMadeImpossible": 0.11909105987725992,
+      "mistakes": 1286,
+      "mistakesMadeImpossible": 0.28615863141524106
+     }
+    },
+    "all": {
+     "moves": 23768,
+     "botBelow": [
+      0.000002592458826141481,
+      0.0004512849054678587,
+      0.032240324648227764
+     ],
+     "movesMadeImpossible": 0.11965668125210367,
+     "mistakes": 2133,
+     "mistakesMadeImpossible": 0.30192217533989685
+    }
+   },
+   "botGames": {
+    "byPhase": {
+     "opening": {
+      "moves": 880,
+      "botBelow": [
+       0,
+       0.00018670197125856067,
+       0.031199681296370466
+      ],
+      "movesMadeImpossible": 0.11363636363636363,
+      "mistakes": 24,
+      "mistakesMadeImpossible": 0.5
+     },
+     "middlegame": {
+      "moves": 3904,
+      "botBelow": [
+       0,
+       0.0004264046235689674,
+       0.03367702793831641
+      ],
+      "movesMadeImpossible": 0.11321721311475409,
+      "mistakes": 452,
+      "mistakesMadeImpossible": 0.32079646017699115
+     },
+     "endgame": {
+      "moves": 10683,
+      "botBelow": [
+       0,
+       0.0005387857119018546,
+       0.02713894281955116
+      ],
+      "movesMadeImpossible": 0.0990358513526163,
+      "mistakes": 714,
+      "mistakesMadeImpossible": 0.2661064425770308
+     }
+    },
+    "all": {
+     "moves": 15467,
+     "botBelow": [
+      0,
+      0.0004903878674189109,
+      0.02902024715544441
+     ],
+     "movesMadeImpossible": 0.10344604642141333,
+     "mistakes": 1190,
+     "mistakesMadeImpossible": 0.2915966386554622
+    }
+   }
+  },
+  {
+   "cut": {
+    "kind": "min-p",
+    "fraction": 0.2
+   },
+   "name": "min-p 0.20",
+   "distance": 0.030545270952541233,
+   "phaseGaps": {
+    "opening": -0.013987730061349693,
+    "middlegame": -0.03287491814014407,
+    "endgame": -0.03466578205340853
+   },
+   "movesKept": 0.8078508919555705,
+   "improbableRemoved": 1,
+   "training": {
+    "byPhase": {
+     "opening": {
+      "moves": 4075,
+      "botBelow": [
+       0,
+       0,
+       0.00037666595255741656
+      ],
+      "movesMadeImpossible": 0.1712883435582822,
+      "mistakes": 43,
+      "mistakesMadeImpossible": 0.5116279069767442
+     },
+     "middlegame": {
+      "moves": 7635,
+      "botBelow": [
+       0,
+       0.000006838821193803564,
+       0.004325887578817663
+      ],
+      "movesMadeImpossible": 0.20235756385068762,
+      "mistakes": 804,
+      "mistakesMadeImpossible": 0.4614427860696517
+     },
+     "endgame": {
+      "moves": 12058,
+      "botBelow": [
+       0,
+       0.000011542143099451062,
+       0.005099942156788736
+      ],
+      "movesMadeImpossible": 0.19273511361751533,
+      "mistakes": 1286,
+      "mistakesMadeImpossible": 0.447900466562986
+     }
+    },
+    "all": {
+     "moves": 23768,
+     "botBelow": [
+      0,
+      0.000008052404969196866,
+      0.004041491414822573
+     ],
+     "movesMadeImpossible": 0.19214910804442947,
+     "mistakes": 2133,
+     "mistakesMadeImpossible": 0.4542897327707454
+    }
+   },
+   "botGames": {
+    "byPhase": {
+     "opening": {
+      "moves": 880,
+      "botBelow": [
+       0,
+       0,
+       0.0018780402715158368
+      ],
+      "movesMadeImpossible": 0.18977272727272726,
+      "mistakes": 24,
+      "mistakesMadeImpossible": 0.5833333333333334
+     },
+     "middlegame": {
+      "moves": 3904,
+      "botBelow": [
+       0,
+       0,
+       0.00429876955104834
+      ],
+      "movesMadeImpossible": 0.18596311475409835,
+      "mistakes": 452,
+      "mistakesMadeImpossible": 0.46238938053097345
+     },
+     "endgame": {
+      "moves": 10683,
+      "botBelow": [
+       0,
+       0.000004140390476152642,
+       0.00414144033973454
+      ],
+      "movesMadeImpossible": 0.17036412992605074,
+      "mistakes": 714,
+      "mistakesMadeImpossible": 0.4019607843137255
+     }
+    },
+    "all": {
+     "moves": 15467,
+     "botBelow": [
+      0,
+      0.000002859752470210039,
+      0.004052374663193302
+     ],
+     "movesMadeImpossible": 0.17540570246330897,
+     "mistakes": 1190,
+     "mistakesMadeImpossible": 0.42857142857142855
+    }
+   }
+  }
+ ],
+ "phaseBest": {
+  "opening": {
+   "cut": {
+    "kind": "top-k",
+    "k": 10
+   },
+   "name": "top-10",
+   "difference": 0.019141448700565417,
+   "low": 0.011420753085161566,
+   "high": 0.024454743325365142
+  },
+  "middlegame": {
+   "cut": {
+    "kind": "none"
+   },
+   "name": "no cut",
+   "difference": 0,
+   "low": 0,
+   "high": 0
+  },
+  "endgame": {
+   "cut": {
+    "kind": "none"
+   },
+   "name": "no cut",
+   "difference": 0,
+   "low": 0,
+   "high": 0
+  }
+ },
+ "perPhaseCutBeyondChance": [
+  "opening"
+ ],
+ "testSetCheck": {
+  "training": {
+   "opening": {
+    "gap": 0.02180546883452304,
+    "standardError": 0.001835958868712661
+   },
+   "middlegame": {
+    "gap": 0.004810797311575739,
+    "standardError": 0.002082582683313271
+   },
+   "endgame": {
+    "gap": 0.00042075392153024,
+    "standardError": 0.0017218576892737835
+   }
+  },
+  "testSet": {
+   "opening": {
+    "gap": 0.023265294494482596,
+    "standardError": 0.0034581581916939877
+   },
+   "middlegame": {
+    "gap": 0.009918885338680055,
+    "standardError": 0.003305112207503487
+   },
+   "endgame": {
+    "gap": 0.0013781294101878863,
+    "standardError": 0.002991350130284718
+   }
+  },
+  "trainingDistance": 0.0054973566879996045,
+  "testSetDistance": 0.007560993632205789,
+  "uncutTestSet": {
+   "opening": {
+    "gap": 0.023265294494482596,
+    "standardError": 0.0034581581916939877
+   },
+   "middlegame": {
+    "gap": 0.009918885338680055,
+    "standardError": 0.003305112207503487
+   },
+   "endgame": {
+    "gap": 0.0013781294101878863,
+    "standardError": 0.002991350130284718
+   }
+  },
+  "holds": false
+ },
+ "botGames": {
+  "moves": 16602,
+  "outsideOpeningBook": 15467,
+  "profile": {
+   "opening": {
+    "moves": 880,
+    "below": [
+     0.042045454545454546,
+     0.07045454545454545,
+     0.15568181818181817
+    ]
+   },
+   "middlegame": {
+    "moves": 3904,
+    "below": [
+     0.029456967213114756,
+     0.05891393442622951,
+     0.13370901639344263
+    ]
+   },
+   "endgame": {
+    "moves": 10683,
+    "below": [
+     0.029860526069456144,
+     0.05241973228493869,
+     0.11588505101563232
+    ]
+   }
+  }
+ }
+}
