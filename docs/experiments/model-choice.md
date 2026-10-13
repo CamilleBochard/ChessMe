@@ -70,8 +70,9 @@ visitors' browsers use, loads and runs it.
 
 **The engine reproduces it.** Under Node, the Move-Selection Engine with
 the converted file plays the model's top move on the Test Set and matches
-Camille's in exactly the positions PyTorch did: 3,822 of 7,092, and 762,
-1,112 and 1,948 in the opening, middlegame and endgame.
+Camille's in as many positions as PyTorch does, in every slice: 3,822 of
+7,092, and 762, 1,112 and 1,948 in the opening, middlegame and endgame.
+The counts are compared, not the positions one by one.
 
 **Same download.** Both files weigh 22.20 MB, 19.17 MB with Brotli: the
 same network with other values in its weights.
@@ -88,10 +89,8 @@ model's evaluation losses closest to Camille's Blunder Profile is chosen
 exactly as in [the draw's temperature](draw-temperature.md): the same rule,
 distance, opponent (the original model at 1100, drawing at 1), 200 games
 per temperature, seed 13, and Stockfish 19 at depth 18. For the original
-model this was done: temperature 1. For the fine-tuned model it is done
-here. The ticket that asked for this comparison left the temperature out
-of scope; the rule needs it, so it is measured here and reported with the
-rest.
+model this was done: temperature 1. For the fine-tuned model it is measured
+here, because the rule needs it, and reported with the rest.
 
 **Then Style decides.** Both Bots, the Opening Book in front of each model
 and each drawing at its own temperature, answer the Test Set. The
@@ -122,6 +121,8 @@ python -m pipeline.measure_draw_temperature --out docs/experiments/results/draw-
   --run 1.25=data/dataset/bot-games-fine-tuned-temperature-1.25.jsonl --run 1.5=data/dataset/bot-games-fine-tuned-temperature-1.5.jsonl
 npm run compare-bots -- models/onnx/maia3-5m.onnx models/onnx/maia3-5m-fine-tuned.onnx \
   --first-temperature 1 --second-temperature 1.25 --record docs/experiments/results/model-choice-test-set.json
+npm run compare-bots -- models/onnx/maia3-5m.onnx models/onnx/maia3-5m-fine-tuned.onnx \
+  --first-temperature 1 --second-temperature 1 --record docs/experiments/results/model-choice-test-set-equal-temperature.json
 npm run bot-games -- --temperature 1 --opponent-rating 1100 --games 400 --out data/dataset/bot-games-original.jsonl
 npm run bot-games -- --model models/onnx/maia3-5m-fine-tuned.onnx --temperature 1.25 --opponent-rating 1100 --games 400 --out data/dataset/bot-games-fine-tuned.jsonl
 python -m pipeline.measure_model_choice --run original=data/dataset/bot-games-original.jsonl --run fine-tuned=data/dataset/bot-games-fine-tuned.jsonl
@@ -237,12 +238,35 @@ from them. The instrument is weak (0.573 on Camille's own Test Set) and
 the two Bots drew at different temperatures, so this is a small sign, not
 a finding.
 
-**The Style Fingerprint.** Drawing at temperature 1 removed most of the
-castling gap that the top-move Bot showed: the original Bot now castles
-kingside in 56.8% of games, queenside in 15.0% and never in 28.2%, against
-Camille's 53.5%, 15.2% and 31.3%. The fine-tuned Bot at 1.25 castles
-kingside less (45.2%) and stays uncastled more (39.0%). Both are in
-`style-fingerprint-original.json` and `style-fingerprint-fine-tuned.json`.
+**The Style Fingerprint**, on the same 400 games of each Bot. The two
+right-hand columns are Camille's training games and Test Set measured
+apart: the gap between them is how far a statistic drifts by chance.
+
+| Statistic | Camille | Original Bot, at 1 | Fine-tuned Bot, at 1.25 | Camille, training games | Camille, Test Set |
+|---|---|---|---|---|---|
+| Mean loss, middlegame | 103.1 | 108.0 | 130.5 | 102.6 | 105.0 |
+| Mean loss, endgame | 104.5 | 67.7 | 81.5 | 104.1 | 105.7 |
+| Capture taken when on offer, opening | 29.8% | 39.3% | 37.1% | 29.8% | 30.1% |
+| Capture taken when on offer, middlegame | 30.0% | 37.5% | 30.8% | 30.2% | 29.3% |
+| Capture taken when on offer, endgame | 36.9% | 39.3% | 37.9% | 36.9% | 36.8% |
+| Queen moves, opening | 5.8% | 3.2% | 4.0% | 5.9% | 5.3% |
+| King moves, endgame | 16.4% | 26.5% | 29.4% | 16.2% | 17.2% |
+| Queens off before move 20 | 19.2% | 22.8% | 20.8% | 18.4% | 22.2% |
+| Material at move 30, mean (of 78) | 37.5 | 32.6 | 33.9 | 37.2 | 38.3 |
+| Castled kingside | 53.5% | 56.8% | 45.2% | 52.2% | 58.3% |
+| Castled queenside | 15.2% | 15.0% | 15.8% | 15.1% | 15.7% |
+| Never castled | 31.3% | 28.2% | 39.0% | 32.7% | 26.1% |
+
+Neither Bot is closer on every count. The fine-tuned Bot takes an offered
+capture in the middlegame as often as Camille does (30.8% against 30.0%,
+where the original takes 37.5%), and is a little closer on early queen
+moves, queen trades and the material left at move 30. The original is
+closer on castling, where drawing at temperature 1 removed most of the gap
+the top-move Bot showed (it castled kingside in 84% of games), and on the
+middlegame loss. Both move their king far more than Camille in the
+endgame, which their games, played on to mate, reach more often. The full
+fingerprints are in `style-fingerprint-original.json` and
+`style-fingerprint-fine-tuned.json`.
 
 **Download.** Both models weigh 19.17 MB with Brotli.
 
