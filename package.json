@@ -19,7 +19,9 @@
     "opening-book": "tsx scripts/opening-book.ts",
     "bot-games": "tsx scripts/bot-games.ts",
     "drawn-move": "tsx scripts/drawn-move.ts",
-    "compare-bots": "tsx scripts/compare-bots.ts"
+    "compare-bots": "tsx scripts/compare-bots.ts",
+    "move-probabilities": "tsx scripts/move-probabilities.ts",
+    "improbability": "tsx scripts/improbability.ts"
   },
   "dependencies": {
     "@lichess-org/chessground": "^10.1.1",
