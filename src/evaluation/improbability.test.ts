@@ -2,7 +2,7 @@
 // for what cutting the least likely moves would change.
 
 import { describe, expect, it } from 'vitest';
-import { improbabilityProfile, measureCut, type PlacedMove } from './improbability';
+import { chooseCut, improbabilityProfile, measureCut, type PlacedMove } from './improbability';
 import type { Phase } from './move-matching';
 
 /** A move of the given rank in a position whose policy, most likely first, is given. */
@@ -91,5 +91,58 @@ describe('the Bot under a cut', () => {
 
     expect(twoKept.all.moves).toBe(3);
     expect(twoKept.all.movesMadeImpossible).toBeCloseTo(1 / 3);
+  });
+});
+
+describe('choosing the cut', () => {
+  // Without a cut the Bot puts 0.01 of its draw on the two moves under 1%;
+  // keeping two moves, nothing.
+  const twoImprobable = [0.6, 0.39, 0.005, 0.005];
+
+  it("weighs each Phase's gap under 1% by Camille's share of moves in it", () => {
+    // Opening: his one move is improbable, so no cut is 0.01 closer there.
+    // Endgame: his three moves are likely, so the cut is 0.01 closer there.
+    // With three times the moves, the endgame decides: no cut is at
+    // 0.25 x 0.99 + 0.75 x 0.01 = 0.255, the cut at 0.25 x 1 = 0.25.
+    // Pooling every move instead would favour no cut.
+    const camille = [
+      placed('a', 'opening', twoImprobable, 3),
+      placed('a', 'endgame', twoImprobable, 1),
+      placed('a', 'endgame', twoImprobable, 1),
+      placed('a', 'endgame', twoImprobable, 2),
+    ];
+
+    const choice = chooseCut(camille, [{ kind: 'none' }, { kind: 'top-k', k: 2 }]);
+
+    expect(choice.chosen).toEqual({ kind: 'top-k', k: 2 });
+    expect(choice.candidates[0].distance).toBeCloseTo(0.255);
+    expect(choice.candidates[1].distance).toBeCloseTo(0.25);
+  });
+
+  it('breaks a tie with the cut that keeps more of his moves', () => {
+    // No move is under 1%, so every cut leaves the Bot at Camille's share,
+    // zero; keeping two moves forbids his third-ranked one.
+    const nothingImprobable = [0.5, 0.3, 0.2];
+    const camille = [placed('a', 'middlegame', nothingImprobable, 1), placed('a', 'middlegame', nothingImprobable, 3)];
+
+    const choice = chooseCut(camille, [{ kind: 'top-k', k: 2 }, { kind: 'top-k', k: 3 }]);
+
+    expect(choice.chosen).toEqual({ kind: 'top-k', k: 3 });
+  });
+
+  it('counts distances equal to the hundredth of a percentage point as a tie', () => {
+    // Camille plays one move under 1% in 40,000, the fourth-ranked one: a
+    // share of 0.0025%. No cut leaves the Bot at 0.01%, 0.0075 points away;
+    // keeping three moves leaves it at 0.005%, 0.0025 points away. Closer,
+    // but by less than a hundredth of a point, and it forbids his move.
+    const twoVeryImprobable = [0.5, 0.4999, 0.00005, 0.00005];
+    const camille = [placed('a', 'middlegame', twoVeryImprobable, 4)];
+    for (let move = 1; move < 40_000; move++) {
+      camille.push(placed('a', 'middlegame', twoVeryImprobable, 1));
+    }
+
+    const choice = chooseCut(camille, [{ kind: 'top-k', k: 3 }, { kind: 'none' }]);
+
+    expect(choice.chosen).toEqual({ kind: 'none' });
   });
 });

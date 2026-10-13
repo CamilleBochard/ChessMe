@@ -137,3 +137,87 @@ function isMistake(move: PlacedMove): boolean {
   }
   return move.centipawnLoss >= MISTAKE_CENTIPAWNS;
 }
+
+/** How far one candidate cut brings the Bot from Camille. */
+export interface CandidateDistance {
+  cut: MoveCut;
+  /**
+   * The gap under 1% between the Bot's expected share and Camille's, in
+   * absolute value, each Phase weighed by his share of moves in it: the gap
+   * for a move picked at random from his games.
+   */
+  distance: number;
+  /** The same gap in each Phase on its own, signed: positive when the Bot plays more improbable moves than he does. */
+  phaseGaps: Record<Phase, number>;
+  /** The share of Camille's moves the cut keeps possible. */
+  movesKept: number;
+}
+
+export interface CutChoice {
+  chosen: MoveCut;
+  /** Every candidate, in the order given. */
+  candidates: CandidateDistance[];
+}
+
+/**
+ * Chooses the cut that brings the Bot's share of moves the model gives less
+ * than 1% closest to Camille's, on his moves given. Of candidates equally
+ * close, the one keeping more of his moves wins, then the one given first.
+ */
+export function chooseCut(camilleMoves: PlacedMove[], candidates: MoveCut[]): CutChoice {
+  const measured = candidates.map((cut) => candidateDistance(camilleMoves, cut));
+  return { chosen: closest(measured).cut, candidates: measured };
+}
+
+/**
+ * Distances this close count as equal: a hundredth of a percentage point,
+ * finer than any difference the games could tell apart.
+ */
+const TIE = 0.0001;
+
+function closest(candidates: CandidateDistance[]): CandidateDistance {
+  let smallestDistance = Number.POSITIVE_INFINITY;
+  for (const candidate of candidates) {
+    smallestDistance = Math.min(smallestDistance, candidate.distance);
+  }
+
+  // Among the tied, a strict comparison keeps the first given of those
+  // keeping equally many moves.
+  let chosen: CandidateDistance | undefined = undefined;
+  for (const candidate of candidates) {
+    const tied = candidate.distance - smallestDistance < TIE;
+    if (!tied) {
+      continue;
+    }
+    if (chosen === undefined || candidate.movesKept > chosen.movesKept) {
+      chosen = candidate;
+    }
+  }
+  if (chosen === undefined) {
+    throw new Error('No candidate cut to choose from');
+  }
+  return chosen;
+}
+
+/** The share under 1%, the threshold the cut is chosen on. */
+const CHOSEN_ON = 0;
+
+function candidateDistance(camilleMoves: PlacedMove[], cut: MoveCut): CandidateDistance {
+  const camille = improbabilityProfile(camilleMoves);
+  const bot = measureCut(camilleMoves, cut);
+
+  let distance = 0;
+  const phaseGaps = {} as Record<Phase, number>;
+  for (const phase of PHASES) {
+    const moves = camille[phase].moves;
+    if (moves === 0) {
+      phaseGaps[phase] = Number.NaN;
+      continue;
+    }
+    const gap = bot.byPhase[phase].botBelow[CHOSEN_ON] - camille[phase].below[CHOSEN_ON];
+    phaseGaps[phase] = gap;
+    const weight = moves / camilleMoves.length;
+    distance += weight * Math.abs(gap);
+  }
+  return { cut: cut, distance: distance, phaseGaps: phaseGaps, movesKept: 1 - bot.all.movesMadeImpossible };
+}
