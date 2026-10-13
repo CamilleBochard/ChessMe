@@ -342,8 +342,9 @@ the opening only, top-10, is recommended as a follow-up.** It would cost
 **The check on the Test Set.** Read as stated before the figures, the
 match does not hold: on the Test Set the gap is 2.33 points in the
 opening and 0.99 in the middlegame, more than two standard errors from
-zero. That reading was the wrong test for this outcome. It asks whether
-the chosen cut leaves no gap at all, but no cut already left a gap of
+zero. That reading, stated in advance, was the wrong test for this
+outcome, and what follows is a reading made after the figures, not part
+of the rule. The stated test asks whether the chosen cut leaves no gap at all, but no cut already left a gap of
 2.18 points in the opening on the training games; the rule accepted it
 because every cut that closes it opens wider gaps in the middlegame and
 the endgame. What the Test Set does show is that the training figures
@@ -416,5 +417,14 @@ of time, and a cut that depends on the time left cannot be measured: the
 games store no time left per move.
 
 **One threshold decides.** The rule reads the share under 1%; the 2% and
-5% figures are reported beside it and tell the same story for the
-original model.
+5% figures are reported beside it. In the middlegame and the endgame they
+tell the same story. In the opening they do not: under 5% the uncut Bot
+and Camille are close (13.74% against 13.40%), so his opening differs
+from the model only in the far tail, the moves under 1% or 2%.
+
+**The bootstrap does not choose again.** Each Phase's best cut is chosen
+once, on all the training games, and the resamples measure its advantage
+over the chosen cut without choosing again. That favours the best cut a
+little, so the intervals are somewhat optimistic for it. The opening's
+interval, 1.14 to 2.45 points, lies well above zero; the conclusion does
+not rest on that margin.
