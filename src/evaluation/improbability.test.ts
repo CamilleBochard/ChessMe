@@ -2,7 +2,14 @@
 // for what cutting the least likely moves would change.
 
 import { describe, expect, it } from 'vitest';
-import { chooseCut, improbabilityProfile, measureCut, phaseCutAdvantage, type PlacedMove } from './improbability';
+import {
+  chooseCut,
+  cutGap,
+  improbabilityProfile,
+  measureCut,
+  phaseCutAdvantage,
+  type PlacedMove,
+} from './improbability';
 import { seededRandom } from './seeded-random';
 import type { Phase } from './move-matching';
 
@@ -192,5 +199,21 @@ describe("how far a Phase's own best cut beats the chosen one", () => {
     expect(advantage.difference).toBeCloseTo(-0.01);
     expect(advantage.low).toBeCloseTo(-0.01);
     expect(advantage.high).toBeCloseTo(0.01);
+  });
+});
+
+describe("the chosen cut's gap to Camille, for the check on the Test Set", () => {
+  it('gives per Phase the Bot share minus his, with a standard error clustered by game', () => {
+    // Without a cut the Bot plays 0.01 under 1% in each position. Camille
+    // plays an improbable move in game a and a likely one in game b: a gap
+    // of -0.99 and +0.01, -0.49 on average. Each game strays 0.5 from that,
+    // so the standard error is sqrt(2 x (0.25 + 0.25)) / 2 = 0.5.
+    const twoImprobable = [0.6, 0.39, 0.005, 0.005];
+    const camille = [placed('a', 'middlegame', twoImprobable, 3), placed('b', 'middlegame', twoImprobable, 1)];
+
+    const gap = cutGap(camille, { kind: 'none' });
+
+    expect(gap.middlegame.gap).toBeCloseTo(-0.49);
+    expect(gap.middlegame.standardError).toBeCloseTo(0.5);
   });
 });

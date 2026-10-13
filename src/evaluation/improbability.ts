@@ -5,7 +5,7 @@
 // Free of anything DOM or Node; reading files is left to the caller.
 
 import { cutPolicy, type MoveCut } from '../engine/move-cut';
-import { PHASES, type Phase } from './move-matching';
+import { clusteredStandardError, PHASES, type GameTally, type Phase } from './move-matching';
 
 /** One move played, and where it sits in the Base Model's distribution for its position. */
 export interface PlacedMove {
@@ -254,7 +254,7 @@ export function phaseCutAdvantage(camilleMoves: PlacedMove[], phase: Phase, setu
 
   const differences: number[] = [];
   for (let resample = 0; resample < setup.resamples; resample++) {
-    const drawn: GameTally[] = [];
+    const drawn: GameImprobability[] = [];
     for (let draw = 0; draw < games.length; draw++) {
       const index = Math.floor(setup.random() * games.length);
       drawn.push(games[index]);
@@ -271,15 +271,15 @@ export function phaseCutAdvantage(camilleMoves: PlacedMove[], phase: Phase, setu
 }
 
 /** One game's moves in a Phase, summed: how many, how many improbable, and each cut's expected count. */
-interface GameTally {
+interface GameImprobability {
   moves: number;
   camilleImprobable: number;
   chosenImprobable: number;
   phaseBestImprobable: number;
 }
 
-function gameTallies(moves: PlacedMove[], chosen: MoveCut, phaseBest: MoveCut): GameTally[] {
-  const tallies = new Map<string, GameTally>();
+function gameTallies(moves: PlacedMove[], chosen: MoveCut, phaseBest: MoveCut): GameImprobability[] {
+  const tallies = new Map<string, GameImprobability>();
   for (const move of moves) {
     let tally = tallies.get(move.game);
     if (tally === undefined) {
@@ -296,7 +296,7 @@ function gameTallies(moves: PlacedMove[], chosen: MoveCut, phaseBest: MoveCut): 
   return [...tallies.values()];
 }
 
-function advantageOver(games: GameTally[]): number {
+function advantageOver(games: GameImprobability[]): number {
   let moves = 0;
   let camilleImprobable = 0;
   let chosenImprobable = 0;
@@ -310,4 +310,48 @@ function advantageOver(games: GameTally[]): number {
   const chosenGap = Math.abs(chosenImprobable - camilleImprobable) / moves;
   const phaseBestGap = Math.abs(phaseBestImprobable - camilleImprobable) / moves;
   return chosenGap - phaseBestGap;
+}
+
+/** How far the Bot under a cut lands from Camille in one Phase. */
+export interface PhaseGap {
+  /** The Bot's expected share under 1% minus Camille's: positive when the Bot plays more improbable moves. */
+  gap: number;
+  /** Clustered by game, as Move-Matching's: a game's moves are not independent. */
+  standardError: number;
+}
+
+/**
+ * Per Phase, the gap under 1% between the Bot under the cut and Camille, on
+ * his moves given, with its standard error.
+ */
+export function cutGap(camilleMoves: PlacedMove[], cut: MoveCut): Record<Phase, PhaseGap> {
+  const gaps = {} as Record<Phase, PhaseGap>;
+  for (const phase of PHASES) {
+    const inPhase = camilleMoves.filter((move) => move.phase === phase);
+
+    // Each position scores the Bot's expected improbable share minus
+    // Camille's own, 1 or 0; a game tallies its positions' scores.
+    const games = new Map<string, GameTally>();
+    let total = 0;
+    for (const move of inPhase) {
+      let camilleImprobable = 0;
+      if (move.probability < IMPROBABILITY_THRESHOLDS[CHOSEN_ON]) {
+        camilleImprobable = 1;
+      }
+      const difference = positionUnderCut(move, cut).botBelow[CHOSEN_ON] - camilleImprobable;
+
+      let game = games.get(move.game);
+      if (game === undefined) {
+        game = { matched: 0, positions: 0 };
+        games.set(move.game, game);
+      }
+      game.matched += difference;
+      game.positions += 1;
+      total += difference;
+    }
+
+    const gap = total / inPhase.length;
+    gaps[phase] = { gap: gap, standardError: clusteredStandardError([...games.values()], gap) };
+  }
+  return gaps;
 }
