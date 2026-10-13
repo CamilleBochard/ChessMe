@@ -18,7 +18,8 @@
     "base-model-sweep": "tsx scripts/base-model-sweep.ts",
     "opening-book": "tsx scripts/opening-book.ts",
     "bot-games": "tsx scripts/bot-games.ts",
-    "drawn-move": "tsx scripts/drawn-move.ts"
+    "drawn-move": "tsx scripts/drawn-move.ts",
+    "compare-bots": "tsx scripts/compare-bots.ts"
   },
   "dependencies": {
     "@lichess-org/chessground": "^10.1.1",

@@ -292,6 +292,11 @@ again the Bot's games that the Style Fingerprint and the style
 discriminator were measured on. The adapter does not beat the Baseline and
 does not ship.
 
+Inside the Bot, it did not replace the original: see [the original or the
+fine-tuned Base Model](model-choice.md). At equal temperature its Bot plays
+Camille's move more often, but at the temperature that brings its mistakes
+to his Level it plays it less often, and the rule keeps the original.
+
 The result also disagrees with the prediction recorded in ADR 0001. That
 prediction rests on another model (Maia-1), its training setup and other
 players. Which of these differences matters was not tested.

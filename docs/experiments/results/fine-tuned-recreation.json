@@ -1,0 +1,76 @@
+{
+ "formatVersion": 1,
+ "measuredOn": "2026-10-12",
+ "runtime": "PyTorch 2.14.1+cpu on cpu, x86_64, 16 logical processors",
+ "recordedRuntime": "PyTorch 2.11.0+cu130 on cuda",
+ "learningRate": 1e-05,
+ "epochs": 1,
+ "trainingMinutes": 2.121439071450004,
+ "validationAfterPly10ByEpoch": [
+  0.5065527065527066,
+  0.5287749287749288
+ ],
+ "testSet": {
+  "overall": {
+   "matched": 3822,
+   "positions": 7092,
+   "games": 230,
+   "standardError": 0.006212860132438888
+  },
+  "afterPly10": {
+   "matched": 3060,
+   "positions": 5942,
+   "games": 230,
+   "standardError": 0.006943271912914634
+  },
+  "byPhase": {
+   "opening": {
+    "matched": 762,
+    "positions": 1150,
+    "games": 230,
+    "standardError": 0.016103445487574024
+   },
+   "middlegame": {
+    "matched": 1112,
+    "positions": 2187,
+    "games": 230,
+    "standardError": 0.01094217260427635
+   },
+   "endgame": {
+    "matched": 1948,
+    "positions": 3755,
+    "games": 205,
+    "standardError": 0.009966280080049158
+   }
+  }
+ },
+ "countsAgainstRecorded": {
+  "slices": {
+   "overall": {
+    "recorded": 3822,
+    "measured": 3822
+   },
+   "afterPly10": {
+    "recorded": 3060,
+    "measured": 3060
+   },
+   "opening": {
+    "recorded": 762,
+    "measured": 762
+   },
+   "middlegame": {
+    "recorded": 1112,
+    "measured": 1112
+   },
+   "endgame": {
+    "recorded": 1948,
+    "measured": 1948
+   }
+  },
+  "identical": true
+ },
+ "againstExperimentWeights": {
+  "largestWeightDifference": 4.8857182264328e-06,
+  "testSetPositionsWithAnotherTopMove": 0
+ }
+}

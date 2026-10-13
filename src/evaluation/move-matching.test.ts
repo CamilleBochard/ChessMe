@@ -6,7 +6,13 @@ import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 import type { MoveProbability } from '../engine/base-model';
 import { gameFromFen, legalMoves, uciName, type MoveRequest } from '../game/game';
-import { measureDrawnMoveMatching, measureMoveMatching, readPositions, type PlayedPosition } from './move-matching';
+import {
+  compareBots,
+  measureDrawnMoveMatching,
+  measureMoveMatching,
+  readPositions,
+  type PlayedPosition,
+} from './move-matching';
 
 const FIXTURE_TEST_SET = new URL('./fixtures/test-set.jsonl', import.meta.url);
 
@@ -120,5 +126,42 @@ describe('measureDrawnMoveMatching', () => {
     expect(report.drawn.byPhase.middlegame.matched).toBeCloseTo(0.6, 10);
     expect(report.drawn.byPhase.endgame.matched).toBeCloseTo(0.3, 10);
     expect(report.drawn.afterPly10.matched).toBeCloseTo(0.9, 10);
+  });
+});
+
+describe('compareBots', () => {
+  it('measures what one Bot gains over another on the same positions, top move and draw', async () => {
+    const testSet = readPositions(await readFile(FIXTURE_TEST_SET, 'utf-8'));
+    // The first Bot puts Camille's move second, at 0.3; the second Bot puts
+    // it first, at 0.6, in every position.
+    const first = new Map<string, MoveProbability[]>();
+    const second = new Map<string, MoveProbability[]>();
+    for (const position of testSet) {
+      const his = camillesMove(position);
+      first.set(position.fen, [
+        { move: SOME_OTHER_MOVE, probability: 0.7 },
+        { move: his, probability: 0.3 },
+      ]);
+      second.set(position.fen, [
+        { move: his, probability: 0.6 },
+        { move: SOME_OTHER_MOVE, probability: 0.4 },
+      ]);
+    }
+
+    const comparison = await compareBots(
+      testSet,
+      async (fen) => first.get(fen)!,
+      async (fen) => second.get(fen)!,
+    );
+
+    expect(comparison.first.topMove.overall.matched).toBe(0);
+    expect(comparison.second.topMove.overall.matched).toBe(7);
+    // Top move: seven matches gained of seven positions. Draw: 0.3 more in
+    // each, 2.1 in all; the three positions after ply 10 gain 0.9.
+    expect(comparison.gain.topMove.overall).toMatchObject({ matched: 7, positions: 7 });
+    expect(comparison.gain.drawn.overall.matched).toBeCloseTo(2.1, 10);
+    expect(comparison.gain.drawn.afterPly10.matched).toBeCloseTo(0.9, 10);
+    // Every game gains the same share, so no game strays from the mean gain.
+    expect(comparison.gain.drawn.overall.standardError).toBeCloseTo(0, 10);
   });
 });

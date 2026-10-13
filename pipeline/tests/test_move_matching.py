@@ -1,7 +1,14 @@
 import math
 
 from pipeline.dataset import Position
-from pipeline.move_matching import BaselineComparison, Gain, beats_baseline, compare_with_baseline, move_matching_report
+from pipeline.move_matching import (
+    BaselineComparison,
+    Gain,
+    beats_baseline,
+    compare_with_baseline,
+    move_matching_report,
+    same_counts_as_recorded,
+)
 
 
 def position(game_id: str, ply: int, phase: str, move: str) -> Position:
@@ -65,3 +72,33 @@ def test_a_gain_after_ply_10_of_more_than_two_standard_errors_beats_the_baseline
 
 def test_a_gain_within_two_standard_errors_does_not_beat_the_baseline():
     assert not beats_baseline(comparison_after_ply_10(gain=0.009, standard_error=0.005))
+
+
+def recorded_counts(overall: int, after_ply_10: int, opening: int, middlegame: int, endgame: int) -> dict:
+    """Matched counts in the shape a results file records them, other fields left out."""
+    return {
+        "overall": {"matched": overall},
+        "afterPly10": {"matched": after_ply_10},
+        "byPhase": {"opening": {"matched": opening}, "middlegame": {"matched": middlegame}, "endgame": {"matched": endgame}},
+    }
+
+
+def test_finds_a_report_the_same_as_a_recorded_one_when_every_slice_matched_as_often():
+    positions = [position("a", 3, "opening", "e2e4"), position("a", 15, "middlegame", "g1f3")]
+    report = move_matching_report(positions, ["e2e4", "g1f3"])
+
+    check = same_counts_as_recorded(report, recorded_counts(2, 1, 1, 1, 0))
+
+    assert check["identical"]
+    assert check["slices"]["middlegame"] == {"recorded": 1, "measured": 1}
+
+
+def test_reports_the_slices_whose_count_differs_from_the_recorded_one():
+    positions = [position("a", 3, "opening", "e2e4"), position("a", 15, "middlegame", "g1f3")]
+    report = move_matching_report(positions, ["e2e4", "a2a3"])
+
+    check = same_counts_as_recorded(report, recorded_counts(2, 1, 1, 1, 0))
+
+    assert not check["identical"]
+    assert check["slices"]["middlegame"] == {"recorded": 1, "measured": 0}
+    assert check["slices"]["opening"] == {"recorded": 1, "measured": 1}
