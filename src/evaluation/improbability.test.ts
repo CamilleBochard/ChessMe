@@ -3,6 +3,7 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  CANDIDATE_CUTS,
   chooseCut,
   cutGap,
   improbabilityProfile,
@@ -152,6 +153,16 @@ describe('choosing the cut', () => {
     const choice = chooseCut(camille, [{ kind: 'top-k', k: 3 }, { kind: 'none' }]);
 
     expect(choice.chosen).toEqual({ kind: 'none' });
+  });
+
+  it('breaks a full tie with the candidate listed first: top-k from its loosest value, no cut last', () => {
+    // With two moves, both likely, every candidate keeps both: same
+    // distance, same moves kept.
+    const camille = [placed('a', 'middlegame', [0.6, 0.4], 1)];
+
+    const choice = chooseCut(camille, [...CANDIDATE_CUTS]);
+
+    expect(choice.chosen).toEqual({ kind: 'top-k', k: 10 });
   });
 });
 

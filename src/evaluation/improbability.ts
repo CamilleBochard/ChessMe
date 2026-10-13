@@ -357,12 +357,11 @@ export function cutGap(camilleMoves: PlacedMove[], cut: MoveCut): Record<Phase, 
 }
 
 /**
- * The cuts measured, in the order the rule prefers them on a tie: no cut,
- * then each family from the cut that keeps the most moves to the one that
- * keeps the fewest.
+ * The cuts measured, in the order the rule lists them and prefers them on a
+ * full tie: each family from the cut that keeps the most moves to the one
+ * that keeps the fewest, then no cut.
  */
 export const CANDIDATE_CUTS: readonly MoveCut[] = [
-  { kind: 'none' },
   { kind: 'top-k', k: 10 },
   { kind: 'top-k', k: 8 },
   { kind: 'top-k', k: 6 },
@@ -378,6 +377,7 @@ export const CANDIDATE_CUTS: readonly MoveCut[] = [
   { kind: 'min-p', fraction: 0.05 },
   { kind: 'min-p', fraction: 0.1 },
   { kind: 'min-p', fraction: 0.2 },
+  { kind: 'none' },
 ];
 
 /** How a cut is named in a table: no cut, top-5, top-p 0.90, min-p 0.05. */
