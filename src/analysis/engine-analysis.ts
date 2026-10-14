@@ -135,18 +135,26 @@ export function connectAnalyser(port: EnginePort, depth: number): Analyser {
     return { bestMove: bestMove, score: lastScore(lines) };
   }
 
-  const started = exchange(['uci'], (line) => line === 'uciok');
+  async function analyseNow(fen: string, move: string): Promise<MoveAnalysis> {
+    await exchange(['ucinewgame', 'isready'], (line) => line === 'readyok');
+    const best = await search(fen);
+    if (best.bestMove === move) {
+      return { bestMove: best.bestMove, best: best.score, played: best.score };
+    }
+    const played = await search(fen, move);
+    return { bestMove: best.bestMove, best: best.score, played: played.score };
+  }
+
+  // The engine holds one conversation at a time, so each analysis waits for
+  // the one before it, starting with the engine's own introduction.
+  let previous: Promise<unknown> = exchange(['uci'], (line) => line === 'uciok');
 
   return {
-    analyse: async (fen, move) => {
-      await started;
-      await exchange(['ucinewgame', 'isready'], (line) => line === 'readyok');
-      const best = await search(fen);
-      if (best.bestMove === move) {
-        return { bestMove: best.bestMove, best: best.score, played: best.score };
-      }
-      const played = await search(fen, move);
-      return { bestMove: best.bestMove, best: best.score, played: played.score };
+    analyse: (fen, move) => {
+      const analysis = previous.then(() => analyseNow(fen, move));
+      // A failed analysis must not stop the ones queued after it.
+      previous = analysis.catch(() => {});
+      return analysis;
     },
   };
 }

@@ -112,4 +112,29 @@ describe('analysing a move', () => {
     expect(analysis).toEqual({ bestMove: 'd8h4', best: { mateIn: 2 }, played: { mateIn: 2 } });
     expect(engine.received.filter((command) => command.startsWith('go'))).toEqual(['go depth 14']);
   });
+
+  it('analyses one move at a time, in the order asked, when asked for several at once', async () => {
+    const engine = scriptedEngine(
+      ['info depth 14 multipv 1 score cp 10 pv e7e5', 'bestmove e7e5'],
+      ['info depth 14 multipv 1 score cp 0 pv c7c5', 'bestmove c7c5'],
+    );
+    const analyser = connectAnalyser(engine, 14);
+
+    const both = await Promise.all([analyser.analyse(position, 'e7e5'), analyser.analyse(position, 'c7c5')]);
+
+    expect(both.map((analysis) => analysis.played)).toEqual([{ centipawns: 10 }, { centipawns: 0 }]);
+    expect(engine.received).toEqual([
+      'uci',
+      'ucinewgame',
+      'isready',
+      `position fen ${position}`,
+      'go depth 14',
+      'ucinewgame',
+      'isready',
+      `position fen ${position}`,
+      'go depth 14',
+      `position fen ${position}`,
+      'go depth 14 searchmoves c7c5',
+    ]);
+  });
 });
