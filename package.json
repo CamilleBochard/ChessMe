@@ -26,7 +26,8 @@
     "opening-cut-check": "tsx scripts/opening-cut-check.ts",
     "improbable-moves": "tsx scripts/improbable-moves.ts",
     "browser-engine-parity": "tsx scripts/browser-engine-parity.ts",
-    "yardsticks": "tsx scripts/yardsticks.ts"
+    "yardsticks": "tsx scripts/yardsticks.ts",
+    "browser-engine-gap": "tsx scripts/browser-engine-gap.ts"
   },
   "dependencies": {
     "@lichess-org/chessground": "^10.1.1",
