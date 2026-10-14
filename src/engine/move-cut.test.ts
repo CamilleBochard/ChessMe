@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import type { MoveProbability } from './base-model';
-import { cutPolicy } from './move-cut';
+import { cutPolicy, readMoveCut } from './move-cut';
 
 describe('cutting the least likely moves', () => {
   const policy: MoveProbability[] = [
@@ -40,5 +40,27 @@ describe('cutting the least likely moves', () => {
 
   it('keeps every move when there is no cut', () => {
     expect(cutPolicy(policy, { kind: 'none' })).toEqual(policy);
+  });
+});
+
+describe('reading a cut from the command line', () => {
+  it('reads the number of moves top-k keeps', () => {
+    expect(readMoveCut('top-k=10')).toEqual({ kind: 'top-k', k: 10 });
+  });
+
+  it('reads the share top-p covers and the fraction min-p keeps', () => {
+    expect(readMoveCut('top-p=0.9')).toEqual({ kind: 'top-p', p: 0.9 });
+    expect(readMoveCut('min-p=0.05')).toEqual({ kind: 'min-p', fraction: 0.05 });
+  });
+
+  it('refuses a kind of cut it does not know', () => {
+    expect(() => readMoveCut('top-n=10')).toThrow('Unknown cut: top-n=10. Expected top-k=<k>, top-p=<p> or min-p=<fraction>');
+  });
+
+  it('refuses a value the cut cannot use', () => {
+    // k counts moves, from 1; p and the fraction are shares, above 0 and at most 1.
+    for (const text of ['top-k=0', 'top-k=2.5', 'top-k=', 'top-k=10=3', 'top-p=1.5', 'top-p=0', 'min-p=-0.1', 'min-p=many']) {
+      expect(() => readMoveCut(text), text).toThrow(`Cannot cut with ${text}`);
+    }
   });
 });
