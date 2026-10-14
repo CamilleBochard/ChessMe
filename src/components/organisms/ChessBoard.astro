@@ -1,0 +1,303 @@
+---
+// The board itself: the element Chessground draws into, the frame around it,
+// and the dialog that asks which piece a pawn promotes to. Chessground keeps
+// its base stylesheet for layout and dragging; everything it would take from a
+// board or piece theme comes from the portfolio's look instead, below. The
+// board is played and redrawn by the game's script, which finds the drawing
+// element by its board class and the dialog by data-promotion.
+---
+
+<div class="board-surround">
+  <div class="board"></div>
+</div>
+
+<dialog class="promotion" data-promotion aria-label="Choose a promotion piece">
+  <form method="dialog">
+    <p class="promotion-label">[Promote to]</p>
+    <div class="promotion-choices">
+      <button value="queen"><span class="piece-name">Queen</span></button>
+      <button value="rook"><span class="piece-name">Rook</span></button>
+      <button value="bishop"><span class="piece-name">Bishop</span></button>
+      <button value="knight"><span class="piece-name">Knight</span></button>
+    </div>
+  </form>
+</dialog>
+
+<style is:global>
+  @import '@lichess-org/chessground/assets/chessground.base.css';
+
+  /* Light squares in light paper, dark squares in darker paper under fine ink
+     hatching. Chessground draws no element per square, so the pattern is the
+     board's background, in three layers from the top: a checkerboard that
+     covers the light squares, the hatching, then the dark paper showing
+     through. The hatching keeps a 6 px step whatever the board's size. The
+     top-left square of a board is light from either side. */
+  .cg-wrap cg-board {
+    background:
+      conic-gradient(
+          transparent 0 25%,
+          var(--paper-light) 0 50%,
+          transparent 0 75%,
+          var(--paper-light) 0
+        )
+        0 0 / 25% 25%,
+      repeating-linear-gradient(
+        -45deg,
+        color-mix(in srgb, var(--ink) 9%, transparent) 0 1px,
+        transparent 1px 6px
+      ),
+      var(--paper-deep);
+  }
+
+  .cg-wrap cg-board square.last-move {
+    background-color: color-mix(in srgb, var(--accent) 16%, transparent);
+  }
+
+  .cg-wrap cg-board square.selected {
+    box-shadow: inset 0 0 0 3px var(--accent);
+  }
+
+  .cg-wrap cg-board square.check {
+    background:
+      repeating-linear-gradient(-45deg, var(--accent) 0 2px, transparent 2px 6px),
+      var(--paper-light);
+  }
+
+  /* An empty square a piece can go to: a filled octagon, 18% of the square. */
+  .cg-wrap cg-board square.move-dest {
+    display: grid;
+    place-items: center;
+    background: none;
+  }
+
+  .cg-wrap cg-board square.move-dest::after {
+    content: '';
+    width: 18%;
+    height: 18%;
+    background: var(--accent);
+    clip-path: var(--octagon);
+  }
+
+  .cg-wrap cg-board square.move-dest:hover {
+    background: color-mix(in srgb, var(--accent) 8%, transparent);
+  }
+
+  /* A piece that can be taken: four corners, 6% in from the square's edge.
+     The border draws the whole outline; the clip path keeps its corners. */
+  .cg-wrap cg-board square.oc.move-dest::after {
+    position: absolute;
+    inset: 6%;
+    width: auto;
+    height: auto;
+    background: none;
+    border: 2px solid var(--accent);
+    clip-path: polygon(
+      0 0, 30% 0, 30% 8%, 8% 8%, 8% 30%, 0 30%,
+      0 70%, 8% 70%, 8% 92%, 30% 92%, 30% 100%, 0 100%,
+      100% 100%, 70% 100%, 70% 92%, 92% 92%, 92% 70%, 100% 70%,
+      100% 30%, 92% 30%, 92% 8%, 70% 8%, 70% 0, 100% 0
+    );
+  }
+
+  /* Coordinates inside the board, in the corner of the squares along its
+     edges: rank numbers top left of the left-hand column, file letters
+     bottom right of the bottom row, in lowercase. Chessground's own places
+     hang outside the board, which on a phone becomes sideways scroll. */
+  .cg-wrap coords {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    line-height: 1;
+    color: var(--ink-soft);
+    opacity: 1;
+  }
+
+  .cg-wrap coords.ranks {
+    top: 0;
+    left: 0;
+    width: 12.5%;
+    height: 100%;
+  }
+
+  .cg-wrap coords.ranks coord {
+    padding: 3px 4px;
+    transform: none;
+  }
+
+  .cg-wrap coords.files {
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: auto;
+    text-transform: none;
+    text-align: right;
+  }
+
+  .cg-wrap coords.files coord {
+    flex: 1 1 0;
+    padding: 0 4px 3px;
+  }
+
+  /* The pieces: filled glyphs for both sides, White in light paper outlined
+     in ink, Black in ink, 74% of the square. Their outlines come from DejaVu
+     Sans; see public/pieces/LICENSE-DejaVu.txt. */
+  .cg-wrap piece.pawn.white { background-image: url('/pieces/wP.svg'); }
+  .cg-wrap piece.knight.white { background-image: url('/pieces/wN.svg'); }
+  .cg-wrap piece.bishop.white { background-image: url('/pieces/wB.svg'); }
+  .cg-wrap piece.rook.white { background-image: url('/pieces/wR.svg'); }
+  .cg-wrap piece.queen.white { background-image: url('/pieces/wQ.svg'); }
+  .cg-wrap piece.king.white { background-image: url('/pieces/wK.svg'); }
+  .cg-wrap piece.pawn.black { background-image: url('/pieces/bP.svg'); }
+  .cg-wrap piece.knight.black { background-image: url('/pieces/bN.svg'); }
+  .cg-wrap piece.bishop.black { background-image: url('/pieces/bB.svg'); }
+  .cg-wrap piece.rook.black { background-image: url('/pieces/bR.svg'); }
+  .cg-wrap piece.queen.black { background-image: url('/pieces/bQ.svg'); }
+  .cg-wrap piece.king.black { background-image: url('/pieces/bK.svg'); }
+
+  /* The first-visit entrance, started by the game's script: the board fades
+     in, then the white pieces and the black ones drop onto their squares.
+     Pieces are placed by Chessground through their transform, so the drop
+     uses the separate translate property, which adds to it. The board only
+     fades: scaling it would skew the bounds Chessground measures once for
+     dragging. Under 1.4 s in all, the time the script keeps the class on. */
+  @media (prefers-reduced-motion: no-preference) {
+    .entering .cg-wrap {
+      animation: board-appear 450ms ease-out both;
+    }
+
+    .entering piece {
+      animation: piece-settle 550ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+      animation-delay: 350ms;
+    }
+
+    .entering piece.black {
+      animation-delay: 550ms;
+    }
+  }
+
+  @keyframes board-appear {
+    from {
+      opacity: 0;
+    }
+  }
+
+  @keyframes piece-settle {
+    from {
+      opacity: 0;
+      translate: 0 -35%;
+    }
+  }
+</style>
+
+<style>
+  /* The board's side: as large as fits beside the side column and above the
+     clocks and status on a wide screen, the screen's width less a margin on
+     a phone. Chessground sizes itself to its element. */
+  .board-surround {
+    --board-size: min(640px, calc(100vw - 48px));
+    position: relative;
+    padding: 6px;
+    border: var(--line);
+    background: var(--paper);
+  }
+
+  @media (min-width: 960px) {
+    .board-surround {
+      --board-size: min(640px, calc(100vw - 460px), calc(100vh - 220px));
+      padding: 10px;
+    }
+  }
+
+  /* The second, dotted frame, 7 px outside the first. */
+  .board-surround::before {
+    content: '';
+    position: absolute;
+    inset: -7px;
+    border: 1px dashed var(--ink-faint);
+    pointer-events: none;
+  }
+
+  .board {
+    width: var(--board-size);
+    height: var(--board-size);
+    border: var(--line);
+  }
+
+  /* The promotion dialog keeps its behaviour, a modal the arrow keys leave
+     alone, and takes the look of the portfolio: a paper veil, a light box
+     bordered in ink, and a button per piece that turns accent under the
+     pointer or the keyboard. */
+  .promotion {
+    padding: 16px;
+    border: var(--line);
+    border-radius: 0;
+    background: var(--paper-light);
+    color: var(--ink);
+  }
+
+  .promotion::backdrop {
+    background: color-mix(in srgb, var(--paper) 86%, transparent);
+  }
+
+  .promotion-label {
+    margin: 0 0 12px;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+
+  .promotion-choices {
+    display: flex;
+    gap: 8px;
+  }
+
+  /* Each button shows the piece in the visitor's colour, which is the side
+     the board is turned towards. Its name stays in the button for screen
+     readers. */
+  .promotion-choices button {
+    width: 64px;
+    height: 64px;
+    padding: 0;
+    border: var(--line);
+    background-color: var(--paper);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+    cursor: pointer;
+  }
+
+  .promotion-choices button:hover,
+  .promotion-choices button:focus-visible {
+    background-color: var(--accent);
+    outline: none;
+  }
+
+  .piece-name {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .promotion-choices button[value='queen'] { background-image: url('/pieces/wQ.svg'); }
+  .promotion-choices button[value='rook'] { background-image: url('/pieces/wR.svg'); }
+  .promotion-choices button[value='bishop'] { background-image: url('/pieces/wB.svg'); }
+  .promotion-choices button[value='knight'] { background-image: url('/pieces/wN.svg'); }
+
+  :global(body:has(.cg-wrap.orientation-black)) .promotion-choices button[value='queen'] {
+    background-image: url('/pieces/bQ.svg');
+  }
+
+  :global(body:has(.cg-wrap.orientation-black)) .promotion-choices button[value='rook'] {
+    background-image: url('/pieces/bR.svg');
+  }
+
+  :global(body:has(.cg-wrap.orientation-black)) .promotion-choices button[value='bishop'] {
+    background-image: url('/pieces/bB.svg');
+  }
+
+  :global(body:has(.cg-wrap.orientation-black)) .promotion-choices button[value='knight'] {
+    background-image: url('/pieces/bN.svg');
+  }
+</style>

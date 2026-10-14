@@ -1,0 +1,33 @@
+/* The portfolio's three typefaces, all under the SIL Open Font License 1.1
+   (the licences sit beside the files in public/fonts/). They are served from
+   the site itself because the production Content Security Policy allows fonts
+   and stylesheets from 'self' only. Space Mono is the latin subset. */
+@font-face {
+  font-family: 'Space Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/SpaceMono-Regular-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Space Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/SpaceMono-Bold-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Syne';
+  font-weight: 400 800;
+  font-display: swap;
+  src: url('/fonts/Syne-VariableFont_wght.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Plus Jakarta Sans';
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('/fonts/PlusJakartaSans-VariableFont_wght.woff2') format('woff2');
+}
