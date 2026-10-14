@@ -71,8 +71,8 @@ export interface SessionGame {
   game(): Game;
   /** The visitor's side, or null while waiting for the visitor to pick one. */
   visitor(): Colour | null;
-  /** The line shown under the board: whose turn it is, or how the game ended. */
-  status(): string;
+  /** The line shown under the board, in the language given (English if none): whose turn it is, or how the game ended. */
+  status(language?: Language): string;
   /** The time the side has left on its clock right now, in milliseconds. */
   timeLeft(side: Colour): number;
   /** The side whose clock is running, or null before the first move and once the game has ended. */
@@ -354,11 +354,11 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
 
     visitor: () => visitor,
 
-    status(): string {
+    status(language: Language = 'en'): string {
       if (visitor === null) {
-        return 'Choose a side to start.';
+        return TEXTS[language].chooseASide;
       }
-      return describeTurn(game, visitor);
+      return describeTurn(game, visitor, language);
     },
 
     timeLeft(side: Colour): number {
