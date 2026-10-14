@@ -2,13 +2,16 @@
 // what the Bot plays (its Style Fingerprint, its evaluation losses) can be
 // measured with no browser and no visitor.
 //
-//     npm run bot-games -- [--games 400] [--seed 13] [--temperature 0] [--opponent-rating 2000] [--baseline] [--model <file.onnx>] [--out data/dataset/bot-games.jsonl]
+//     npm run bot-games -- [--games 400] [--seed 13] [--temperature 0] [--opening-cut top-k=10] [--opponent-rating 2000] [--baseline] [--model <file.onnx>] [--out data/dataset/bot-games.jsonl]
 //
 // The Bot is the Move-Selection Engine with the Opening Book, then the served
 // Base Model's move drawn at --temperature. The default, 0, is the top move:
 // the Bot the Style Fingerprint and the Style Discriminator were measured on,
 // so the recorded games can be played again exactly. The site draws at the
 // served temperature; pass it to play the Bot as the site serves it. With
+// --opening-cut the Bot draws, up to ply 10, only among the Base Model's
+// moves the cut keeps (top-k=<k>, top-p=<p> or min-p=<fraction>); it needs
+// a --temperature above 0, since the top move survives every cut. With
 // --baseline the Opening Book is left out and the Baseline plays instead: the
 // Base Model alone, against the same opponent, so that what the book changes
 // can be measured on whole games. With --model the Bot consults another Base
@@ -36,6 +39,8 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { parseArgs } from 'node:util';
 import { loadBaseModel } from '../src/engine/base-model';
+import { readMoveCut, type MoveCut } from '../src/engine/move-cut';
+import { drawDescription } from '../src/engine/move-draw';
 import { readOpeningBook, type OpeningBook } from '../src/engine/opening-book';
 import { SERVED_MODEL_RATING, SERVED_MODEL_SOURCE } from '../src/engine/served-model';
 import { playGame, seededPlayers } from '../src/evaluation/bot-games';
@@ -50,6 +55,7 @@ const { values: flags } = parseArgs({
     games: { type: 'string', default: '400' },
     seed: { type: 'string', default: '13' },
     temperature: { type: 'string', default: '0' },
+    'opening-cut': { type: 'string' },
     'opponent-rating': { type: 'string', default: String(BALANCED_OPPONENT_RATING) },
     baseline: { type: 'boolean', default: false },
     model: { type: 'string', default: SERVED_MODEL_SOURCE },
@@ -60,6 +66,16 @@ const gameCount = Number(flags.games);
 const seed = Number(flags.seed);
 const temperature = Number(flags.temperature);
 const opponentRating = Number(flags['opponent-rating']);
+let openingCut: MoveCut = { kind: 'none' };
+if (flags['opening-cut'] !== undefined) {
+  openingCut = readMoveCut(flags['opening-cut']);
+}
+// At temperature 0 the Bot plays the most likely move, which every cut keeps:
+// a cut there would change nothing while the summary said it was applied.
+if (openingCut.kind !== 'none' && temperature === 0) {
+  console.error('An opening cut changes nothing at temperature 0, the default: pass --temperature as well.');
+  process.exit(1);
+}
 
 const baseModel = await loadBaseModel(await readFile(flags.model), { rating: SERVED_MODEL_RATING });
 const opponentModel = await loadBaseModel(await readFile(SERVED_MODEL_SOURCE), { rating: opponentRating });
@@ -67,19 +83,16 @@ const opponentModel = await loadBaseModel(await readFile(SERVED_MODEL_SOURCE), {
 // name labels the games and the summary.
 let playerName = 'bot';
 let openingBook: OpeningBook | undefined = undefined;
-let drawDescription = `drawn at temperature ${temperature}`;
-if (temperature === 0) {
-  drawDescription = 'top move';
-}
-let playerDescription = `${OPENING_BOOK}, then ${flags.model} at ${SERVED_MODEL_RATING}, ${drawDescription}`;
+const howItDraws = drawDescription(temperature, openingCut);
+let playerDescription = `${OPENING_BOOK}, then ${flags.model} at ${SERVED_MODEL_RATING}, ${howItDraws}`;
 if (flags.baseline) {
   playerName = 'baseline';
-  playerDescription = `${flags.model} at ${SERVED_MODEL_RATING}, ${drawDescription}, no Opening Book`;
+  playerDescription = `${flags.model} at ${SERVED_MODEL_RATING}, ${howItDraws}, no Opening Book`;
 } else {
   openingBook = readOpeningBook(await readFile(OPENING_BOOK, 'utf-8'));
 }
 const { bot, opponent } = seededPlayers({
-  bot: { openingBook: openingBook, baseModel: baseModel, temperature: temperature },
+  bot: { openingBook: openingBook, baseModel: baseModel, temperature: temperature, openingCut: openingCut },
   opponentModel: opponentModel,
   seed: seed,
 });
