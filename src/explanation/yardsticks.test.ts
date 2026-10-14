@@ -24,4 +24,13 @@ describe('the rarity of a move', () => {
     expect(moveRarity(yardstick, 'middlegame', 0.01)).toBeCloseTo(0.5, 10);
     expect(moveRarity(yardstick, 'endgame', 0.01)).toBeCloseTo(1, 10);
   });
+
+  it('is read between the two probabilities of the ladder around the move, on a logarithmic scale', () => {
+    const yardstick = improbabilityYardstick([weighed('a', 'middlegame', 0.001), weighed('a', 'middlegame', 0.01)]);
+    // Halfway, on a logarithmic scale, between the rungs 10^-2.1, where half
+    // of his moves lie at or below, and 10^-2, where all of them do.
+    const halfwayBetweenRungs = Math.pow(10, -2.05);
+
+    expect(moveRarity(yardstick, 'middlegame', halfwayBetweenRungs)).toBeCloseTo(0.75, 10);
+  });
 });

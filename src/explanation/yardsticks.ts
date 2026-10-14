@@ -15,11 +15,11 @@ export interface WeighedMove {
 }
 
 /**
- * The probabilities at which the share of Camille's moves is read: ten a
- * decade from 0.00001 to 1, evenly spaced on a logarithmic scale, where
- * improbable moves are told apart.
+ * The probabilities at which the share of Camille's moves is read, the rungs
+ * of a ladder: ten a decade from 0.00001 to 1, evenly spaced on a
+ * logarithmic scale, where improbable moves are told apart.
  */
-export const RARITY_GRID: readonly number[] = Array.from({ length: 51 }, (_, index) => Math.pow(10, (index - 50) / 10));
+export const RARITY_LADDER: readonly number[] = Array.from({ length: 51 }, (_, index) => Math.pow(10, (index - 50) / 10));
 
 /** Per Phase, how improbable Camille's moves are to the Base Model. */
 export interface ImprobabilityYardstick {
@@ -29,7 +29,7 @@ export interface ImprobabilityYardstick {
 export interface PhaseImprobabilityYardstick {
   /** How many of his moves the Phase holds. */
   moves: number;
-  /** For each probability of RARITY_GRID, the share of his moves the model gave no more. */
+  /** For each probability of RARITY_LADDER, the share of his moves the model gave no more. */
   atOrBelow: number[];
 }
 
@@ -38,8 +38,8 @@ export function improbabilityYardstick(moves: WeighedMove[]): ImprobabilityYards
   const phases = {} as Record<Phase, PhaseImprobabilityYardstick>;
   for (const phase of PHASES) {
     const probabilities = moves.filter((move) => move.phase === phase).map((move) => move.probability);
-    const atOrBelow = RARITY_GRID.map((gridProbability) => {
-      const asUnlikely = probabilities.filter((probability) => probability <= gridProbability).length;
+    const atOrBelow = RARITY_LADDER.map((rung) => {
+      const asUnlikely = probabilities.filter((probability) => probability <= rung).length;
       return asUnlikely / probabilities.length;
     });
     phases[phase] = { moves: probabilities.length, atOrBelow: atOrBelow };
@@ -54,6 +54,17 @@ export function improbabilityYardstick(moves: WeighedMove[]): ImprobabilityYards
  */
 export function moveRarity(yardstick: ImprobabilityYardstick, phase: Phase, probability: number): number {
   const curve = yardstick.phases[phase].atOrBelow;
-  const above = RARITY_GRID.findIndex((gridProbability) => gridProbability >= probability);
-  return curve[above];
+  const above = RARITY_LADDER.findIndex((rung) => rung >= probability);
+  // Below the lowest rung, the lowest rung's share is the closest known.
+  if (above <= 0) {
+    return curve[0];
+  }
+
+  // Between two rungs the share is read on a straight line between theirs,
+  // as far along as the move's probability lies on a logarithmic scale.
+  const below = above - 1;
+  const lowRung = Math.log(RARITY_LADDER[below]);
+  const highRung = Math.log(RARITY_LADDER[above]);
+  const along = (Math.log(probability) - lowRung) / (highRung - lowRung);
+  return curve[below] + along * (curve[above] - curve[below]);
 }
