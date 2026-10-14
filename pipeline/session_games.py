@@ -271,6 +271,11 @@ def check_shape(report: object) -> None:
     if timed_out is not None and visitor_resigned:
         raise RejectedGame("the report says the game was both resigned and lost on time")
 
+    # Absent from a page that predates analysis mode. Anything but true or
+    # false would leave unclear which games the Bot played unaided.
+    if "assisted" in report and not isinstance(report["assisted"], bool):
+        raise RejectedGame("the report says neither yes nor no about analysis mode")
+
 
 def session_game_pgns(connection: sqlite3.Connection) -> list[str]:
     """Every stored game as PGN, oldest first."""

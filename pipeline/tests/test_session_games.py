@@ -415,3 +415,13 @@ def test_counts_assisted_games_apart_from_the_others(tmp_path):
     assert (unassisted_counts["games"], unassisted_counts["bot_wins"], unassisted_counts["bot_losses"]) == (1, 0, 1)
     assert (unassisted_counts["bot_moves_from_opening_book"], unassisted_counts["bot_moves_from_base_model"]) == (0, 2)
     assert unassisted_counts["impression_not_given"] == 1
+
+
+@pytest.mark.parametrize("assisted", ["yes", 1, None])
+def test_refuses_a_report_that_says_neither_yes_nor_no_about_analysis_mode(tmp_path, assisted):
+    store = open_store(tmp_path / "session-games.sqlite")
+    report = fools_mate_reported_by_the_page()
+    report["assisted"] = assisted
+
+    with pytest.raises(RejectedGame):
+        record_session_game(store, report, played_on=PLAYED_ON)
