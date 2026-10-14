@@ -4,6 +4,7 @@
 // Built under Node by scripts/yardsticks.ts and shipped with the site as JSON.
 // Free of anything DOM or Node.
 
+import type { MoveLoss } from '../analysis/engine-analysis';
 import { PHASES, type Phase } from '../evaluation/move-matching';
 
 /** One of the Bot's Base Model moves and the probability the model gave it. */
@@ -28,6 +29,20 @@ export const RARITY_LADDER: readonly number[] = Array.from({ length: 51 }, (_, i
 /** Per Phase, how improbable Camille's moves are to the Base Model. */
 export interface ImprobabilityYardstick {
   phases: Record<Phase, PhaseImprobabilityYardstick>;
+}
+
+/** The improbability yardstick as scripts/yardsticks.ts writes it, with what it was read from. */
+export interface ShippedImprobabilityYardstick extends ImprobabilityYardstick {
+  measuredOn: string;
+  /** The model whose probabilities were read, as src/engine/served-model.ts names it. */
+  baseModel: string;
+  rating: number;
+  /** The records the probabilities were read from. */
+  records: string;
+  games: number;
+  moves: number;
+  movesOutsideOpeningBook: number;
+  movesForAVerdict: number;
 }
 
 export interface PhaseImprobabilityYardstick {
@@ -60,18 +75,25 @@ export const IMPROBABLE_BELOW = 0.01;
 
 /** Camille's yardstick of improbability, from his moves and the probabilities the model gave them. */
 export function improbabilityYardstick(moves: WeighedMove[]): ImprobabilityYardstick {
-  const phases = {} as Record<Phase, PhaseImprobabilityYardstick>;
-  for (const phase of PHASES) {
-    const probabilities = moves.filter((move) => move.phase === phase).map((move) => move.probability);
-    const atOrBelow = RARITY_LADDER.map((rung) => {
-      const asUnlikely = probabilities.filter((probability) => probability <= rung).length;
-      return asUnlikely / probabilities.length;
-    });
+  const phases = perPhase((phase) => {
     const inPhase = moves.filter((move) => move.phase === phase);
+    const atOrBelow = RARITY_LADDER.map((rung) => {
+      const asUnlikely = inPhase.filter((move) => move.probability <= rung).length;
+      return asUnlikely / inPhase.length;
+    });
     const perGame = perGameSpread(inPhase, shareImprobable);
-    phases[phase] = { moves: probabilities.length, atOrBelow: atOrBelow, perGame: perGame };
-  }
+    return { moves: inPhase.length, atOrBelow: atOrBelow, perGame: perGame };
+  });
   return { phases: phases };
+}
+
+/** One value for each Phase, worked out by the function given. */
+function perPhase<Value>(valueOf: (phase: Phase) => Value): Record<Phase, Value> {
+  const values = {} as Record<Phase, Value>;
+  for (const phase of PHASES) {
+    values[phase] = valueOf(phase);
+  }
+  return values;
 }
 
 /** The share of the moves the model gave less than 1%. */
@@ -132,12 +154,8 @@ export function moveRarity(yardstick: ImprobabilityYardstick, phase: Phase, prob
 }
 
 /** One of the Bot's moves and the evaluation it lost, as the Blunder Profile measures it. */
-export interface BotLoss {
+export interface BotLoss extends MoveLoss {
   phase: Phase;
-  /** How much evaluation the move gave up against the best move, in centipawns. */
-  centipawnLoss: number;
-  /** Whether the move could still be a mistake: the best and the played move do not both score ten pawns for the same side. */
-  openPosition: boolean;
 }
 
 /** One of Camille's moves and the evaluation it lost. */
@@ -151,6 +169,19 @@ export interface LossYardstick {
   phases: Record<Phase, { perGame: Spread | null }>;
 }
 
+/** The loss yardstick as scripts/yardsticks.ts writes it, with the engine that measured it. */
+export interface ShippedLossYardstick extends LossYardstick {
+  measuredOn: string;
+  /** The engine as it names itself, such as Stockfish 19 Lite WASM. */
+  engine: string;
+  depth: number;
+  /** The file of losses it was read from. */
+  losses: string;
+  games: number;
+  moves: number;
+  movesForAVerdict: number;
+}
+
 /**
  * Camille's yardstick of Level: per Phase, the spread of his games' average
  * loss over the moves made in open positions. Moves made once the game was
@@ -159,11 +190,10 @@ export interface LossYardstick {
  */
 export function lossYardstick(moves: LossMove[]): LossYardstick {
   const open = moves.filter((move) => move.openPosition);
-  const phases = {} as Record<Phase, { perGame: Spread | null }>;
-  for (const phase of PHASES) {
+  const phases = perPhase((phase) => {
     const inPhase = open.filter((move) => move.phase === phase);
-    phases[phase] = { perGame: perGameSpread(inPhase, averageLoss) };
-  }
+    return { perGame: perGameSpread(inPhase, averageLoss) };
+  });
   return { phases: phases };
 }
 
@@ -186,12 +216,10 @@ export type Verdict =
  * games.
  */
 export function gameImprobability(botMoves: BotWeighedMove[], yardstick: ImprobabilityYardstick): Record<Phase, Verdict> {
-  const verdicts = {} as Record<Phase, Verdict>;
-  for (const phase of PHASES) {
+  return perPhase((phase) => {
     const inPhase = botMoves.filter((move) => move.phase === phase);
-    verdicts[phase] = againstSpread(inPhase, shareImprobable, yardstick.phases[phase].perGame);
-  }
-  return verdicts;
+    return againstSpread(inPhase, shareImprobable, yardstick.phases[phase].perGame);
+  });
 }
 
 /** The game's figure in one Phase, read from its moves there, against the spread of Camille's games. */
@@ -219,10 +247,8 @@ function againstSpread<Move>(moves: Move[], figureOf: (moves: Move[]) => number,
  */
 export function gameLosses(botMoves: BotLoss[], yardstick: LossYardstick): Record<Phase, Verdict> {
   const open = botMoves.filter((move) => move.openPosition);
-  const verdicts = {} as Record<Phase, Verdict>;
-  for (const phase of PHASES) {
+  return perPhase((phase) => {
     const inPhase = open.filter((move) => move.phase === phase);
-    verdicts[phase] = againstSpread(inPhase, averageLoss, yardstick.phases[phase].perGame);
-  }
-  return verdicts;
+    return againstSpread(inPhase, averageLoss, yardstick.phases[phase].perGame);
+  });
 }

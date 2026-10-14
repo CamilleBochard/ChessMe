@@ -22,7 +22,14 @@ import { parseArgs } from 'node:util';
 import { ANALYSIS_DEPTH } from '../src/analysis/browser-engine';
 import { readOpeningBook } from '../src/engine/opening-book';
 import { SERVED_MODEL_RATING, SERVED_MODEL_SOURCE } from '../src/engine/served-model';
-import { improbabilityYardstick, lossYardstick, type LossMove, MOVES_FOR_A_VERDICT } from '../src/explanation/yardsticks';
+import {
+  improbabilityYardstick,
+  lossYardstick,
+  MOVES_FOR_A_VERDICT,
+  type LossMove,
+  type ShippedImprobabilityYardstick,
+  type ShippedLossYardstick,
+} from '../src/explanation/yardsticks';
 import { gameFromFen } from '../src/game/game';
 import { readPlacedMoves } from '../src/evaluation/improbability';
 import { PHASE_LABELS, PHASES } from '../src/evaluation/move-matching';
@@ -62,11 +69,11 @@ if (writesImprobability) {
   const yardstick = improbabilityYardstick(outsideBook);
   const games = new Set(outsideBook.map((move) => move.game)).size;
 
-  const record = {
+  const record: ShippedImprobabilityYardstick = {
     measuredOn: measuredOn,
     baseModel: SERVED_MODEL_SOURCE,
     rating: SERVED_MODEL_RATING,
-    records: flags.probabilities,
+    records: flags.probabilities!,
     games: games,
     moves: camilleMoves.length,
     movesOutsideOpeningBook: outsideBook.length,
@@ -99,11 +106,11 @@ if (writesLosses) {
   const yardstick = lossYardstick(camilleMoves);
   const games = new Set(camilleMoves.map((move) => move.game)).size;
 
-  const record = {
+  const record: ShippedLossYardstick = {
     measuredOn: measuredOn,
     engine: profile.engine,
     depth: profile.depth,
-    losses: flags.losses,
+    losses: flags.losses!,
     games: games,
     moves: camilleMoves.length,
     movesForAVerdict: MOVES_FOR_A_VERDICT,
