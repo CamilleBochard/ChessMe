@@ -75,4 +75,12 @@ describe("the spread of Camille's games", () => {
 
     expect(yardstick.phases.middlegame.perGame).toEqual({ games: 10, low: 0, high: 0.8 });
   });
+
+  it('has no spread for a Phase where none of his games holds enough moves', () => {
+    const moves = [weighed('a', 'opening', 0.3), weighed('a', 'opening', 0.005), weighed('b', 'opening', 0.3)];
+
+    const yardstick = improbabilityYardstick(moves);
+
+    expect(yardstick.phases.opening.perGame).toBeNull();
+  });
 });

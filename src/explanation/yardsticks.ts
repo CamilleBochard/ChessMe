@@ -31,8 +31,8 @@ export interface PhaseImprobabilityYardstick {
   moves: number;
   /** For each probability of RARITY_LADDER, the share of his moves the model gave no more. */
   atOrBelow: number[];
-  /** How far his games' shares of moves under 1% spread. */
-  perGame: Spread;
+  /** How far his games' shares of moves under 1% spread; null when no game of his has enough moves in the Phase. */
+  perGame: Spread | null;
 }
 
 /** The range the middle 80% of Camille's games cover: from the 10th percentile of a figure to the 90th. */
@@ -77,7 +77,7 @@ function shareImprobable(moves: WeighedMove[]): number {
 }
 
 /** The spread of a figure across games, each game's figure read from its own moves. */
-function perGameSpread<Move extends { game: string }>(moves: Move[], figureOf: (gameMoves: Move[]) => number): Spread {
+function perGameSpread<Move extends { game: string }>(moves: Move[], figureOf: (gameMoves: Move[]) => number): Spread | null {
   const movesByGame = new Map<string, Move[]>();
   for (const move of moves) {
     const gameMoves = movesByGame.get(move.game) ?? [];
@@ -91,6 +91,9 @@ function perGameSpread<Move extends { game: string }>(moves: Move[], figureOf: (
       continue;
     }
     figures.push(figureOf(gameMoves));
+  }
+  if (figures.length === 0) {
+    return null;
   }
   figures.sort((first, second) => first - second);
   return { games: figures.length, low: nearestRank(figures, 10), high: nearestRank(figures, 90) };
