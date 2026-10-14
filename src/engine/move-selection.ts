@@ -66,6 +66,8 @@ export type BotMove =
       legalMoves: number;
       /** Every move the Base Model weighed, most likely first by its own probability. */
       candidates: Candidate[];
+      /** Where the move played stands among the candidates: 1 for the model's most likely. */
+      rank: number;
     }
   | { move: MoveRequest; source: 'random' };
 
@@ -88,11 +90,15 @@ export async function selectMoveWithSource(fen: string, options: EngineOptions =
   const choice = await chooseDistribution(fen, options);
   const move = drawMove(choice.distribution, random);
   if (choice.source === 'base-model') {
+    const candidates = candidatesOf(choice.policy, choice.distribution);
+    const playedName = uciName(move);
+    const playedIndex = candidates.findIndex((candidate) => uciName(candidate.move) === playedName);
     return {
       move: move,
       source: 'base-model',
       legalMoves: choice.legalMoves,
-      candidates: candidatesOf(choice.policy, choice.distribution),
+      candidates: candidates,
+      rank: playedIndex + 1,
     };
   }
   return { move: move, source: choice.source };

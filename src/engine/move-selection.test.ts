@@ -456,6 +456,18 @@ describe('selectMoveWithSource explaining the move', () => {
     expect(drawn[1]).toBeCloseTo(0.2 / 0.9, 10);
     expect(drawn[2]).toBe(0);
   });
+
+  it('gives where the move played ranks among the Base Model\'s candidates', async () => {
+    // Without a cut, g1f3 owns [0.9, 1): the model's third most likely move.
+    const botMove = await selectMoveWithSource(startingPosition, { baseModel, random: () => 0.95 });
+
+    expect(botMove.source).toBe('base-model');
+    if (botMove.source !== 'base-model') {
+      return;
+    }
+    expect(botMove.move).toEqual({ from: 'g1', to: 'f3' });
+    expect(botMove.rank).toBe(3);
+  });
 });
 
 describe('selectMove over many positions', () => {
