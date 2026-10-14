@@ -1,5 +1,5 @@
 from pipeline.dataset import Dataset, Position
-from pipeline.opening_book import build_opening_book
+from pipeline.opening_book import book_counts, build_opening_book
 
 START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 START_KEY = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -"
@@ -72,3 +72,17 @@ def test_counts_a_position_reached_by_another_move_order_as_the_same_position():
     book = build_opening_book(Dataset(train=train, test=[]), min_occurrences=2)
 
     assert book == {"r1bqkb1r/pppppppp/2n2n2/8/8/2N2N2/PPPPPPPP/R1BQKB1R w KQkq -": "e2e4"}
+
+
+def test_counts_how_often_each_book_position_was_reached_and_its_move_played():
+    train = [
+        played("lichess:a", START, "d2d4"),
+        played("lichess:b", START, "e2e4"),
+        played("lichess:c", START, "e2e4"),
+    ]
+    dataset = Dataset(train=train, test=[])
+    book = build_opening_book(dataset, min_occurrences=3)
+
+    counts = book_counts(dataset, book)
+
+    assert counts == {START_KEY: {"reached": 3, "played": 2}}

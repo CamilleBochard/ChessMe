@@ -12,13 +12,8 @@ from pipeline.dataset import Dataset
 
 def build_opening_book(dataset: Dataset, min_occurrences: int) -> dict[str, str]:
     """Maps each position of the training games to the move Camille played there, in UCI form."""
-    moves_by_position: dict[str, Counter[str]] = defaultdict(Counter)
-    for position in dataset.train:
-        key = position_key(position.fen)
-        moves_by_position[key][position.move] += 1
-
     book = {}
-    for key, moves in moves_by_position.items():
+    for key, moves in _moves_by_position(dataset).items():
         times_reached = moves.total()
         if times_reached < min_occurrences:
             continue
@@ -31,6 +26,25 @@ def build_opening_book(dataset: Dataset, min_occurrences: int) -> dict[str, str]
                 continue
         book[key] = most_played_move
     return book
+
+
+def book_counts(dataset: Dataset, book: dict[str, str]) -> dict[str, dict[str, int]]:
+    """For each book position, how many times the training games reached it and how many times Camille played the book move there."""
+    moves_by_position = _moves_by_position(dataset)
+    counts = {}
+    for key, book_move in book.items():
+        moves = moves_by_position[key]
+        counts[key] = {"reached": moves.total(), "played": moves[book_move]}
+    return counts
+
+
+def _moves_by_position(dataset: Dataset) -> dict[str, Counter[str]]:
+    """How many times Camille played each move in each position of the training games."""
+    moves_by_position: dict[str, Counter[str]] = defaultdict(Counter)
+    for position in dataset.train:
+        key = position_key(position.fen)
+        moves_by_position[key][position.move] += 1
+    return moves_by_position
 
 
 def position_key(fen: str) -> str:
