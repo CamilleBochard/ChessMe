@@ -77,6 +77,21 @@ plays Stockfish's own first choice on 35-40% of his moves in every Phase.
 
 The full histogram, with finer buckets, is in `blunder-profile.json`.
 
+### On open positions
+
+The Bot is compared with Camille on the moves made in [Open
+Positions](../../CONTEXT.md) only, the moves that could still be a mistake (see
+[Level on open positions](level-on-open-positions.md)). The same file holds
+that distribution under `open_positions`, with the share of each Phase left
+out.
+
+| Phase | Moves | Left out | Mean | p50 | p90 | 300 or more |
+|---|---|---|---|---|---|---|
+| Opening (1-10) | 5,224 | 0.0% | 25.7 | 1 | 62 | 1.1% |
+| Middlegame (11-30) | 9,730 | 0.9% | 104.1 | 25 | 315 | 10.7% |
+| Endgame (31+) | 12,890 | 18.5% | 128.1 | 23 | 382 | 13.1% |
+| All | 27,844 | 9.8% | 100.5 | 16 | 300 | 10.0% |
+
 ## Reading the numbers
 
 **The opening is where he errs least.** One move in a hundred loses three
