@@ -65,3 +65,106 @@ function centipawnsOf(score: Score): number {
   }
   return score.centipawns;
 }
+
+/** One end of a line-by-line conversation with a UCI engine. */
+export interface EnginePort {
+  send(command: string): void;
+  /** Sets the listener each line the engine writes is handed to. */
+  onLine(listener: (line: string) => void): void;
+}
+
+/** The best move in a position, in UCI form, and how it and the played move score. */
+export interface MoveAnalysis extends Analysis {
+  bestMove: string;
+}
+
+/** Analyses moves through one engine at a fixed depth. */
+export interface Analyser {
+  /** The best move in the position the FEN describes, and how it and the move given, in UCI form, score. */
+  analyse(fen: string, move: string): Promise<MoveAnalysis>;
+}
+
+/** A conversation still waiting for the line that ends it, with the lines received so far. */
+interface Exchange {
+  isLast(line: string): boolean;
+  lines: string[];
+  finish(lines: string[]): void;
+}
+
+/**
+ * Talks to the engine as pipeline/stockfish_analysis.py does through
+ * python-chess: a new game, which clears the hash, before each position;
+ * a search of the whole position at the depth given; then, unless the played
+ * move is the best one, a search restricted to it.
+ */
+export function connectAnalyser(port: EnginePort, depth: number): Analyser {
+  let waiting: Exchange | undefined = undefined;
+
+  port.onLine((line) => {
+    if (waiting === undefined) {
+      return;
+    }
+    waiting.lines.push(line);
+    if (waiting.isLast(line)) {
+      const finished = waiting;
+      waiting = undefined;
+      finished.finish(finished.lines);
+    }
+  });
+
+  /** Sends the commands and resolves with the engine's lines up to and including the one that ends its answer. */
+  function exchange(commands: string[], isLast: (line: string) => boolean): Promise<string[]> {
+    const answer = new Promise<string[]>((resolve) => {
+      waiting = { isLast: isLast, lines: [], finish: resolve };
+    });
+    for (const command of commands) {
+      port.send(command);
+    }
+    return answer;
+  }
+
+  /** A search of the position, of every move or of the one move given. */
+  async function search(fen: string, onlyMove?: string): Promise<{ bestMove: string; score: Score }> {
+    let go = `go depth ${depth}`;
+    if (onlyMove !== undefined) {
+      go = `${go} searchmoves ${onlyMove}`;
+    }
+    const lines = await exchange([`position fen ${fen}`, go], (line) => line.startsWith('bestmove'));
+    const bestMoveLine = lines[lines.length - 1];
+    const bestMove = bestMoveLine.split(' ')[1];
+    return { bestMove: bestMove, score: lastScore(lines) };
+  }
+
+  const started = exchange(['uci'], (line) => line === 'uciok');
+
+  return {
+    analyse: async (fen, move) => {
+      await started;
+      await exchange(['ucinewgame', 'isready'], (line) => line === 'readyok');
+      const best = await search(fen);
+      const played = await search(fen, move);
+      return { bestMove: best.bestMove, best: best.score, played: played.score };
+    },
+  };
+}
+
+/**
+ * The score of the deepest search the lines report: the last info line with
+ * a score, as python-chess keeps the latest one it reads.
+ */
+function lastScore(lines: string[]): Score {
+  for (let index = lines.length - 1; index >= 0; index--) {
+    const words = lines[index].split(' ');
+    const scoreAt = words.indexOf('score');
+    if (words[0] !== 'info' || scoreAt === -1) {
+      continue;
+    }
+    const kind = words[scoreAt + 1];
+    const value = Number(words[scoreAt + 2]);
+    if (kind === 'mate') {
+      return { mateIn: value };
+    }
+    return { centipawns: value };
+  }
+  throw new Error('The engine finished its search without giving a score');
+}
