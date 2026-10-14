@@ -34,7 +34,10 @@ export function moveLoss(analysis: Analysis): MoveLoss {
   if (centipawnLoss < 0) {
     centipawnLoss = 0;
   }
-  return { centipawnLoss: centipawnLoss, openPosition: true };
+  const bothWinning = best === EVALUATION_CAP && played === EVALUATION_CAP;
+  const bothLosing = best === -EVALUATION_CAP && played === -EVALUATION_CAP;
+  const decided = bothWinning || bothLosing;
+  return { centipawnLoss: centipawnLoss, openPosition: !decided };
 }
 
 /**

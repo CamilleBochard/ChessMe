@@ -27,4 +27,14 @@ describe('the evaluation a move lost', () => {
     expect(missedMate.centipawnLoss).toBe(800);
     expect(stillWinning.centipawnLoss).toBe(0);
   });
+
+  it('comes from an open position unless both moves score ten pawns or more for the same side', () => {
+    const decided = moveLoss({ best: { mateIn: 2 }, played: { centipawns: 1200 } });
+    const lostEitherWay = moveLoss({ best: { centipawns: -1100 }, played: { mateIn: -4 } });
+    const throwsTheWinAway = moveLoss({ best: { centipawns: 1500 }, played: { centipawns: 300 } });
+
+    expect(decided.openPosition).toBe(false);
+    expect(lostEitherWay.openPosition).toBe(false);
+    expect(throwsTheWinAway.openPosition).toBe(true);
+  });
 });
