@@ -15,10 +15,10 @@
 // --baseline the Opening Book is left out and the Baseline plays instead: the
 // Base Model alone, against the same opponent, so that what the book changes
 // can be measured on whole games. With --model the Bot consults another Base
-// Model file, such as a fine-tuned one, at the same rating; its opponent stays
-// the served model. The opponent is the served Base Model at
-// --opponent-rating, drawing each move at random from its probabilities, as a
-// crowd of players at that rating would choose. Both sides' draws are seeded,
+// Model file, such as a fine-tuned one, at the same rating. The opponent is
+// always the original Maia-3 5M at --opponent-rating, whichever model the site
+// serves, drawing each move at random from its probabilities, as a crowd of
+// players at that rating would choose. Both sides' draws are seeded,
 // each from a stream of its own, so a run can be replayed exactly and a Bot
 // at temperature 0 meets the opponent the recorded games were played against.
 //
@@ -46,6 +46,13 @@ import { SERVED_MODEL_RATING, SERVED_MODEL_SOURCE } from '../src/engine/served-m
 import { playGame, seededPlayers } from '../src/evaluation/bot-games';
 
 const OPENING_BOOK = 'data/dataset/opening-book.json';
+
+/**
+ * The opponent's model. It stays the original model whatever the site serves,
+ * so that Bots measured before and after a change of model meet the same
+ * opponent and their games compare.
+ */
+const OPPONENT_MODEL = 'models/onnx/maia3-5m.onnx';
 
 /** The opponent's rating at which the Bot scores about half the points. */
 const BALANCED_OPPONENT_RATING = 2000;
@@ -78,7 +85,7 @@ if (openingCut.kind !== 'none' && temperature === 0) {
 }
 
 const baseModel = await loadBaseModel(await readFile(flags.model), { rating: SERVED_MODEL_RATING });
-const opponentModel = await loadBaseModel(await readFile(SERVED_MODEL_SOURCE), { rating: opponentRating });
+const opponentModel = await loadBaseModel(await readFile(OPPONENT_MODEL), { rating: opponentRating });
 // Who plays: the Bot with its Opening Book, or the Baseline without one. The
 // name labels the games and the summary.
 let playerName = 'bot';
@@ -135,7 +142,7 @@ await mkdir(dirname(flags.out), { recursive: true });
 await writeFile(flags.out, lines.join('\n') + '\n');
 
 console.log(`${playerName}: ${playerDescription}`);
-console.log(`Opponent: ${SERVED_MODEL_SOURCE} at ${opponentRating}, drawn from its probabilities, seed ${seed}`);
+console.log(`Opponent: ${OPPONENT_MODEL} at ${opponentRating}, drawn from its probabilities, seed ${seed}`);
 console.log(`Games: ${gameCount}, ${playerName} ${results.win} won, ${results.draw} drawn, ${results.loss} lost`);
 console.log(`Average length: ${(totalPlies / gameCount).toFixed(1)} plies`);
 console.log(`Written to ${flags.out}`);
