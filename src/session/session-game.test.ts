@@ -669,4 +669,12 @@ describe('the clock faces', () => {
       bottom: { side: 'white', name: 'White' },
     });
   });
+
+  it('names the players in French when asked to', () => {
+    expect(clockFaces('white', 'fr')).toEqual({ top: { side: 'black', name: 'Bot' }, bottom: { side: 'white', name: 'Vous' } });
+    expect(clockFaces(null, 'fr')).toEqual({
+      top: { side: 'black', name: 'Noirs' },
+      bottom: { side: 'white', name: 'Blancs' },
+    });
+  });
 });
