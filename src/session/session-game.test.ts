@@ -336,6 +336,7 @@ describe('the finished game', () => {
         ],
         visitorResigned: false,
         timedOut: null,
+        assisted: false,
       },
     ]);
   });
@@ -359,6 +360,7 @@ describe('the finished game', () => {
         moves: [{ move: { from: 'e2', to: 'e4' } }, { move: { from: 'e7', to: 'e5' }, source: 'opening-book' }],
         visitorResigned: true,
         timedOut: null,
+        assisted: false,
       },
     ]);
   });
@@ -385,6 +387,25 @@ describe('the finished game', () => {
       { move: { from: 'e2', to: 'e4' } },
       { move: { from: 'c7', to: 'c5' }, source: 'base-model' },
     ]);
+  });
+});
+
+describe('an assisted game', () => {
+  it('is handed over as assisted when analysis mode was on at any point during it', async () => {
+    const finishedGames: FinishedGame[] = [];
+    const session = createSessionGame({
+      chooseMove: scriptedBot([{ from: 'e7', to: 'e5' }]),
+      onGameEnd: (finished) => {
+        finishedGames.push(finished);
+      },
+    });
+    await session.start('white');
+    session.markAssisted();
+    await session.playVisitorMove({ from: 'e2', to: 'e4' });
+
+    session.resign();
+
+    expect(finishedGames[0].assisted).toBe(true);
   });
 });
 
@@ -522,6 +543,7 @@ describe('the clock', () => {
         moves: [{ move: { from: 'e2', to: 'e4' } }, { move: { from: 'e7', to: 'e5' }, source: 'opening-book' }],
         visitorResigned: false,
         timedOut: 'white',
+        assisted: false,
       },
     ]);
   });

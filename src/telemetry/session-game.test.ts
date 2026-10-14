@@ -9,7 +9,13 @@ import { connectTelemetry, sessionGameReport } from './session-game';
 const SERVED_MODEL = { baseModel: 'maia3-5m', rating: 1100 };
 
 /** A short finished game, for the tests where its moves do not matter. */
-const RESIGNED_AT_ONCE: FinishedGame = { visitor: 'white', moves: [], visitorResigned: true, timedOut: null };
+const RESIGNED_AT_ONCE: FinishedGame = {
+  visitor: 'white',
+  moves: [],
+  visitorResigned: true,
+  timedOut: null,
+  assisted: false,
+};
 
 interface SentRequest {
   url: string;
@@ -42,6 +48,7 @@ describe('reporting a Session Game', () => {
       ],
       visitorResigned: false,
       timedOut: null,
+      assisted: false,
     };
     const gameId = await telemetry.reportGame(sessionGameReport(SERVED_MODEL, foolsMate));
 
@@ -75,6 +82,7 @@ describe('reporting a Session Game', () => {
       moves: [{ move: { from: 'e2', to: 'e4' } }, { move: { from: 'e7', to: 'e5' }, source: 'opening-book' }],
       visitorResigned: true,
       timedOut: null,
+      assisted: false,
     };
 
     const report = sessionGameReport(SERVED_MODEL, finished);
@@ -98,6 +106,7 @@ describe('reporting a Session Game', () => {
       moves: [{ move: { from: 'e2', to: 'e4' }, source: 'opening-book' }],
       visitorResigned: false,
       timedOut: 'black',
+      assisted: false,
     };
 
     await telemetry.reportGame(sessionGameReport(SERVED_MODEL, finished));

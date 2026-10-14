@@ -44,6 +44,12 @@ export interface FinishedGame {
   visitorResigned: boolean;
   /** The side whose clock ran out, or null when the game ended otherwise. */
   timedOut: Colour | null;
+  /**
+   * True when analysis mode was on at any point during the game: an engine's
+   * evaluation shows the visitor where the Bot went wrong, so such a game
+   * says less about how the Bot plays against an unaided player.
+   */
+  assisted: boolean;
 }
 
 export interface SessionGameOptions {
@@ -90,6 +96,8 @@ export interface SessionGame {
   resign(): void;
   /** Goes back to the starting position, waiting for the visitor to pick a side. */
   startOver(): void;
+  /** Records that analysis mode is on during the game in progress, which makes it an assisted game. */
+  markAssisted(): void;
   /**
    * The position on display. Usually the current one, but the visitor may
    * step back through the game to look at earlier positions. Looking never
@@ -135,6 +143,8 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
   // How many moves before the current position the visitor is looking.
   // Zero means the current position.
   let stepsBack = 0;
+  // Whether analysis mode has been on during the game in progress.
+  let assisted = false;
   // Where each of the Bot's moves came from, by the ply it was played at. A
   // move taken back leaves its entry behind, but the Bot's next move at that
   // ply replaces it, and only the plies of the game as it stands are read.
@@ -195,7 +205,13 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
 
     const visitorResigned = game.resignedBy !== undefined;
     const timedOut = game.timedOutBy ?? null;
-    options.onGameEnd({ visitor: visitor, moves: moves, visitorResigned: visitorResigned, timedOut: timedOut });
+    options.onGameEnd({
+      visitor: visitor,
+      moves: moves,
+      visitorResigned: visitorResigned,
+      timedOut: timedOut,
+      assisted: assisted,
+    });
   }
 
   /** Plays a move on the game and passes the turn on the clock. */
@@ -439,6 +455,10 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
       visitor = null;
       resetBothClocks();
       setGame(newGame());
+    },
+
+    markAssisted(): void {
+      assisted = true;
     },
   };
 }
