@@ -4,7 +4,14 @@
 
 import { describe, expect, it } from 'vitest';
 import type { Phase } from '../evaluation/move-matching';
-import { gameImprobability, improbabilityYardstick, moveRarity, type WeighedMove } from './yardsticks';
+import {
+  gameImprobability,
+  improbabilityYardstick,
+  lossYardstick,
+  moveRarity,
+  type LossMove,
+  type WeighedMove,
+} from './yardsticks';
 
 /** One of Camille's moves, given the probability the Base Model gave it. */
 function weighed(game: string, phase: Phase, probability: number) {
@@ -133,5 +140,32 @@ describe("the Bot's game so far against Camille's games", () => {
     const verdicts = gameImprobability(botMoves, rarerYardstick);
 
     expect(verdicts.middlegame.kind).toBe('below');
+  });
+});
+
+/** A game of the given player with eight middlegame moves in open positions, each losing the same. */
+function middlegameLosing(game: string, centipawns: number): LossMove[] {
+  const moves: LossMove[] = [];
+  for (let index = 0; index < 8; index++) {
+    moves.push({ game: game, phase: 'middlegame', centipawnLoss: centipawns, openPosition: true });
+  }
+  return moves;
+}
+
+describe("Camille's losses per game", () => {
+  it("spread from the 10th to the 90th percentile of his games' average loss in open positions", () => {
+    // Ten games averaging 10 to 100 centipawns. The first also has moves made
+    // once the game was decided, which say nothing of his Level.
+    const moves: LossMove[] = [];
+    for (let tenth = 1; tenth <= 10; tenth++) {
+      moves.push(...middlegameLosing(`game-${tenth}`, 10 * tenth));
+    }
+    for (let index = 0; index < 4; index++) {
+      moves.push({ game: 'game-1', phase: 'middlegame', centipawnLoss: 500, openPosition: false });
+    }
+
+    const yardstick = lossYardstick(moves);
+
+    expect(yardstick.phases.middlegame.perGame).toEqual({ games: 10, low: 10, high: 90 });
   });
 });

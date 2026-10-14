@@ -127,6 +127,44 @@ export function moveRarity(yardstick: ImprobabilityYardstick, phase: Phase, prob
   return curve[below] + along * (curve[above] - curve[below]);
 }
 
+/** One move and the evaluation it lost, as the Blunder Profile measures it. */
+export interface LossMove {
+  /** The game the move comes from. */
+  game: string;
+  phase: Phase;
+  /** How much evaluation the move gave up against the best move, in centipawns. */
+  centipawnLoss: number;
+  /** Whether the move could still be a mistake: the best and the played move do not both score ten pawns for the same side. */
+  openPosition: boolean;
+}
+
+/** Per Phase, how far Camille's games spread in the evaluation his moves lost. */
+export interface LossYardstick {
+  phases: Record<Phase, { perGame: Spread | null }>;
+}
+
+/**
+ * Camille's yardstick of Level: per Phase, the spread of his games' average
+ * loss over the moves made in open positions. Moves made once the game was
+ * decided are left out, as Level is compared only where a move could still
+ * be a mistake.
+ */
+export function lossYardstick(moves: LossMove[]): LossYardstick {
+  const open = moves.filter((move) => move.openPosition);
+  const phases = {} as Record<Phase, { perGame: Spread | null }>;
+  for (const phase of PHASES) {
+    const inPhase = open.filter((move) => move.phase === phase);
+    phases[phase] = { perGame: perGameSpread(inPhase, averageLoss) };
+  }
+  return { phases: phases };
+}
+
+/** The average evaluation the moves lost, in centipawns. */
+function averageLoss(moves: { centipawnLoss: number }[]): number {
+  const total = moves.reduce((sum, move) => sum + move.centipawnLoss, 0);
+  return total / moves.length;
+}
+
 /** One of the Bot's Base Model moves and the probability the model gave it. */
 export interface BotWeighedMove {
   phase: Phase;
