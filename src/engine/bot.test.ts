@@ -76,6 +76,23 @@ describe('the Bot', () => {
     expect(botMove).toEqual({ move: { from: 'e2', to: 'e4' }, source: 'base-model' });
   });
 
+  it('draws its opening moves among those the opening cut it is served with keeps', async () => {
+    const channel = openChannel();
+    serveBot(channel.workerEnd, {
+      download: async () => new Uint8Array(await readFile(FIXED_PREFERENCE_MODEL)),
+      // At temperature 1 the top of the random range would play the model's
+      // least likely move; a cut keeping one move leaves only the most likely.
+      temperature: 1,
+      openingCut: { kind: 'top-k', k: 1 },
+      random: () => 0.99,
+    });
+    const bot = connectBot(channel.pageEnd, MODEL);
+
+    const botMove = await bot.requestMove(STARTING_POSITION);
+
+    expect(botMove).toEqual({ move: { from: 'e2', to: 'e4' }, source: 'base-model' });
+  });
+
   it('plays a book move while the model is still downloading', async () => {
     const channel = openChannel();
     const openingBook = readOpeningBook(
