@@ -43,7 +43,10 @@ CREATE TABLE IF NOT EXISTS session_games (
     -- The visitor's answer to "did it feel like a real player at that
     -- level?": 1 for yes, 0 for no, NULL until they answer, which they may
     -- never do.
-    felt_like_a_real_player INTEGER
+    felt_like_a_real_player INTEGER,
+    -- 1 when analysis mode was on at any point during the game: an engine's
+    -- evaluation showed the visitor where the Bot went wrong.
+    assisted INTEGER NOT NULL DEFAULT 0
 );
 
 -- One row per move the Bot played, so where its moves came from can be
@@ -172,11 +175,14 @@ def record_session_game(connection: sqlite3.Connection, report: dict, played_on:
     game.headers["BaseModelRating"] = str(report["rating"])
     pgn = str(game)
 
+    # A page from before analysis mode sends nothing, and was never assisted.
+    assisted = report.get("assisted", False)
+
     game_id = str(uuid.uuid4())
     with connection:
         connection.execute(
-            "INSERT INTO session_games (id, played_on, bot_colour, result, pgn) VALUES (?, ?, ?, ?, ?)",
-            (game_id, played_on.isoformat(), bot_colour, result, pgn),
+            "INSERT INTO session_games (id, played_on, bot_colour, result, pgn, assisted) VALUES (?, ?, ?, ?, ?, ?)",
+            (game_id, played_on.isoformat(), bot_colour, result, pgn, assisted),
         )
         for ply, uci, source in bot_moves:
             connection.execute(
@@ -273,40 +279,43 @@ def session_game_pgns(connection: sqlite3.Connection) -> list[str]:
     return pgns
 
 
-def session_game_counts(connection: sqlite3.Connection) -> dict[str, int]:
+def session_game_counts(connection: sqlite3.Connection, assisted: bool | None = None) -> dict[str, int]:
     """
     How many games have been stored, how the Bot fared in them, where its
-    moves came from, and what visitors made of it.
+    moves came from, and what visitors made of it. Counts every game, or with
+    assisted given, only the games played with analysis mode on (True) or
+    only those played without it (False).
     """
-    games = scalar(connection, "SELECT COUNT(*) FROM session_games")
-    bot_wins = scalar(
-        connection,
-        """SELECT COUNT(*) FROM session_games
-           WHERE (result = '1-0' AND bot_colour = 'white') OR (result = '0-1' AND bot_colour = 'black')""",
-    )
-    bot_losses = scalar(
-        connection,
-        """SELECT COUNT(*) FROM session_games
-           WHERE (result = '1-0' AND bot_colour = 'black') OR (result = '0-1' AND bot_colour = 'white')""",
-    )
-    draws = scalar(connection, "SELECT COUNT(*) FROM session_games WHERE result = '1/2-1/2'")
-    moves_by_source = "SELECT COUNT(*) FROM bot_moves WHERE source = ?"
-    from_opening_book = scalar(connection, moves_by_source, (OPENING_BOOK,))
-    from_base_model = scalar(connection, moves_by_source, (BASE_MODEL,))
-    felt_real = scalar(connection, "SELECT COUNT(*) FROM session_games WHERE felt_like_a_real_player = 1")
-    did_not_feel_real = scalar(connection, "SELECT COUNT(*) FROM session_games WHERE felt_like_a_real_player = 0")
-    not_given = scalar(connection, "SELECT COUNT(*) FROM session_games WHERE felt_like_a_real_player IS NULL")
+    # Every count reads the games through this condition, so the assisted
+    # games and the others are counted the same way.
+    if assisted is None:
+        which_games = "1 = 1"
+        parameters: tuple = ()
+    else:
+        which_games = "session_games.assisted = ?"
+        parameters = (assisted,)
 
+    def count_games(condition: str) -> int:
+        query = f"SELECT COUNT(*) FROM session_games WHERE ({condition}) AND {which_games}"
+        return scalar(connection, query, parameters)
+
+    def count_bot_moves(source: str) -> int:
+        query = f"""SELECT COUNT(*) FROM bot_moves JOIN session_games ON session_games.id = bot_moves.game_id
+                    WHERE bot_moves.source = ? AND {which_games}"""
+        return scalar(connection, query, (source,) + parameters)
+
+    bot_won = "(result = '1-0' AND bot_colour = 'white') OR (result = '0-1' AND bot_colour = 'black')"
+    bot_lost = "(result = '1-0' AND bot_colour = 'black') OR (result = '0-1' AND bot_colour = 'white')"
     counts = {
-        "games": games,
-        "bot_wins": bot_wins,
-        "bot_losses": bot_losses,
-        "draws": draws,
-        "bot_moves_from_opening_book": from_opening_book,
-        "bot_moves_from_base_model": from_base_model,
-        "felt_like_a_real_player": felt_real,
-        "did_not_feel_like_a_real_player": did_not_feel_real,
-        "impression_not_given": not_given,
+        "games": count_games("1 = 1"),
+        "bot_wins": count_games(bot_won),
+        "bot_losses": count_games(bot_lost),
+        "draws": count_games("result = '1/2-1/2'"),
+        "bot_moves_from_opening_book": count_bot_moves(OPENING_BOOK),
+        "bot_moves_from_base_model": count_bot_moves(BASE_MODEL),
+        "felt_like_a_real_player": count_games("felt_like_a_real_player = 1"),
+        "did_not_feel_like_a_real_player": count_games("felt_like_a_real_player = 0"),
+        "impression_not_given": count_games("felt_like_a_real_player IS NULL"),
     }
     return counts
 
