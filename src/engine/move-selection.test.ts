@@ -230,6 +230,31 @@ describe('selectMove with a cut in the opening', () => {
     }
   });
 
+  it('still cuts at ply 10, Black\'s fifth move, the last of the opening', async () => {
+    // The starting pieces with Black to play move 5: ply 10.
+    const atPly10 = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 5';
+    const blackModel = modelWithPolicy([
+      { move: { from: 'e7', to: 'e5' }, probability: 0.7 },
+      { move: { from: 'd7', to: 'd5' }, probability: 0.2 },
+      { move: { from: 'g8', to: 'f6' }, probability: 0.1 },
+    ]);
+
+    const move = await selectMove(atPly10, { baseModel: blackModel, random: () => 0.95, openingCut: topTwo });
+
+    expect(move).toEqual({ from: 'd7', to: 'd5' });
+  });
+
+  it('always keeps the most likely move, however tight the cut', async () => {
+    // e2e4 alone covers more than a share of 0.01; top-p keeps it and nothing else.
+    const tightest: MoveCut = { kind: 'top-p', p: 0.01 };
+
+    for (const drawn of [0, 0.5, 0.999999]) {
+      const move = await selectMove(startingPosition, { baseModel, random: () => drawn, openingCut: tightest });
+
+      expect(move).toEqual({ from: 'e2', to: 'e4' });
+    }
+  });
+
   it('cuts the Base Model\'s own probabilities, then applies the temperature', async () => {
     // min-p 0.2 keeps the moves with at least 0.2 x 0.7 = 0.14: e2e4 and d2d4.
     // Rescaled to 0.778 and 0.222, then squared at temperature 0.5, d2d4 still
