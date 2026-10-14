@@ -47,6 +47,40 @@ def test_writes_the_profile_with_its_depth_and_each_move_s_loss_with_its_phase(t
     assert profile["phases"]["middlegame"]["mean"] == 100
     written_losses = [json.loads(line) for line in losses_path.read_text(encoding="utf-8").splitlines()]
     assert written_losses == [
-        {"game_id": "lichess:a", "ply": 1, "phase": "opening", "centipawn_loss": 100},
-        {"game_id": "lichess:b", "ply": 12, "phase": "middlegame", "centipawn_loss": 100},
+        {"game_id": "lichess:a", "ply": 1, "phase": "opening", "centipawn_loss": 100, "open_position": True},
+        {"game_id": "lichess:b", "ply": 12, "phase": "middlegame", "centipawn_loss": 100, "open_position": True},
     ]
+
+
+class DecidedAfterTheOpeningAnalyser:
+    """Stands in for Stockfish: opening moves lose a pawn, later moves are made in a game already won."""
+
+    engine = "Fake engine"
+    depth = 18
+
+    def analyse(self, fen: str, move: str) -> Analysis:
+        if fen == START:
+            return Analysis(best_move="e2e4", best=Cp(30), played=Cp(-70))
+        return Analysis(best_move="e2e4", best=Cp(1500), played=Cp(1200))
+
+
+def test_writes_the_level_on_open_positions_beside_the_profile_and_marks_each_move(tmp_path):
+    opening_move = Position(game_id="lichess:a", source="lichess", ply=1, phase="opening", fen=START, move="d2d4")
+    decided_move = Position(
+        game_id="lichess:a", source="lichess", ply=12, phase="middlegame", fen=AFTER_E4_E5_NF3, move="f7f6"
+    )
+    write_json_lines([opening_move, decided_move], tmp_path / "train.jsonl")
+    write_json_lines([], tmp_path / "test.jsonl")
+    profile_path = tmp_path / "blunder-profile.json"
+    losses_path = tmp_path / "centipawn-losses.jsonl"
+
+    extract(tmp_path, tmp_path / "cache.jsonl", profile_path, losses_path, [DecidedAfterTheOpeningAnalyser()])
+
+    profile = json.loads(profile_path.read_text(encoding="utf-8"))
+    assert profile["phases"]["middlegame"]["moves"] == 1
+    open_positions = profile["open_positions"]
+    assert open_positions["phases"]["opening"]["mean"] == 100
+    assert open_positions["phases"]["middlegame"]["moves"] == 0
+    assert open_positions["share_left_out"] == {"opening": 0, "middlegame": 1, "endgame": None}
+    written_losses = [json.loads(line) for line in losses_path.read_text(encoding="utf-8").splitlines()]
+    assert [loss["open_position"] for loss in written_losses] == [True, False]

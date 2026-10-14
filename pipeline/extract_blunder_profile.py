@@ -12,8 +12,10 @@ engine and depth, which is also why a finished run repeats nothing.
 Every move of both the training games and the Test Set is measured. The
 profile is a yardstick the Bot is compared against, never fed to it, so the
 Test Set has nothing to leak into. Written to data/dataset:
-    blunder-profile.json      the distribution of losses, per Phase
-    centipawn-losses.jsonl    each move's loss with its game, ply and Phase
+    blunder-profile.json      the distribution of losses, per Phase, for every
+                              move and for the moves made in Open Positions
+    centipawn-losses.jsonl    each move's loss with its game, ply and Phase, and
+                              whether its position was open
 """
 
 import argparse
@@ -26,7 +28,15 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import Callable, Iterator
 
-from pipeline.blunder_profile import EVALUATION_CAP, MoveLoss, build_blunder_profile, centipawn_loss
+from pipeline.blunder_profile import (
+    EVALUATION_CAP,
+    MoveLoss,
+    build_blunder_profile,
+    centipawn_loss,
+    in_open_positions,
+    position_already_decided,
+    share_left_out,
+)
 from pipeline.dataset import Position, read_dataset
 from pipeline.stockfish_analysis import Analyser, StockfishAnalyser, analyse_positions
 
@@ -64,6 +74,10 @@ def extract(
             losses_file.write(line + "\n")
 
     distribution = build_blunder_profile(move_losses)
+    # Level as the Bot is compared on it: only the moves that could still
+    # be a mistake, since the Bot's games run on to mate and his often end
+    # in a resignation.
+    open_positions = build_blunder_profile(in_open_positions(move_losses))
     profile = {
         "format_version": FORMAT_VERSION,
         "engine": analysers[0].engine,
@@ -71,6 +85,11 @@ def extract(
         "evaluation_cap": EVALUATION_CAP,
         "phases": distribution["phases"],
         "all_phases": distribution["all_phases"],
+        "open_positions": {
+            "phases": open_positions["phases"],
+            "all_phases": open_positions["all_phases"],
+            "share_left_out": share_left_out(move_losses),
+        },
     }
     profile_path.write_text(json.dumps(profile, indent=1), encoding="utf-8")
     return profile
@@ -89,7 +108,14 @@ def measure_move_losses(
     for position in positions:
         analysis = analyses[(position.fen, position.move)]
         loss = centipawn_loss(best=analysis.best, played=analysis.played)
-        move_loss = MoveLoss(game_id=position.game_id, ply=position.ply, phase=position.phase, centipawn_loss=loss)
+        decided = position_already_decided(best=analysis.best, played=analysis.played)
+        move_loss = MoveLoss(
+            game_id=position.game_id,
+            ply=position.ply,
+            phase=position.phase,
+            centipawn_loss=loss,
+            open_position=not decided,
+        )
         move_losses.append(move_loss)
     return move_losses
 

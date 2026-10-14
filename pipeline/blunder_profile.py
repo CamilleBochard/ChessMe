@@ -37,6 +37,9 @@ class MoveLoss:
     ply: int
     phase: str
     centipawn_loss: int
+    # Whether the move could still be a mistake: False once the game was
+    # decided, where the cap reads any move as losing nothing.
+    open_position: bool
 
 
 def build_blunder_profile(moves: list[MoveLoss]) -> dict:
@@ -51,6 +54,24 @@ def build_blunder_profile(moves: list[MoveLoss]) -> dict:
 
     every_loss = [move.centipawn_loss for move in moves]
     return {"phases": phases, "all_phases": _distribution(every_loss)}
+
+
+def in_open_positions(moves: list[MoveLoss]) -> list[MoveLoss]:
+    """The moves made while the game was still open, the only ones that could be a mistake."""
+    return [move for move in moves if move.open_position]
+
+
+def share_left_out(moves: list[MoveLoss]) -> dict[str, float | None]:
+    """Per Phase, the share of moves made once the game was decided; None for a Phase with no move."""
+    shares = {}
+    for phase in PHASES:
+        moves_in_phase = [move for move in moves if move.phase == phase]
+        if not moves_in_phase:
+            shares[phase] = None
+            continue
+        decided = [move for move in moves_in_phase if not move.open_position]
+        shares[phase] = len(decided) / len(moves_in_phase)
+    return shares
 
 
 def _distribution(losses: list[int]) -> dict:
