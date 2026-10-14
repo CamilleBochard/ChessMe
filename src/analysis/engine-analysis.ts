@@ -37,9 +37,28 @@ export function moveLoss(analysis: Analysis): MoveLoss {
   return { centipawnLoss: centipawnLoss, openPosition: true };
 }
 
+/**
+ * Beyond ten pawns a position is decided either way, and a mate has no
+ * centipawn value of its own: both are read as this many centipawns, as the
+ * Blunder Profile reads them. Without the cap, dropping from +25 to +15 in a
+ * won position would count as a ten-pawn blunder.
+ */
+export const EVALUATION_CAP = 1000;
+
+/** The score in centipawns, held within the cap. A mate given counts as the cap, a mate taken as minus the cap. */
 function centipawnsOf(score: Score): number {
-  if ('centipawns' in score) {
-    return score.centipawns;
+  if ('mateIn' in score) {
+    // Mate in 0 is the side to move already mated, as python-chess reads it.
+    if (score.mateIn > 0) {
+      return EVALUATION_CAP;
+    }
+    return -EVALUATION_CAP;
   }
-  return 0;
+  if (score.centipawns > EVALUATION_CAP) {
+    return EVALUATION_CAP;
+  }
+  if (score.centipawns < -EVALUATION_CAP) {
+    return -EVALUATION_CAP;
+  }
+  return score.centipawns;
 }

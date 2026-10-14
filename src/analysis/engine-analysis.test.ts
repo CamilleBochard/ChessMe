@@ -17,4 +17,14 @@ describe('the evaluation a move lost', () => {
 
     expect(loss.centipawnLoss).toBe(0);
   });
+
+  it('reads a score beyond ten pawns, and any mate, as ten pawns', () => {
+    // Mate in three against +2: a mate counts as +10, so the move lost 8 pawns.
+    const missedMate = moveLoss({ best: { mateIn: 3 }, played: { centipawns: 200 } });
+    // +25 against +15, both beyond the cap: read as +10 against +10.
+    const stillWinning = moveLoss({ best: { centipawns: 2500 }, played: { centipawns: 1500 } });
+
+    expect(missedMate.centipawnLoss).toBe(800);
+    expect(stillWinning.centipawnLoss).toBe(0);
+  });
 });
