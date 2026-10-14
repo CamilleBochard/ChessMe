@@ -34,6 +34,14 @@ function fetchAnswering(reply: () => Response): { fetch: typeof fetch; sent: Sen
 }
 
 describe('reporting a Session Game', () => {
+  it('says whether analysis mode was on during the game', () => {
+    const assistedGame: FinishedGame = { ...RESIGNED_AT_ONCE, assisted: true };
+
+    const report = sessionGameReport(SERVED_MODEL, assistedGame);
+
+    expect(report.assisted).toBe(true);
+  });
+
   it("sends the moves played, each of the Bot's marked with where it came from, and returns the game's id", async () => {
     const service = fetchAnswering(() => Response.json({ id: 'game-1' }, { status: 201 }));
     const telemetry = connectTelemetry(service.fetch);
@@ -69,6 +77,7 @@ describe('reporting a Session Game', () => {
           ],
           visitorResigned: false,
           timedOut: null,
+          assisted: false,
         },
       },
     ]);
@@ -95,6 +104,7 @@ describe('reporting a Session Game', () => {
       moves: [{ uci: 'e2e4' }, { uci: 'e7e5', source: 'opening-book' }],
       visitorResigned: true,
       timedOut: null,
+      assisted: false,
     });
   });
 
