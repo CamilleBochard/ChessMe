@@ -1,6 +1,6 @@
 from datetime import date
 
-from pipeline.session_game_analysis import collapse_ply, stored_games
+from pipeline.session_game_analysis import AnalysedMove, collapse_ply, phase_summaries, stored_games
 from pipeline.session_games import open_store, record_session_game
 
 
@@ -44,3 +44,22 @@ def test_reads_the_bots_moves_of_each_stored_game_played_without_analysis_mode(t
     bot_moves = [(move.ply, move.phase, move.move, move.came_from) for move in games[0].bot_moves]
     assert bot_moves == [(2, "opening", "e7e5", "opening-book"), (4, "opening", "d8h4", "base-model")]
     assert games[0].bot_moves[1].fen == "rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2"
+
+
+def test_sums_up_each_phase_by_its_average_loss_in_open_positions_and_its_share_of_model_moves_under_1_percent():
+    moves = [
+        AnalysedMove(phase="middlegame", centipawn_loss=100, open_position=True, probability=0.005),
+        AnalysedMove(phase="middlegame", centipawn_loss=20, open_position=True, probability=0.30),
+        # Made once the game was decided: left out of the loss, still a move of the model.
+        AnalysedMove(phase="middlegame", centipawn_loss=0, open_position=False, probability=0.50),
+        # From the Opening Book: no model probability.
+        AnalysedMove(phase="middlegame", centipawn_loss=60, open_position=True, probability=None),
+    ]
+
+    summaries = phase_summaries(moves)
+
+    middlegame = summaries["middlegame"]
+    assert (middlegame.open_moves, middlegame.average_loss) == (3, 60)
+    assert (middlegame.model_moves, middlegame.share_under_1_percent) == (3, 1 / 3)
+    assert summaries["endgame"].open_moves == 0
+    assert summaries["endgame"].average_loss is None

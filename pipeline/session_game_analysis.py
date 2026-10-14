@@ -13,7 +13,7 @@ from dataclasses import dataclass
 
 import chess.pgn
 
-from pipeline.dataset import phase_of
+from pipeline.dataset import PHASES, phase_of
 
 # A player whose position stands this far below equality, from their own
 # side, has as good as lost the game at this level.
@@ -22,6 +22,9 @@ COLLAPSE_CENTIPAWNS = -300
 # Plies before which a fall that far counts as an early collapse: the first
 # fifteen moves of each side.
 COLLAPSE_BEFORE_PLY = 30
+
+# Below this probability the Base Model finds a move improbable.
+IMPROBABLE_BELOW = 0.01
 
 
 def collapse_ply(evaluations: list[tuple[int, int]]) -> int | None:
@@ -102,3 +105,52 @@ def _bot_moves(game_id: str, pgn: str, sources: dict[int, str]) -> list[StoredBo
             )
         board.push(move)
     return bot_moves
+
+
+@dataclass(frozen=True)
+class AnalysedMove:
+    """One move, the evaluation it lost and, for a move of the Base Model, the probability it gave it."""
+
+    phase: str
+    centipawn_loss: int
+    # Whether the move could still be a mistake: not both the best and the
+    # played move at ten pawns or more for the same side.
+    open_position: bool
+    # None for a move the model did not choose, such as one from the Opening Book.
+    probability: float | None
+
+
+@dataclass(frozen=True)
+class PhaseSummary:
+    open_moves: int
+    # The average loss over the moves made in open positions; None without any.
+    average_loss: float | None
+    model_moves: int
+    # The share of the model's moves it gave less than 1%; None without any.
+    share_under_1_percent: float | None
+
+
+def phase_summaries(moves: list[AnalysedMove]) -> dict[str, PhaseSummary]:
+    """Per Phase, the average loss in open positions, as Level is compared, and the share of model moves under 1%."""
+    summaries = {}
+    for phase in PHASES:
+        in_phase = [move for move in moves if move.phase == phase]
+
+        open_moves = [move for move in in_phase if move.open_position]
+        average_loss = None
+        if open_moves:
+            average_loss = sum(move.centipawn_loss for move in open_moves) / len(open_moves)
+
+        model_moves = [move for move in in_phase if move.probability is not None]
+        share_under_1_percent = None
+        if model_moves:
+            improbable = [move for move in model_moves if move.probability < IMPROBABLE_BELOW]
+            share_under_1_percent = len(improbable) / len(model_moves)
+
+        summaries[phase] = PhaseSummary(
+            open_moves=len(open_moves),
+            average_loss=average_loss,
+            model_moves=len(model_moves),
+            share_under_1_percent=share_under_1_percent,
+        )
+    return summaries
