@@ -136,8 +136,8 @@ def centipawn_loss(best: Score, played: Score) -> int:
 
     Both scores are from the point of view of the player who moved.
     """
-    best_centipawns = _capped_centipawns(best)
-    played_centipawns = _capped_centipawns(played)
+    best_centipawns = capped_centipawns(best)
+    played_centipawns = capped_centipawns(played)
     loss = best_centipawns - played_centipawns
     # The played move is searched on its own, so its score can come out a
     # little above the best move's; it still lost nothing.
@@ -152,14 +152,15 @@ def position_already_decided(best: Score, played: Score) -> bool:
     Both scores are from the point of view of the player who moved. Such a
     move cannot be a mistake by the profile's measure, whatever it gave up.
     """
-    best_centipawns = _capped_centipawns(best)
-    played_centipawns = _capped_centipawns(played)
+    best_centipawns = capped_centipawns(best)
+    played_centipawns = capped_centipawns(played)
     both_winning = best_centipawns == EVALUATION_CAP and played_centipawns == EVALUATION_CAP
     both_losing = best_centipawns == -EVALUATION_CAP and played_centipawns == -EVALUATION_CAP
     return both_winning or both_losing
 
 
-def _capped_centipawns(score: Score) -> int:
+def capped_centipawns(score: Score) -> int:
+    """A score in centipawns held within ten pawns either way, a mate counted as ten pawns."""
     # python-chess reads mate in n as mate_score - n; any mate score far above
     # the cap lands every mate exactly on the cap once clamped.
     centipawns = score.score(mate_score=100 * EVALUATION_CAP)
