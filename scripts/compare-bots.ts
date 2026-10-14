@@ -6,11 +6,15 @@
 //
 //     npm run compare-bots -- models/onnx/maia3-5m.onnx models/onnx/maia3-5m-fine-tuned.onnx
 //     npm run compare-bots -- <first.onnx> <second.onnx> --first-temperature 1 --second-temperature 1.25 --record <file.json> [--test-set <test.jsonl>]
+//     npm run compare-bots -- models/onnx/maia3-5m.onnx models/onnx/maia3-5m.onnx --second-opening-cut top-k=10
 //
 // Both models play at the served rating. Each Bot draws at its own
 // temperature, by default the served one, since each model has the
 // temperature that brings its mistakes to Camille's Level. The drawn move is
-// scored by the probability the draw lands on Camille's move. The tables go
+// scored by the probability the draw lands on Camille's move. With
+// --first-opening-cut or --second-opening-cut that Bot draws, up to ply 10,
+// only among the moves the cut keeps; giving the same model twice then
+// measures what the cut changes. The tables go
 // to standard output as Markdown, progress to standard error; --record also
 // writes the raw counts as JSON.
 
@@ -18,6 +22,8 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { basename } from 'node:path';
 import { parseArgs } from 'node:util';
 import { loadBaseModel } from '../src/engine/base-model';
+import { readMoveCut, type MoveCut } from '../src/engine/move-cut';
+import { drawDescription } from '../src/engine/move-draw';
 import { botMoveDistribution } from '../src/engine/move-selection';
 import { readOpeningBook } from '../src/engine/opening-book';
 import { SERVED_MODEL_RATING, SERVED_MODEL_TEMPERATURE } from '../src/engine/served-model';
@@ -37,6 +43,8 @@ const { values: flags, positionals } = parseArgs({
   options: {
     'first-temperature': { type: 'string' },
     'second-temperature': { type: 'string' },
+    'first-opening-cut': { type: 'string' },
+    'second-opening-cut': { type: 'string' },
     record: { type: 'string' },
     'test-set': { type: 'string', default: DEFAULT_TEST_SET },
   },
@@ -45,7 +53,7 @@ const { values: flags, positionals } = parseArgs({
 const [firstPath, secondPath] = positionals;
 if (firstPath === undefined || secondPath === undefined) {
   console.error(
-    'Usage: npm run compare-bots -- <first.onnx> <second.onnx> [--first-temperature <t>] [--second-temperature <t>] [--record <file>] [--test-set <file>]',
+    'Usage: npm run compare-bots -- <first.onnx> <second.onnx> [--first-temperature <t>] [--second-temperature <t>] [--first-opening-cut <cut>] [--second-opening-cut <cut>] [--record <file>] [--test-set <file>]',
   );
   process.exit(1);
 }
@@ -58,6 +66,14 @@ let secondTemperature = SERVED_MODEL_TEMPERATURE;
 if (flags['second-temperature'] !== undefined) {
   secondTemperature = Number(flags['second-temperature']);
 }
+let firstCut: MoveCut = { kind: 'none' };
+if (flags['first-opening-cut'] !== undefined) {
+  firstCut = readMoveCut(flags['first-opening-cut']);
+}
+let secondCut: MoveCut = { kind: 'none' };
+if (flags['second-opening-cut'] !== undefined) {
+  secondCut = readMoveCut(flags['second-opening-cut']);
+}
 
 const openingBook = readOpeningBook(await readFile(OPENING_BOOK, 'utf-8'));
 const firstModel = await loadBaseModel(await readFile(firstPath), { rating: SERVED_MODEL_RATING });
@@ -68,15 +84,27 @@ progress(`Measuring ${testSet.length} positions, the Bots at temperatures ${firs
 const startedAt = performance.now();
 const comparison = await compareBots(
   testSet,
-  (fen) => botMoveDistribution(fen, { openingBook: openingBook, baseModel: firstModel, temperature: firstTemperature }),
-  (fen) => botMoveDistribution(fen, { openingBook: openingBook, baseModel: secondModel, temperature: secondTemperature }),
+  (fen) =>
+    botMoveDistribution(fen, {
+      openingBook: openingBook,
+      baseModel: firstModel,
+      temperature: firstTemperature,
+      openingCut: firstCut,
+    }),
+  (fen) =>
+    botMoveDistribution(fen, {
+      openingBook: openingBook,
+      baseModel: secondModel,
+      temperature: secondTemperature,
+      openingCut: secondCut,
+    }),
 );
 progress(`Took ${((performance.now() - startedAt) / 1000).toFixed(0)} s`);
 
 const firstName = basename(firstPath, '.onnx');
 const secondName = basename(secondPath, '.onnx');
-console.log(`First Bot: ${OPENING_BOOK}, then ${firstPath} at ${SERVED_MODEL_RATING}, drawn at temperature ${firstTemperature}`);
-console.log(`Second Bot: ${OPENING_BOOK}, then ${secondPath} at ${SERVED_MODEL_RATING}, drawn at temperature ${secondTemperature}`);
+console.log(`First Bot: ${OPENING_BOOK}, then ${firstPath} at ${SERVED_MODEL_RATING}, ${drawDescription(firstTemperature, firstCut)}`);
+console.log(`Second Bot: ${OPENING_BOOK}, then ${secondPath} at ${SERVED_MODEL_RATING}, ${drawDescription(secondTemperature, secondCut)}`);
 console.log(`Test Set: ${flags['test-set']}, ${testSet.length} positions`);
 console.log('');
 printTable('Top move', comparison.first.topMove, comparison.second.topMove, comparison.gain.topMove);
@@ -88,8 +116,8 @@ if (flags.record !== undefined) {
     measuredOn: new Date().toISOString().slice(0, 10),
     openingBook: OPENING_BOOK,
     rating: SERVED_MODEL_RATING,
-    first: { baseModel: firstName, temperature: firstTemperature, ...comparison.first },
-    second: { baseModel: secondName, temperature: secondTemperature, ...comparison.second },
+    first: { baseModel: firstName, temperature: firstTemperature, openingCut: firstCut, ...comparison.first },
+    second: { baseModel: secondName, temperature: secondTemperature, openingCut: secondCut, ...comparison.second },
     gain: comparison.gain,
   };
   await writeFile(flags.record, JSON.stringify(record, null, 1) + '\n');

@@ -394,6 +394,29 @@ its 8,058 moves were drawn from the model and 569 of those were mistakes;
 top-10 would have removed 6.68% of them and top-3 38.66%, against 8.95%
 and 40.32% of Camille's mistakes under the same cuts of the same model.
 
+## The cut in the engine
+
+The Move-Selection Engine can now draw among the most likely moves in the
+opening only, as recommended above. The cut is an option the served Bot
+is not given, so the site still draws among every legal move. It applies
+to the plies of the opening Phase, 1 to 10, read from the position's move
+number, and to no other; the Opening Book is consulted first, as before.
+The cut is read on the Base Model's own probabilities, before the
+temperature, so which moves are kept depends on the model alone and the
+temperature only reshapes the draw among them.
+
+The scripts that play and measure the Bot under Node take the cut as
+`top-k=<k>`, `top-p=<p>` or `min-p=<fraction>`:
+
+```sh
+npm run bot-games -- --temperature 1 --opening-cut top-k=10 --out data/dataset/bot-games-top-10.jsonl
+npm run drawn-move -- models/onnx/maia3-5m.onnx --rating 1100 --opening-cut top-k=10
+npm run compare-bots -- models/onnx/maia3-5m.onnx models/onnx/maia3-5m.onnx --second-opening-cut top-k=10
+```
+
+Whether to serve the cut is decided with the model and the temperature,
+on games played with it.
+
 ## Known limitations
 
 **Improbable means improbable to this model.** A move under 1% is one

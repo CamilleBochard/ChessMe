@@ -8,6 +8,7 @@ import { parseSquare } from 'chessops/util';
 import { currentFen, legalMoves, newGame, playMove, type Game, type MoveRequest } from '../game/game';
 import { gameStatus } from '../game/game-status';
 import { loadBaseModel, type BaseModel, type MoveProbability } from './base-model';
+import type { MoveCut } from './move-cut';
 import { botMoveDistribution, selectMove, selectMoveWithSource } from './move-selection';
 import { readOpeningBook, type OpeningBook } from './opening-book';
 import { seededRandom } from '../evaluation/seeded-random';
@@ -209,6 +210,83 @@ describe('selectMove drawing from the Base Model', () => {
   });
 });
 
+describe('selectMove with a cut in the opening', () => {
+  const startingPosition = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+  // The same probabilities in every position: e2e4 0.7, d2d4 0.2, g1f3 0.1.
+  const baseModel = modelWithPolicy([
+    { move: { from: 'e2', to: 'e4' }, probability: 0.7 },
+    { move: { from: 'd2', to: 'd4' }, probability: 0.2 },
+    { move: { from: 'g1', to: 'f3' }, probability: 0.1 },
+  ]);
+  const topTwo: MoveCut = { kind: 'top-k', k: 2 };
+
+  it('never plays a move outside the cut in the opening, whatever the random number', async () => {
+    // Kept and rescaled, e2e4 owns [0, 0.778) and d2d4 [0.778, 1): the top
+    // of the range, which draws g1f3 without a cut, now falls to d2d4.
+    for (const drawn of [0.95, 0.99, 0.999999]) {
+      const move = await selectMove(startingPosition, { baseModel, random: () => drawn, openingCut: topTwo });
+
+      expect(move).toEqual({ from: 'd2', to: 'd4' });
+    }
+  });
+
+  it('still cuts at ply 10, Black\'s fifth move, the last of the opening', async () => {
+    // The starting pieces with Black to play move 5: ply 10.
+    const atPly10 = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR b KQkq - 0 5';
+    const blackModel = modelWithPolicy([
+      { move: { from: 'e7', to: 'e5' }, probability: 0.7 },
+      { move: { from: 'd7', to: 'd5' }, probability: 0.2 },
+      { move: { from: 'g8', to: 'f6' }, probability: 0.1 },
+    ]);
+
+    const move = await selectMove(atPly10, { baseModel: blackModel, random: () => 0.95, openingCut: topTwo });
+
+    expect(move).toEqual({ from: 'd7', to: 'd5' });
+  });
+
+  it('always keeps the most likely move, however tight the cut', async () => {
+    // e2e4 alone covers more than a share of 0.01; top-p keeps it and nothing else.
+    const tightest: MoveCut = { kind: 'top-p', p: 0.01 };
+
+    for (const drawn of [0, 0.5, 0.999999]) {
+      const move = await selectMove(startingPosition, { baseModel, random: () => drawn, openingCut: tightest });
+
+      expect(move).toEqual({ from: 'e2', to: 'e4' });
+    }
+  });
+
+  it('cuts the Base Model\'s own probabilities, then applies the temperature', async () => {
+    // min-p 0.2 keeps the moves with at least 0.2 x 0.7 = 0.14: e2e4 and d2d4.
+    // Rescaled to 0.778 and 0.222, then squared at temperature 0.5, d2d4 still
+    // owns [0.925, 1). Applied the other way round, the temperature would first
+    // bring d2d4 to 0.074, under a fifth of e2e4's 0.907, and the cut would
+    // leave e2e4 alone.
+    const fifthOfTheBest: MoveCut = { kind: 'min-p', fraction: 0.2 };
+
+    const move = await selectMove(startingPosition, {
+      baseModel,
+      random: () => 0.95,
+      temperature: 0.5,
+      openingCut: fifthOfTheBest,
+    });
+
+    expect(move).toEqual({ from: 'd2', to: 'd4' });
+  });
+
+  it('can still draw every move after ply 10', async () => {
+    // The starting pieces with White to play move 6: ply 11, the middlegame.
+    // Only the move counters differ from the position above.
+    const atPly11 = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 6';
+
+    // Uncut, e2e4 owns [0, 0.7), d2d4 [0.7, 0.9) and g1f3 [0.9, 1).
+    const drawnAt = async (drawn: number) => selectMove(atPly11, { baseModel, random: () => drawn, openingCut: topTwo });
+
+    expect(await drawnAt(0.5)).toEqual({ from: 'e2', to: 'e4' });
+    expect(await drawnAt(0.8)).toEqual({ from: 'd2', to: 'd4' });
+    expect(await drawnAt(0.95)).toEqual({ from: 'g1', to: 'f3' });
+  });
+});
+
 describe('botMoveDistribution', () => {
   const startingPosition = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
 
@@ -230,6 +308,26 @@ describe('botMoveDistribution', () => {
     expect(distribution[0].probability).toBeCloseTo(0.49 / 0.54, 10);
     expect(distribution[1].probability).toBeCloseTo(0.04 / 0.54, 10);
     expect(distribution[2].probability).toBeCloseTo(0.01 / 0.54, 10);
+  });
+
+  it('gives only the moves an opening cut keeps, their probabilities summing to one', async () => {
+    const baseModel = modelWithPolicy([
+      { move: { from: 'e2', to: 'e4' }, probability: 0.7 },
+      { move: { from: 'd2', to: 'd4' }, probability: 0.2 },
+      { move: { from: 'g1', to: 'f3' }, probability: 0.1 },
+    ]);
+
+    const distribution = await botMoveDistribution(startingPosition, {
+      baseModel,
+      openingCut: { kind: 'top-k', k: 2 },
+    });
+
+    expect(distribution.map((candidate) => candidate.move)).toEqual([
+      { from: 'e2', to: 'e4' },
+      { from: 'd2', to: 'd4' },
+    ]);
+    expect(distribution[0].probability).toBeCloseTo(0.7 / 0.9, 10);
+    expect(distribution[1].probability).toBeCloseTo(0.2 / 0.9, 10);
   });
 });
 
