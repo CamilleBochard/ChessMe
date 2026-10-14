@@ -337,14 +337,14 @@ export function cutGap(camilleMoves: PlacedMove[], cut: MoveCut): Record<Phase, 
 
     // Each position scores the Bot's expected improbable share minus
     // Camille's own, 1 or 0.
-    const difference = clusteredAverage(inPhase, (move) => {
+    const botMinusCamille = clusteredAverage(inPhase, (move) => {
       let camilleImprobable = 0;
       if (isImprobable(move)) {
         camilleImprobable = 1;
       }
       return positionUnderCut(move, cut).botBelow[ONE_PERCENT_INDEX] - camilleImprobable;
     });
-    gaps[phase] = { gap: difference.average, standardError: difference.standardError };
+    gaps[phase] = { gap: botMinusCamille.average, standardError: botMinusCamille.standardError };
   }
   return gaps;
 }
@@ -430,7 +430,11 @@ export function checkOpeningCut(camilleMoves: PlacedMove[], cut: MoveCut, openin
   };
 }
 
-/** The average of a score over the moves given, with its standard error clustered by game. */
+/**
+ * The average of a score over the moves given, with its standard error
+ * clustered by game. Each game tallies its positions' scores in the shape
+ * Move-Matching's standard error reads, where the score is a match.
+ */
 function clusteredAverage(moves: PlacedMove[], scoreOf: (move: PlacedMove) => number): { average: number; standardError: number } {
   const games = new Map<string, GameTally>();
   let total = 0;

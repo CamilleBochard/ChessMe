@@ -254,8 +254,9 @@ moves it gives less than 1%:
 
 Read by the original model, the fine-tuned Bot does not look stranger: it
 plays far fewer improbable moves in the opening, and later on both Bots
-stay within half a point of Camille, the original a little closer in the
-middlegame and the fine-tuned in the endgame. Under 5% the fine-tuned Bot
+stay within about half a point of Camille, the original a little closer
+in the middlegame (2.95% against 3.26%, Camille 2.74%) and the fine-tuned
+in the endgame. Under 5% the fine-tuned Bot
 is the closer in both Phases (14.02% against 13.37% in the middlegame,
 Camille 14.04%; 13.22% against 11.59% in the endgame, Camille 14.09%). These games were played without the opening
 cut, so the opening row is the uncut Bot's.
@@ -289,7 +290,8 @@ The full fingerprints are in `style-fingerprint-original.json` and
 `style-fingerprint-fine-tuned-at-1.json`.
 
 **The style discriminator**, trained on Camille's training games against
-other players', on the same 400 games of each Bot
+other players', on the same 400 games of each Bot, of which it reads the
+381 and 384 long enough to score
 (`model-choice-on-open-positions-style.json`). The fine-tuned Bot's games
 score as more like Camille's than the original Bot's by +0.045, with an
 interval of +0.032 to +0.059. Set against the other players' games, the

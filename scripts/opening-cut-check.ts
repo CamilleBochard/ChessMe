@@ -58,10 +58,12 @@ console.log(`The opening cut ${cutName(cut)}, for ${second.baseModel} drawn at $
 console.log('');
 console.log('| Measure | Without the cut | With the cut | Change |');
 console.log('|---|---|---|---|');
-console.log(
-  `| Bot's share under 1% minus Camille's, points | ${points(check.uncut.gap, check.uncut.standardError)} | ${points(check.cut.gap, check.cut.standardError)} | ${points(check.shareChange.change, check.shareChange.standardError)} |`,
-);
-console.log(`| Opening Move-Matching, drawn, Opening Book in front | | | ${points(check.matchingChange.gain, check.matchingChange.standardError)} |`);
+const gapWithoutCutCell = points(check.uncut.gap, check.uncut.standardError);
+const gapWithCutCell = points(check.cut.gap, check.cut.standardError);
+const shareChangeCell = points(check.shareChange.change, check.shareChange.standardError);
+const matchingChangeCell = points(check.matchingChange.gain, check.matchingChange.standardError);
+console.log(`| Bot's share under 1% minus Camille's, points | ${gapWithoutCutCell} | ${gapWithCutCell} | ${shareChangeCell} |`);
+console.log(`| Opening Move-Matching, drawn, Opening Book in front | | | ${matchingChangeCell} |`);
 console.log('');
 console.log(`Closer to Camille: ${yesOrNo(check.closer)}. Move-Matching within two standard errors: ${yesOrNo(check.matchingHolds)}.`);
 if (check.served) {

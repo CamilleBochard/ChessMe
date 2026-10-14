@@ -22,10 +22,10 @@ try {
   model = await readFile(SERVED_MODEL_SOURCE);
 } catch {
   console.error(`No Base Model at ${SERVED_MODEL_SOURCE}.`);
-  console.error(
-    'Create it with: python -m pipeline.fetch_models && python -m pipeline.recreate_fine_tuned' +
-      ' && python -m pipeline.convert_maia3 --fine-tuned models/fine-tuned/maia3-5m-full-recreated.pt',
-  );
+  console.error('Create it with:');
+  console.error('  python -m pipeline.fetch_models');
+  console.error('  python -m pipeline.recreate_fine_tuned');
+  console.error('  python -m pipeline.convert_maia3 --fine-tuned models/fine-tuned/maia3-5m-full-recreated.pt');
   process.exit(1);
 }
 

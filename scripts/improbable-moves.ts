@@ -48,7 +48,8 @@ for (const phase of PHASES) {
   console.log('');
   const thresholds = IMPROBABILITY_THRESHOLDS.map((threshold) => `Under ${100 * threshold}%`);
   console.log(`| Player | Moves | ${thresholds.join(' | ')} |`);
-  console.log(`|---|---|${thresholds.map(() => '---').join('|')}|`);
+  const separators = thresholds.map(() => '---');
+  console.log(`|---|---|${separators.join('|')}|`);
   for (const [name, profile] of Object.entries(profiles)) {
     const shares = profile[phase].below.map((share) => `${(100 * share).toFixed(2)}%`);
     console.log(`| ${name} | ${profile[phase].moves.toLocaleString('en-GB')} | ${shares.join(' | ')} |`);

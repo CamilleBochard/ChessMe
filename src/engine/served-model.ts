@@ -30,6 +30,8 @@ export const SERVED_MODEL_TEMPERATURE = 1;
 /**
  * In the opening, the Bot draws among the model's ten most likely moves only.
  * Without it the Bot plays moves the model gives less than 1% more often than
- * Camille does there (docs/experiments/move-cut.md).
+ * Camille does there (docs/experiments/move-cut.md); with it, it comes closer
+ * to his share at no cost to Move-Matching
+ * (docs/experiments/model-choice-on-open-positions.md).
  */
 export const SERVED_OPENING_CUT: MoveCut = { kind: 'top-k', k: 10 };
