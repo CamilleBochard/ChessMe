@@ -7,7 +7,7 @@ from pipeline.draw_temperature import loss_distance, next_step, phase_distances
 def losses(phase: str, centipawn_losses: list[int]) -> list[MoveLoss]:
     moves = []
     for index, loss in enumerate(centipawn_losses):
-        moves.append(MoveLoss(game_id=f"game:{index}", ply=index + 1, phase=phase, centipawn_loss=loss))
+        moves.append(MoveLoss(game_id=f"game:{index}", ply=index + 1, phase=phase, centipawn_loss=loss, open_position=True))
     return moves
 
 

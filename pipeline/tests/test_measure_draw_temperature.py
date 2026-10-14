@@ -6,6 +6,7 @@ import pytest
 from chess.engine import Cp
 
 from pipeline.dataset import Position
+from pipeline.bot_losses import EVERY_MOVE
 from pipeline.measure_draw_temperature import extract, loss_tables, phase_distance_table, summary_table
 from pipeline.stockfish_analysis import Analysis
 
@@ -62,7 +63,7 @@ def test_sets_the_bot_s_losses_at_each_temperature_beside_camille_s_with_their_d
     extract(tmp_path, runs, tmp_path / "cache.jsonl", results_path, [OnlyE4IsBestAnalyser()])
 
     written = json.loads(results_path.read_text(encoding="utf-8"))
-    assert written["format_version"] == 1
+    assert written["format_version"] == 2
     assert written["engine"] == "Fake engine"
     assert written["depth"] == 18
     assert written["camille"]["centipawn_loss"]["phases"]["opening"]["mean"] == 50
@@ -116,7 +117,7 @@ def test_counts_the_bot_s_wins_draws_and_losses_at_each_temperature(tmp_path):
     assert written["temperatures"]["1"]["results"] == {"won": 1, "drawn": 1, "lost": 1}
 
 
-def test_checks_the_distance_again_without_the_moves_made_in_positions_already_decided(tmp_path):
+def test_reports_the_distance_on_every_move_beside_the_one_on_open_positions(tmp_path):
     # Camille loses nothing on one move and a pawn on the other. The Bot does
     # the same, plus a third move in a position already won, which the cap
     # reads as losing nothing.
@@ -132,13 +133,13 @@ def test_checks_the_distance_again_without_the_moves_made_in_positions_already_d
 
     written = json.loads(results_path.read_text(encoding="utf-8"))
     at_1 = written["temperatures"]["1"]
-    assert at_1["distance"] == pytest.approx(100 / 6)
-    assert at_1["already_decided_share"]["opening"] == pytest.approx(1 / 3)
-    assert at_1["distance_in_undecided_positions"] == 0
-    assert written["camille"]["already_decided_share"]["opening"] == 0
+    assert at_1["distance_on_every_move"] == pytest.approx(100 / 6)
+    assert at_1["share_in_decided_positions"]["opening"] == pytest.approx(1 / 3)
+    assert at_1["distance_in_open_positions"] == 0
+    assert written["camille"]["share_in_decided_positions"]["opening"] == 0
 
 
-def test_breaks_the_distance_down_by_phase_and_describes_the_losses_in_undecided_positions(tmp_path):
+def test_breaks_the_distance_down_by_phase_and_describes_the_losses_in_open_positions(tmp_path):
     write_camille_s_games(tmp_path)
     runs = {1: tmp_path / "temperature-1.jsonl"}
     write_json_lines(
@@ -151,11 +152,11 @@ def test_breaks_the_distance_down_by_phase_and_describes_the_losses_in_undecided
 
     written = json.loads(results_path.read_text(encoding="utf-8"))
     at_1 = written["temperatures"]["1"]
-    assert at_1["phase_distances"]["opening"] == pytest.approx(100 / 6)
-    assert at_1["phase_distances"]["middlegame"] is None
-    assert at_1["phase_distances_in_undecided_positions"]["opening"] == 0
-    assert at_1["centipawn_loss_in_undecided_positions"]["phases"]["opening"]["moves"] == 2
-    assert written["camille"]["centipawn_loss_in_undecided_positions"]["phases"]["opening"]["mean"] == 50
+    assert at_1["phase_distances_on_every_move"]["opening"] == pytest.approx(100 / 6)
+    assert at_1["phase_distances_on_every_move"]["middlegame"] is None
+    assert at_1["phase_distances_in_open_positions"]["opening"] == 0
+    assert at_1["centipawn_loss_in_open_positions"]["phases"]["opening"]["moves"] == 2
+    assert written["camille"]["centipawn_loss_in_open_positions"]["phases"]["opening"]["mean"] == 50
 
 
 def test_sets_each_temperature_s_losses_under_camille_s_in_one_table_per_phase(tmp_path):
@@ -183,7 +184,7 @@ def test_sums_up_each_temperature_s_distance_and_results_in_one_row(tmp_path):
     table = summary_table(results).splitlines()
 
     assert table[0] == (
-        "| Temperature | Games | Won, drawn, lost | Distance | Distance, undecided positions "
+        "| Temperature | Games | Won, drawn, lost | Distance, every move | Distance, open positions "
         "| Endgame moves in decided positions |"
     )
     assert table[2] == "| 1 | 1 | 0, 0, 1 | 50.0 | 50.0 | - |"
@@ -197,17 +198,60 @@ def test_sets_each_phase_s_distance_at_each_temperature_in_one_table(tmp_path):
     results = extract(tmp_path, runs, tmp_path / "cache.jsonl", tmp_path / "out.json", [OnlyE4IsBestAnalyser()])
     table = phase_distance_table(results).splitlines()
 
-    assert table[0] == "| Phase | 1 | 1, undecided positions |"
+    assert table[0] == "| Phase | 1 | 1, open positions |"
     assert table[2] == "| Opening (1-10) | 50.0 | 50.0 |"
     assert table[3] == "| Middlegame (11-30) | - | - |"
 
 
-def test_can_set_out_the_losses_of_undecided_positions_alone(tmp_path):
+def test_can_set_out_the_losses_of_open_positions_alone(tmp_path):
     write_camille_s_games(tmp_path)
     runs = {1: tmp_path / "temperature-1.jsonl"}
     write_json_lines([bot_game("bot:13-0", "f2f3"), bot_game("bot:13-1", "a2a3")], runs[1])
 
     results = extract(tmp_path, runs, tmp_path / "cache.jsonl", tmp_path / "out.json", [OnlyE4IsBestAnalyser()])
-    table = loss_tables(results, in_undecided_positions=True).splitlines()
+    table = loss_tables(results, in_open_positions=True).splitlines()
 
     assert table[5] == "| Bot at 1 | 1 | 100.0 | 100 | 100 | 100 | 100 | 100 | 100.0% | 100.0% | 0.0% |"
+
+
+def test_reads_the_distance_on_open_positions_unless_told_to_read_every_move(tmp_path):
+    # The Bot plays like Camille, plus a third move in a game already won,
+    # which the cap reads as losing nothing.
+    write_camille_s_games(tmp_path)
+    runs = {1: tmp_path / "temperature-1.jsonl"}
+    write_json_lines(
+        [bot_game("bot:13-0", "e2e4"), bot_game("bot:13-1", "f2f3"), bot_game("bot:13-2", "a2a3")],
+        runs[1],
+    )
+
+    on_open_positions = extract(tmp_path, runs, tmp_path / "cache.jsonl", tmp_path / "open.json", [OnlyE4IsBestAnalyser()])
+    on_every_move = extract(
+        tmp_path, runs, tmp_path / "cache.jsonl", tmp_path / "every.json", [OnlyE4IsBestAnalyser()], yardstick=EVERY_MOVE
+    )
+
+    assert on_open_positions["yardstick"] == "open positions"
+    assert on_open_positions["temperatures"]["1"]["distance"] == 0
+    assert on_every_move["yardstick"] == "every move"
+    assert on_every_move["temperatures"]["1"]["distance"] == pytest.approx(100 / 6)
+
+
+def test_measures_the_chance_gap_between_camille_s_games_on_the_same_moves_as_the_distance(tmp_path):
+    # His training game's move loses nothing. His Test Set loses a pawn on one
+    # move and makes another in a game already won.
+    training_move = Position(game_id="lichess:a", source="lichess", ply=1, phase="opening", fen=START, move="e2e4")
+    test_set_moves = [
+        Position(game_id="lichess:b", source="lichess", ply=1, phase="opening", fen=START, move="d2d4"),
+        Position(game_id="lichess:b", source="lichess", ply=3, phase="opening", fen=START, move="a2a3"),
+    ]
+    write_json_lines([asdict(training_move)], tmp_path / "train.jsonl")
+    write_json_lines([asdict(move) for move in test_set_moves], tmp_path / "test.jsonl")
+    runs = {1: tmp_path / "temperature-1.jsonl"}
+    write_json_lines([bot_game("bot:13-0", "e2e4")], runs[1])
+
+    on_open_positions = extract(tmp_path, runs, tmp_path / "cache.jsonl", tmp_path / "open.json", [OnlyE4IsBestAnalyser()])
+    on_every_move = extract(
+        tmp_path, runs, tmp_path / "cache.jsonl", tmp_path / "every.json", [OnlyE4IsBestAnalyser()], yardstick=EVERY_MOVE
+    )
+
+    assert on_open_positions["camille_test_set_from_training_games"] == 100
+    assert on_every_move["camille_test_set_from_training_games"] == 50
