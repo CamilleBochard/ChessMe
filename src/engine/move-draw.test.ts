@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from 'vitest';
 import type { MoveProbability } from './base-model';
-import { drawMove } from './move-draw';
+import { drawDescription, drawMove } from './move-draw';
 
 describe('drawing a move from the Base Model probabilities', () => {
   const policy: MoveProbability[] = [
@@ -16,5 +16,16 @@ describe('drawing a move from the Base Model probabilities', () => {
     expect(drawMove(policy, () => 0)).toEqual({ from: 'e2', to: 'e4' });
     expect(drawMove(policy, () => 0.75)).toEqual({ from: 'd2', to: 'd4' });
     expect(drawMove(policy, () => 0.95)).toEqual({ from: 'g1', to: 'f3' });
+  });
+});
+
+describe('describing how the Bot draws', () => {
+  it('names the top move at temperature 0', () => {
+    expect(drawDescription(0, { kind: 'none' })).toBe('top move');
+  });
+
+  it('names the temperature, and the cut in the opening when there is one', () => {
+    expect(drawDescription(1, { kind: 'none' })).toBe('drawn at temperature 1');
+    expect(drawDescription(1.25, { kind: 'top-k', k: 10 })).toBe('drawn at temperature 1.25, top-10 in the opening');
   });
 });

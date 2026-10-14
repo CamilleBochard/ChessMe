@@ -4,6 +4,7 @@
 
 import type { MoveRequest } from '../game/game';
 import type { MoveProbability } from './base-model';
+import { cutName, type MoveCut } from './move-cut';
 
 /**
  * Picks a move at random, each move as often as its probability says: the
@@ -53,4 +54,21 @@ export function withTemperature(policy: MoveProbability[], temperature: number):
   const weights = policy.map((candidate) => Math.exp(exponent * (Math.log(candidate.probability) - largestLog)));
   const total = weights.reduce((sum, weight) => sum + weight, 0);
   return policy.map((candidate, index) => ({ move: candidate.move, probability: weights[index] / total }));
+}
+
+/**
+ * How the Bot draws, as a script's summary says it: "top move" at
+ * temperature 0, otherwise "drawn at temperature 1", followed by the cut
+ * when there is one, as in "drawn at temperature 1, top-10 in the opening".
+ * At temperature 0 a cut is not named, since the top move survives every cut.
+ */
+export function drawDescription(temperature: number, openingCut: MoveCut): string {
+  if (temperature === 0) {
+    return 'top move';
+  }
+  const atTemperature = `drawn at temperature ${temperature}`;
+  if (openingCut.kind === 'none') {
+    return atTemperature;
+  }
+  return `${atTemperature}, ${cutName(openingCut)} in the opening`;
 }
