@@ -229,6 +229,24 @@ describe('selectMove with a cut in the opening', () => {
       expect(move).toEqual({ from: 'd2', to: 'd4' });
     }
   });
+
+  it('cuts the Base Model\'s own probabilities, then applies the temperature', async () => {
+    // min-p 0.2 keeps the moves with at least 0.2 x 0.7 = 0.14: e2e4 and d2d4.
+    // Rescaled to 0.778 and 0.222, then squared at temperature 0.5, d2d4 still
+    // owns [0.925, 1). Applied the other way round, the temperature would first
+    // bring d2d4 to 0.074, under a fifth of e2e4's 0.907, and the cut would
+    // leave e2e4 alone.
+    const fifthOfTheBest: MoveCut = { kind: 'min-p', fraction: 0.2 };
+
+    const move = await selectMove(startingPosition, {
+      baseModel,
+      random: () => 0.95,
+      temperature: 0.5,
+      openingCut: fifthOfTheBest,
+    });
+
+    expect(move).toEqual({ from: 'd2', to: 'd4' });
+  });
 });
 
 describe('botMoveDistribution', () => {

@@ -101,9 +101,8 @@ async function chooseDistribution(fen: string, options: EngineOptions): Promise<
   if (options.baseModel !== undefined) {
     const baseModel = await options.baseModel;
     const policy = await baseModel.movePolicy(game);
-    const tempered = withTemperature(policy, temperature);
-    const kept = cutPolicy(tempered, options.openingCut ?? { kind: 'none' });
-    return { distribution: kept, source: 'base-model' };
+    const kept = cutPolicy(policy, options.openingCut ?? { kind: 'none' });
+    return { distribution: withTemperature(kept, temperature), source: 'base-model' };
   }
 
   const uniform = candidates.map((move) => ({ move: move, probability: 1 / candidates.length }));
