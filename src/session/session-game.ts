@@ -366,6 +366,7 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
 
     async start(side: Colour): Promise<void> {
       visitor = side;
+      assisted = false;
       resetBothClocks();
       setGame(newGame());
 
@@ -453,6 +454,7 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
 
     startOver(): void {
       visitor = null;
+      assisted = false;
       resetBothClocks();
       setGame(newGame());
     },

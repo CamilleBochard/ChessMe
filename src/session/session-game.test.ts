@@ -407,6 +407,24 @@ describe('an assisted game', () => {
 
     expect(finishedGames[0].assisted).toBe(true);
   });
+
+  it('is not carried over to the next game', async () => {
+    const finishedGames: FinishedGame[] = [];
+    const session = createSessionGame({
+      chooseMove: scriptedBot([{ from: 'e7', to: 'e5' }]),
+      onGameEnd: (finished) => {
+        finishedGames.push(finished);
+      },
+    });
+    await session.start('white');
+    session.markAssisted();
+    session.resign();
+
+    await session.start('white');
+    session.resign();
+
+    expect(finishedGames.map((finished) => finished.assisted)).toEqual([true, false]);
+  });
 });
 
 describe('the clock', () => {
