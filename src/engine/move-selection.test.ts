@@ -247,6 +247,19 @@ describe('selectMove with a cut in the opening', () => {
 
     expect(move).toEqual({ from: 'd2', to: 'd4' });
   });
+
+  it('can still draw every move after ply 10', async () => {
+    // The starting pieces with White to play move 6: ply 11, the middlegame.
+    // Only the move counters differ from the position above.
+    const atPly11 = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 6';
+
+    // Uncut, e2e4 owns [0, 0.7), d2d4 [0.7, 0.9) and g1f3 [0.9, 1).
+    const drawnAt = async (drawn: number) => selectMove(atPly11, { baseModel, random: () => drawn, openingCut: topTwo });
+
+    expect(await drawnAt(0.5)).toEqual({ from: 'e2', to: 'e4' });
+    expect(await drawnAt(0.8)).toEqual({ from: 'd2', to: 'd4' });
+    expect(await drawnAt(0.95)).toEqual({ from: 'g1', to: 'f3' });
+  });
 });
 
 describe('botMoveDistribution', () => {

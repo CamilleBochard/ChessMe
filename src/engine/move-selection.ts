@@ -4,11 +4,18 @@
 // page and the evaluation harness never change when the choice does.
 // Free of anything DOM so that it runs unchanged under Node.
 
-import { gameFromFen, legalMoves, type MoveRequest } from '../game/game';
+import { gameFromFen, legalMoves, type Game, type MoveRequest } from '../game/game';
 import type { BaseModel, MoveProbability } from './base-model';
 import { cutPolicy, type MoveCut } from './move-cut';
 import { drawMove, withTemperature } from './move-draw';
 import type { OpeningBook } from './opening-book';
+
+/**
+ * The last ply of the opening Phase: White's first move is ply 1, so the
+ * opening is each side's first five moves. A cut given as openingCut applies
+ * up to it.
+ */
+const LAST_OPENING_PLY = 10;
 
 /** What the engine depends on, supplied by the caller so tests can fix it. */
 export interface EngineOptions {
@@ -101,10 +108,38 @@ async function chooseDistribution(fen: string, options: EngineOptions): Promise<
   if (options.baseModel !== undefined) {
     const baseModel = await options.baseModel;
     const policy = await baseModel.movePolicy(game);
-    const kept = cutPolicy(policy, options.openingCut ?? { kind: 'none' });
+    const kept = cutPolicy(policy, cutAt(game, options.openingCut));
     return { distribution: withTemperature(kept, temperature), source: 'base-model' };
   }
 
   const uniform = candidates.map((move) => ({ move: move, probability: 1 / candidates.length }));
   return { distribution: uniform, source: 'random' };
+}
+
+/**
+ * The cut that applies in this position: the opening cut up to ply 10, none
+ * after. Applied to the Base Model's own probabilities, before the
+ * temperature, so which moves are kept depends on the model alone.
+ */
+function cutAt(game: Game, openingCut: MoveCut | undefined): MoveCut {
+  if (openingCut === undefined) {
+    return { kind: 'none' };
+  }
+  if (plyToPlay(game) > LAST_OPENING_PLY) {
+    return { kind: 'none' };
+  }
+  return openingCut;
+}
+
+/**
+ * The ply of the move about to be played, read from the position's move
+ * number: White's first move is ply 1, Black's reply ply 2. A position given
+ * with made-up move counters is read at the ply they claim.
+ */
+function plyToPlay(game: Game): number {
+  const movesBefore = game.position.fullmoves - 1;
+  if (game.position.turn === 'white') {
+    return 2 * movesBefore + 1;
+  }
+  return 2 * movesBefore + 2;
 }
