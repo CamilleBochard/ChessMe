@@ -385,17 +385,3 @@ export const CANDIDATE_CUTS: readonly MoveCut[] = [
   { kind: 'min-p', fraction: 0.2 },
   { kind: 'none' },
 ];
-
-/** How a cut is named in a table: no cut, top-5, top-p 0.90, min-p 0.05. */
-export function cutName(cut: MoveCut): string {
-  if (cut.kind === 'none') {
-    return 'no cut';
-  }
-  if (cut.kind === 'top-k') {
-    return `top-${cut.k}`;
-  }
-  if (cut.kind === 'top-p') {
-    return `top-p ${cut.p.toFixed(2)}`;
-  }
-  return `min-p ${cut.fraction.toFixed(2)}`;
-}

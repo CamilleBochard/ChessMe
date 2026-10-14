@@ -5,6 +5,7 @@
 // wherever it runs; reading files is left to the caller.
 
 import type { MoveProbability } from '../engine/base-model';
+import { LAST_OPENING_PLY } from '../engine/move-selection';
 import { uciName, type MoveRequest } from '../game/game';
 
 /** A position where Camille moved, as the Python pipeline writes it to the dataset. */
@@ -70,9 +71,6 @@ export interface MoveMatchingReport {
    */
   byPhase: Record<Phase, MoveMatchingScore>;
 }
-
-/** The last ply left out of the score compared with published Maia figures. */
-const LAST_OPENING_PLY = 10;
 
 /** Whatever chooses a move for a position, usually the Move-Selection Engine. */
 export type ChooseMove = (fen: string) => Promise<MoveRequest>;

@@ -20,14 +20,13 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
 import { gameFromFen } from '../src/game/game';
-import type { MoveCut } from '../src/engine/move-cut';
+import { cutName, type MoveCut } from '../src/engine/move-cut';
 import { readOpeningBook } from '../src/engine/opening-book';
 import {
   CANDIDATE_CUTS,
   candidateDistance,
   chooseCut,
   cutGap,
-  cutName,
   IMPROBABILITY_THRESHOLDS,
   improbabilityProfile,
   measureCut,

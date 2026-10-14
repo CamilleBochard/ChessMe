@@ -63,3 +63,59 @@ function rescaled<Candidate extends Weighed>(kept: Candidate[]): Candidate[] {
   const total = kept.reduce((sum, candidate) => sum + candidate.probability, 0);
   return kept.map((candidate) => ({ ...candidate, probability: candidate.probability / total }));
 }
+
+/** How a cut is named in a table: no cut, top-5, top-p 0.90, min-p 0.05. */
+export function cutName(cut: MoveCut): string {
+  if (cut.kind === 'none') {
+    return 'no cut';
+  }
+  if (cut.kind === 'top-k') {
+    return `top-${cut.k}`;
+  }
+  if (cut.kind === 'top-p') {
+    return `top-p ${cut.p.toFixed(2)}`;
+  }
+  return `min-p ${cut.fraction.toFixed(2)}`;
+}
+
+/**
+ * A cut as a script's option names it: top-k=10, top-p=0.9 or min-p=0.05.
+ * Refuses a value that would not cut as asked rather than run a measurement
+ * on a cut nobody meant.
+ */
+export function readMoveCut(text: string): MoveCut {
+  const parts = text.split('=');
+  const kind = parts[0];
+  // A value is one number after a single '='. Anything else, such as
+  // top-k=10=3, is read as no number at all rather than cut in part.
+  let number = Number.NaN;
+  if (parts.length === 2) {
+    number = Number(parts[1]);
+  }
+  const unusable = new Error(`Cannot cut with ${text}: k counts moves from 1, p and the fraction lie above 0 and at most 1`);
+
+  if (kind === 'top-k') {
+    if (!Number.isInteger(number) || number < 1) {
+      throw unusable;
+    }
+    return { kind: 'top-k', k: number };
+  }
+  if (kind === 'top-p') {
+    if (!isShare(number)) {
+      throw unusable;
+    }
+    return { kind: 'top-p', p: number };
+  }
+  if (kind === 'min-p') {
+    if (!isShare(number)) {
+      throw unusable;
+    }
+    return { kind: 'min-p', fraction: number };
+  }
+  throw new Error(`Unknown cut: ${text}. Expected top-k=<k>, top-p=<p> or min-p=<fraction>`);
+}
+
+/** Above 0 and at most 1. Not a number is not a share. */
+function isShare(number: number): boolean {
+  return number > 0 && number <= 1;
+}
