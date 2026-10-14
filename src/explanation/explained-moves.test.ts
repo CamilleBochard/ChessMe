@@ -4,7 +4,8 @@
 import { describe, expect, it } from 'vitest';
 import type { BotMove } from '../engine/move-selection';
 import { currentFen, newGame, playMove, type Game, type MoveRequest } from '../game/game';
-import { botMovesOf, replyKey } from './explained-moves';
+import { botMovesOf, candidateRows, replyKey } from './explained-moves';
+import type { Candidate } from '../engine/move-selection';
 
 function play(moves: MoveRequest[]): Game {
   let game = newGame();
@@ -33,5 +34,22 @@ describe("the Bot's moves in the game", () => {
       [2, 'opening', 'c5', sicilian],
       [4, 'opening', 'd6', pawnToD6],
     ]);
+  });
+});
+
+describe('the candidates the panel lists', () => {
+  /** Ten candidates, most likely first; their moves do not matter here. */
+  const candidates: Candidate[] = Array.from({ length: 10 }, (_, index) => ({
+    move: { from: 'a2', to: 'a3' },
+    modelProbability: (10 - index) / 55,
+    drawnProbability: (10 - index) / 55,
+  }));
+
+  it("are the model's five most likely moves, with the move played after them when it ranks lower", () => {
+    const amongTheFive = candidateRows(candidates, 3);
+    const furtherDown = candidateRows(candidates, 7);
+
+    expect(amongTheFive).toEqual({ mostLikely: candidates.slice(0, 5), playedFurtherDown: null });
+    expect(furtherDown).toEqual({ mostLikely: candidates.slice(0, 5), playedFurtherDown: candidates[6] });
   });
 });
