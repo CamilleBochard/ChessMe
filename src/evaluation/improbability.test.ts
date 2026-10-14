@@ -257,4 +257,15 @@ describe('the opening cut check', () => {
     expect(check.closer).toBe(false);
     expect(check.served).toBe(false);
   });
+
+  it('does not serve a cut whose opening Move-Matching falls by more than two standard errors', () => {
+    const camille = [placed('a', 'opening', tail, 1), placed('b', 'opening', tail, 2)];
+
+    const fallsTooFar = checkOpeningCut(camille, topTwo, { gain: -0.021, standardError: 0.01 });
+    const fallsTwoErrors = checkOpeningCut(camille, topTwo, { gain: -0.02, standardError: 0.01 });
+
+    expect(fallsTooFar.matchingHolds).toBe(false);
+    expect(fallsTooFar.served).toBe(false);
+    expect(fallsTwoErrors.served).toBe(true);
+  });
 });

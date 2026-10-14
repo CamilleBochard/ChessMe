@@ -420,12 +420,15 @@ export function checkOpeningCut(camilleMoves: PlacedMove[], cut: MoveCut, openin
   const withCutGap = cutGap(camilleMoves, cut).opening;
   const closer = Math.abs(withCutGap.gap) < Math.abs(uncutGap.gap);
 
+  const largestAllowedFall = 2 * openingMatchingChange.standardError;
+  const matchingHolds = openingMatchingChange.gain >= -largestAllowedFall;
+
   return {
     uncut: uncutGap,
     cut: withCutGap,
     closer: closer,
     matchingChange: openingMatchingChange,
-    matchingHolds: true,
-    served: closer,
+    matchingHolds: matchingHolds,
+    served: closer && matchingHolds,
   };
 }
