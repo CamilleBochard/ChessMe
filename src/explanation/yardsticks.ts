@@ -71,7 +71,7 @@ export function improbabilityYardstick(moves: WeighedMove[]): ImprobabilityYards
 }
 
 /** The share of the moves the model gave less than 1%. */
-function shareImprobable(moves: WeighedMove[]): number {
+function shareImprobable(moves: { probability: number }[]): number {
   const improbable = moves.filter((move) => move.probability < IMPROBABLE_BELOW).length;
   return improbable / moves.length;
 }
@@ -149,7 +149,18 @@ export function gameImprobability(botMoves: BotWeighedMove[], yardstick: Improba
   const verdicts = {} as Record<Phase, Verdict>;
   for (const phase of PHASES) {
     const inPhase = botMoves.filter((move) => move.phase === phase);
-    verdicts[phase] = { kind: 'too-few-moves', moves: inPhase.length };
+    verdicts[phase] = againstSpread(inPhase, shareImprobable, yardstick.phases[phase].perGame);
   }
   return verdicts;
+}
+
+/** The game's figure in one Phase, read from its moves there, against the spread of Camille's games. */
+function againstSpread<Move>(moves: Move[], figureOf: (moves: Move[]) => number, spread: Spread | null): Verdict {
+  // Without a spread, none of his games had enough moves in the Phase
+  // either, so the game has too few for a verdict as well.
+  if (moves.length < MOVES_FOR_A_VERDICT || spread === null) {
+    return { kind: 'too-few-moves', moves: moves.length };
+  }
+  const figure = figureOf(moves);
+  return { kind: 'inside', moves: moves.length, figure: figure, spread: spread };
 }
