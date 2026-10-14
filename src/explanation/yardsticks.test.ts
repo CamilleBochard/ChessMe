@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from 'vitest';
 import type { Phase } from '../evaluation/move-matching';
-import { improbabilityYardstick, moveRarity, type WeighedMove } from './yardsticks';
+import { gameImprobability, improbabilityYardstick, moveRarity, type WeighedMove } from './yardsticks';
 
 /** One of Camille's moves, given the probability the Base Model gave it. */
 function weighed(game: string, phase: Phase, probability: number) {
@@ -82,5 +82,23 @@ describe("the spread of Camille's games", () => {
     const yardstick = improbabilityYardstick(moves);
 
     expect(yardstick.phases.opening.perGame).toBeNull();
+  });
+});
+
+describe("the Bot's game so far against Camille's games", () => {
+  // Ten games of his, the k-th with k middlegame moves under 1% out of ten:
+  // the middle 80% of his games run from 0 to 0.8.
+  const camilleMoves: WeighedMove[] = [];
+  for (let rare = 0; rare < 10; rare++) {
+    camilleMoves.push(...middlegameWithRareMoves(`game-${rare}`, rare));
+  }
+  const yardstick = improbabilityYardstick(camilleMoves);
+
+  it('says there are too few moves to tell below eight moves in the Phase', () => {
+    const botMoves = middlegameWithRareMoves('bot', 7).slice(0, 7);
+
+    const verdicts = gameImprobability(botMoves, yardstick);
+
+    expect(verdicts.middlegame).toEqual({ kind: 'too-few-moves', moves: 7 });
   });
 });

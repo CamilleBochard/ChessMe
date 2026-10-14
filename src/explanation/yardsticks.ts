@@ -126,3 +126,30 @@ export function moveRarity(yardstick: ImprobabilityYardstick, phase: Phase, prob
   const along = (Math.log(probability) - lowRung) / (highRung - lowRung);
   return curve[below] + along * (curve[above] - curve[below]);
 }
+
+/** One of the Bot's Base Model moves and the probability the model gave it. */
+export interface BotWeighedMove {
+  phase: Phase;
+  probability: number;
+}
+
+/** How a figure of the game so far compares with Camille's games, in one Phase. */
+export type Verdict =
+  /** Fewer moves than MOVES_FOR_A_VERDICT: one game this short cannot be told apart from his. */
+  | { kind: 'too-few-moves'; moves: number }
+  /** Inside the range the middle 80% of his games cover, or below or above it. */
+  | { kind: 'inside' | 'below' | 'above'; moves: number; figure: number; spread: Spread };
+
+/**
+ * Per Phase, the share of the Bot's Base Model moves so far the model gave
+ * less than 1%, set against the spread of the same share across Camille's
+ * games.
+ */
+export function gameImprobability(botMoves: BotWeighedMove[], yardstick: ImprobabilityYardstick): Record<Phase, Verdict> {
+  const verdicts = {} as Record<Phase, Verdict>;
+  for (const phase of PHASES) {
+    const inPhase = botMoves.filter((move) => move.phase === phase);
+    verdicts[phase] = { kind: 'too-few-moves', moves: inPhase.length };
+  }
+  return verdicts;
+}
