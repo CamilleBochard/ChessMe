@@ -8,6 +8,7 @@
 import { readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { SERVED_MODEL_DIRECTORY, SERVED_MODEL_RATING } from '../engine/served-model';
+import { BROWSER_ENGINE_FILES } from '../analysis/browser-engine';
 
 // The model the page downloads, found where scripts/stage-model.ts put it. Its
 // size is read here, at build time, because the server sends it compressed and
@@ -21,6 +22,8 @@ const modelPath = `/models/${modelFileName}`;
 // How a Session Game names the Base Model: after its file, whose name carries
 // a hash of its contents, so two versions of a model are never confused.
 const baseModelName = modelFileName.replace(/\.onnx$/, '');
+// Where scripts/stage-stockfish.ts put the engine analysis mode starts.
+const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
 ---
 
 <div
@@ -30,6 +33,7 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
   data-model-bytes={modelBytes}
   data-model-rating={SERVED_MODEL_RATING}
   data-base-model={baseModelName}
+  data-engine-path={enginePath}
 >
   <div class="play">
     <div class="clock" data-clock="top">
@@ -83,6 +87,22 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
       </div>
     </div>
     <ol class="move-list" data-move-list aria-labelledby="moves-heading"></ol>
+
+    <section class="explanation" aria-labelledby="explanation-heading">
+      <h2 id="explanation-heading">Why the Bot played it</h2>
+      <div class="explained-move" data-move-explanation aria-live="polite"></div>
+      <h2>The game so far, against Camille's</h2>
+      <div class="game-comparison" data-game-comparison></div>
+      <label class="analysis-switch">
+        <input type="checkbox" data-analysis-switch />
+        Analysis mode
+      </label>
+      <p class="analysis-note">
+        Runs <a href="https://github.com/nmrugg/stockfish.js">Stockfish</a> (GPL-3.0) in your browser, a 1.8 MB
+        download, to show how much evaluation each of the Bot's moves lost. A game played with it on is recorded
+        as assisted.
+      </p>
+    </section>
   </aside>
 
   <dialog class="promotion" data-promotion aria-label="Choose a promotion piece">
@@ -106,6 +126,7 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
   import {
     currentFen,
     isInCheck,
+    uciName,
     isPromotion,
     legalDestinations,
     moveList,
@@ -123,6 +144,10 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
   import { clockFaces, createSessionGame, type ClockFace, type FinishedGame } from '../session/session-game';
   import { connectTelemetry, sessionGameReport } from '../telemetry/session-game';
   import { SESSION_GAMES_CHANGED } from '../telemetry/session-game-summary';
+  import { startBrowserAnalyser, type BrowserAnalyser } from '../analysis/browser-analyser';
+  import { moveLoss } from '../analysis/engine-analysis';
+  import { botMovesOf, moveKeyOf, replyKey, type ExplainedMove } from '../explanation/explained-moves';
+  import { showPanel, type MoveEvaluation } from '../explanation/panel';
 
   /**
    * Remembered once the model has reached the browser's cache, so that a
@@ -164,6 +189,9 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
     const impressionChoices = impression.querySelector<HTMLElement>('[data-impression-choices]')!;
     const impressionButtons = impressionChoices.querySelectorAll<HTMLButtonElement>('button');
     const impressionThanks = impression.querySelector<HTMLElement>('[data-impression-thanks]')!;
+    const moveExplanation = frame.querySelector<HTMLElement>('[data-move-explanation]')!;
+    const gameComparison = frame.querySelector<HTMLElement>('[data-game-comparison]')!;
+    const analysisSwitch = frame.querySelector<HTMLInputElement>('[data-analysis-switch]')!;
     const topClock = frame.querySelector<HTMLElement>('[data-clock="top"]')!;
     const bottomClock = frame.querySelector<HTMLElement>('[data-clock="bottom"]')!;
 
@@ -174,6 +202,14 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
     let storedGameId: string | undefined = undefined;
 
     let botStatus: BotStatus = { kind: 'downloading', progress: { receivedBytes: 0, totalBytes: undefined } };
+
+    // Every reply of the Bot, filed by the position and the move, for the
+    // panel to explain the moves on the board with.
+    const replies = new Map<string, BotMove>();
+    // Analysis mode's engine while the mode is on, and what it has found,
+    // filed like the replies.
+    let analysis: BrowserAnalyser | null = null;
+    const evaluations = new Map<string, MoveEvaluation>();
 
     if (isFirstVisit()) {
       playEntrance(frame);
@@ -213,7 +249,12 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
         const colour = button.dataset.playAs as Colour;
         board.set({ orientation: colour });
         forgetEndedGame();
-        session.start(colour).catch(() => {
+        const started = session.start(colour);
+        // A game started with analysis mode on is assisted from its first move.
+        if (analysis !== null) {
+          session.markAssisted();
+        }
+        started.catch(() => {
           // The Bot failed while choosing its first move; its status already
           // says so, and the board only needs redrawing.
           showGame();
@@ -242,6 +283,15 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
         void sendImpression(button.dataset.feltReal === 'yes');
       });
     }
+
+    analysisSwitch.addEventListener('change', () => {
+      if (analysisSwitch.checked) {
+        switchAnalysisOn();
+      } else {
+        switchAnalysisOff();
+      }
+      showGame();
+    });
 
     viewBackButton.addEventListener('click', () => {
       session.viewBack();
@@ -334,6 +384,7 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
     async function askBot(fen: string): Promise<BotMove> {
       try {
         const reply = await bot.requestMove(fen);
+        replies.set(replyKey(fen, reply.move), reply);
         return reply;
       } catch (error) {
         // A model that failed to load has already been reported as the Bot's
@@ -449,6 +500,110 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
 
       showMoveList(moveListElement, moveList(game), moveList(shown));
       showClocks();
+      showExplanation();
+    }
+
+    /**
+     * Draws the panel: the Bot's last move up to the position on display, and
+     * the game so far against Camille's. In analysis mode every Bot move not
+     * yet evaluated is sent to Stockfish.
+     */
+    function showExplanation(): void {
+      const visitor = session.visitor();
+      if (visitor === null) {
+        showPanel(moveExplanation, gameComparison, {
+          focus: null,
+          botMoves: [],
+          analysisOn: analysis !== null,
+          evaluations: new Map(),
+        });
+        return;
+      }
+
+      let botColour: Colour = 'white';
+      if (visitor === 'white') {
+        botColour = 'black';
+      }
+      const botMoves = botMovesOf(session.game(), botColour, replies);
+      const shownBotMoves = botMovesOf(session.viewedGame(), botColour, replies);
+      let focus: ExplainedMove | null = null;
+      if (shownBotMoves.length > 0) {
+        focus = shownBotMoves[shownBotMoves.length - 1];
+      }
+
+      if (analysis !== null) {
+        evaluateMissing(botMoves);
+      }
+      showPanel(moveExplanation, gameComparison, {
+        focus: focus,
+        botMoves: botMoves,
+        analysisOn: analysis !== null,
+        evaluations: evaluations,
+      });
+    }
+
+    function switchAnalysisOn(): void {
+      if (analysis !== null) {
+        return;
+      }
+      // The visitor can now see where the Bot goes wrong: the game in
+      // progress is assisted, whatever happens to the switch later.
+      session.markAssisted();
+      const engineUrl = new URL(frame.dataset.enginePath!, window.location.href).href;
+      analysis = startBrowserAnalyser(engineUrl, () => {
+        // An engine that cannot start leaves every move it was given unevaluated.
+        for (const [key, evaluation] of evaluations) {
+          if (evaluation === 'pending') {
+            evaluations.set(key, 'failed');
+          }
+        }
+        showExplanation();
+      });
+    }
+
+    /** Stops the engine. A move it was still evaluating is evaluated again if the mode comes back on. */
+    function switchAnalysisOff(): void {
+      if (analysis === null) {
+        return;
+      }
+      analysis.stop();
+      analysis = null;
+      for (const [key, evaluation] of evaluations) {
+        if (evaluation === 'pending') {
+          evaluations.delete(key);
+        }
+      }
+    }
+
+    /** Sends the engine every Bot move it has not yet been given. */
+    function evaluateMissing(botMoves: ExplainedMove[]): void {
+      const running = analysis;
+      if (running === null) {
+        return;
+      }
+      for (const explained of botMoves) {
+        const key = moveKeyOf(explained);
+        if (evaluations.has(key)) {
+          continue;
+        }
+        evaluations.set(key, 'pending');
+        const fen = currentFen(explained.before);
+        const move = uciName(explained.botMove.move);
+        running.analyser
+          .analyse(fen, move)
+          .then((found) => {
+            evaluations.set(key, moveLoss(found));
+          })
+          .catch(() => {
+            evaluations.set(key, 'failed');
+          })
+          .finally(() => {
+            // An answer from an engine switched off since is not shown.
+            if (analysis === running) {
+              showExplanation();
+            }
+          });
+      }
     }
 
     /** The visitor's clock under the board and the Bot's above it, the running one marked. */
@@ -966,6 +1121,108 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
     font-weight: 600;
   }
 
+  /* The panel under the moves: why the Bot played the move on display, and
+     the game so far against Camille's. Its contents are created by the
+     script, hence :global for everything inside the two containers. */
+  .explanation {
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--divider);
+    font-size: 0.875rem;
+    color: var(--text-2);
+  }
+
+  .explanation h2 {
+    margin: 1rem 0 0.5rem;
+  }
+
+  .explanation h2:first-child {
+    margin-top: 0;
+  }
+
+  .explanation :global(p) {
+    margin: 0 0 0.5rem;
+  }
+
+  .explanation :global(.move-heading) {
+    font-weight: 600;
+    color: var(--text-1);
+  }
+
+  .explanation :global(.placeholder),
+  .explanation :global(.sources) {
+    color: var(--text-3);
+  }
+
+  .explanation :global(.sources) {
+    font-size: 0.8125rem;
+  }
+
+  .explanation :global(table.candidates) {
+    width: 100%;
+    margin: 0 0 0.5rem;
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .explanation :global(table.candidates th) {
+    font-weight: 600;
+    color: var(--text-3);
+    text-align: right;
+  }
+
+  .explanation :global(table.candidates th:first-child),
+  .explanation :global(table.candidates td:first-child) {
+    text-align: left;
+  }
+
+  .explanation :global(table.candidates td) {
+    padding: 0.125rem 0;
+    text-align: right;
+  }
+
+  .explanation :global(table.candidates tr.played) {
+    color: var(--brand);
+    font-weight: 600;
+  }
+
+  .explanation :global(dl.phases) {
+    margin: 0 0 0.5rem;
+  }
+
+  .explanation :global(dl.phases dt) {
+    font-weight: 600;
+    color: var(--text-1);
+  }
+
+  .explanation :global(dl.phases dd) {
+    margin: 0 0 0.5rem;
+  }
+
+  .analysis-switch {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    font-weight: 600;
+    color: var(--text-1);
+    cursor: pointer;
+  }
+
+  .analysis-switch input {
+    accent-color: var(--brand);
+  }
+
+  .analysis-note {
+    margin: 0.25rem 0 0;
+    font-size: 0.8125rem;
+    color: var(--text-3);
+  }
+
+  .analysis-note a {
+    color: inherit;
+  }
+
   @media (min-width: 960px) {
     /* The play area and the moves become columns of the page's own grid, so
        the page can set the title right against the board's left edge. */
@@ -980,13 +1237,13 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
       padding: 2rem 2rem 2rem 0;
       min-height: 0;
       /* The board and the two clocks share this width. */
-      --board-size: min(calc(100dvh - 15rem), calc(100vw - 17rem - 14rem - 2rem));
+      --board-size: min(calc(100dvh - 15rem), calc(100vw - 20rem - 14rem - 2rem));
     }
 
     /* As large as the screen height allows while leaving room for the two
        clocks, the status line and one row of buttons, so the controls never
        fall below the fold. On a wide but short screen the width caps it instead,
-       keeping room for the title column (14rem), the moves column (17rem) and
+       keeping room for the title column (14rem), the moves column (20rem) and
        the padding around the board. */
     .board {
       width: var(--board-size);
@@ -1009,9 +1266,17 @@ const baseModelName = modelFileName.replace(/\.onnx$/, '');
       padding: 2rem 1.5rem;
     }
 
+    /* The moves keep up to a third of the column and the panel scrolls in
+       the rest, so the explanation stays in view beside the board. */
     .move-list {
+      flex: 0 1 auto;
+      max-height: 33%;
+    }
+
+    .explanation {
       flex: 1;
-      max-height: none;
+      min-height: 0;
+      overflow-y: auto;
     }
   }
 

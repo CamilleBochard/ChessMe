@@ -23,10 +23,11 @@ data/analysis/
 # Personal working notes, kept out of the repository
 notes/
 
-# Built tools and downloaded or converted models, recreated by the scripts
+# Built tools, downloaded or converted models and the staged engine, recreated by the scripts
 tools/
 models/
 public/models/
+public/stockfish/
 
 # Session Games received by pipeline/serve_session_games.py, kept on the VPS
 data/session-games*.sqlite

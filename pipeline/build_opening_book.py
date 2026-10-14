@@ -6,7 +6,9 @@ Run from the repository root, after pipeline.build_dataset:
 
 Only the training games feed the book; the Test Set is read so that the
 builder, not the caller, is what keeps it out. The book is written to
-data/dataset/opening-book.json for the Move-Selection Engine to read.
+data/dataset/opening-book.json for the Move-Selection Engine to read, with
+how often Camille reached each position and played its move, for the page
+to show beside a book move.
 """
 
 import argparse
@@ -14,7 +16,7 @@ import json
 from pathlib import Path
 
 from pipeline.dataset import read_dataset
-from pipeline.opening_book import build_opening_book
+from pipeline.opening_book import book_counts, build_opening_book
 
 # A position must have been reached at least this many times, so a position
 # met in only one or two games never enters the book. The book then plays
@@ -30,7 +32,10 @@ def build(dataset_dir: Path, book_path: Path, min_occurrences: int) -> dict[str,
     dataset = read_dataset(dataset_dir)
     book = build_opening_book(dataset, min_occurrences=min_occurrences)
 
-    written = {"min_occurrences": min_occurrences, "positions": book}
+    # The counts sit beside the moves rather than inside them, so a reader
+    # that only needs the moves reads the file as before.
+    counts = book_counts(dataset, book)
+    written = {"min_occurrences": min_occurrences, "positions": book, "counts": counts}
     book_path.write_text(json.dumps(written, indent=1), encoding="utf-8")
     return book
 

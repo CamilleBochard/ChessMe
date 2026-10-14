@@ -94,7 +94,10 @@ page more than thirty times a minute sees the counts as unavailable, and
 can still report the game they play next.
 
 To read them offline, copy the database off the VPS and print the same
-counts:
+counts, split in two: the games played without analysis mode, then the
+assisted ones, during which the visitor turned on the engine's evaluation
+at some point and could see where the Bot went wrong. The endpoint answers
+the counts over every game.
 
 ```sh
 python -m pipeline.report_session_games --database data/session-games.sqlite

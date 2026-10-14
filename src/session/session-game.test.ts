@@ -3,13 +3,13 @@
 // reply comes and, when it matters, exactly when it arrives.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { BotMove, MoveSource } from '../engine/move-selection';
+import type { MoveSource } from '../engine/move-selection';
 import { currentFen, moveList, type MoveRequest } from '../game/game';
 import { gameStatus } from '../game/game-status';
-import { clockFaces, createSessionGame, type FinishedGame } from './session-game';
+import { clockFaces, createSessionGame, type FinishedGame, type SourcedMove } from './session-game';
 
 /** A Bot that plays the given moves in order, whatever the position, all from the given source. */
-function scriptedBot(replies: MoveRequest[], source: MoveSource = 'base-model'): (fen: string) => Promise<BotMove> {
+function scriptedBot(replies: MoveRequest[], source: MoveSource = 'base-model'): (fen: string) => Promise<SourcedMove> {
   const remaining = [...replies];
   return async () => {
     const reply = remaining.shift();
@@ -25,13 +25,13 @@ function scriptedBot(replies: MoveRequest[], source: MoveSource = 'base-model'):
  * the Bot is still choosing.
  */
 function slowBot(): {
-  chooseMove: (fen: string) => Promise<BotMove>;
+  chooseMove: (fen: string) => Promise<SourcedMove>;
   reply: (move: MoveRequest) => void;
 } {
-  let sendReply: (botMove: BotMove) => void = () => {
+  let sendReply: (botMove: SourcedMove) => void = () => {
     throw new Error('The slow Bot has not been asked for a move yet');
   };
-  const chooseMove = (): Promise<BotMove> => {
+  const chooseMove = (): Promise<SourcedMove> => {
     return new Promise((resolve) => {
       sendReply = resolve;
     });
@@ -304,7 +304,7 @@ describe('browsing earlier positions', () => {
 
 describe('the finished game', () => {
   /** A Bot that plays the given answers in order, each with its own source. */
-  function botAnswering(answers: BotMove[]): (fen: string) => Promise<BotMove> {
+  function botAnswering(answers: SourcedMove[]): (fen: string) => Promise<SourcedMove> {
     const remaining = [...answers];
     return async () => remaining.shift()!;
   }
@@ -336,6 +336,7 @@ describe('the finished game', () => {
         ],
         visitorResigned: false,
         timedOut: null,
+        assisted: false,
       },
     ]);
   });
@@ -359,6 +360,7 @@ describe('the finished game', () => {
         moves: [{ move: { from: 'e2', to: 'e4' } }, { move: { from: 'e7', to: 'e5' }, source: 'opening-book' }],
         visitorResigned: true,
         timedOut: null,
+        assisted: false,
       },
     ]);
   });
@@ -385,6 +387,43 @@ describe('the finished game', () => {
       { move: { from: 'e2', to: 'e4' } },
       { move: { from: 'c7', to: 'c5' }, source: 'base-model' },
     ]);
+  });
+});
+
+describe('an assisted game', () => {
+  it('is handed over as assisted when analysis mode was on at any point during it', async () => {
+    const finishedGames: FinishedGame[] = [];
+    const session = createSessionGame({
+      chooseMove: scriptedBot([{ from: 'e7', to: 'e5' }]),
+      onGameEnd: (finished) => {
+        finishedGames.push(finished);
+      },
+    });
+    await session.start('white');
+    session.markAssisted();
+    await session.playVisitorMove({ from: 'e2', to: 'e4' });
+
+    session.resign();
+
+    expect(finishedGames[0].assisted).toBe(true);
+  });
+
+  it('is not carried over to the next game', async () => {
+    const finishedGames: FinishedGame[] = [];
+    const session = createSessionGame({
+      chooseMove: scriptedBot([{ from: 'e7', to: 'e5' }]),
+      onGameEnd: (finished) => {
+        finishedGames.push(finished);
+      },
+    });
+    await session.start('white');
+    session.markAssisted();
+    session.resign();
+
+    await session.start('white');
+    session.resign();
+
+    expect(finishedGames.map((finished) => finished.assisted)).toEqual([true, false]);
   });
 });
 
@@ -522,6 +561,7 @@ describe('the clock', () => {
         moves: [{ move: { from: 'e2', to: 'e4' } }, { move: { from: 'e7', to: 'e5' }, source: 'opening-book' }],
         visitorResigned: false,
         timedOut: 'white',
+        assisted: false,
       },
     ]);
   });

@@ -1,3 +1,4 @@
+import sqlite3
 from datetime import date
 
 import pytest
@@ -392,3 +393,57 @@ def test_refuses_a_loss_on_time_for_the_side_not_to_move(tmp_path):
 
     with pytest.raises(RejectedGame, match="not to move"):
         record_session_game(store, report, played_on=PLAYED_ON)
+
+
+def test_counts_assisted_games_apart_from_the_others(tmp_path):
+    store = open_store(tmp_path / "session-games.sqlite")
+    # Won by the Bot with one book move and one Base Model move, analysis on.
+    assisted = fools_mate_reported_by_the_page()
+    assisted["assisted"] = True
+    assisted_id = record_session_game(store, assisted, played_on=PLAYED_ON)
+    record_impression(store, assisted_id, felt_like_a_real_player=False)
+    # Lost by the Bot with two Base Model moves, analysis off.
+    unassisted = fools_mate_with_the_bot_as_white()
+    unassisted["assisted"] = False
+    record_session_game(store, unassisted, played_on=PLAYED_ON)
+
+    assisted_counts = session_game_counts(store, assisted=True)
+    unassisted_counts = session_game_counts(store, assisted=False)
+
+    assert (assisted_counts["games"], assisted_counts["bot_wins"], assisted_counts["bot_losses"]) == (1, 1, 0)
+    assert (assisted_counts["bot_moves_from_opening_book"], assisted_counts["bot_moves_from_base_model"]) == (1, 1)
+    assert assisted_counts["did_not_feel_like_a_real_player"] == 1
+    assert (unassisted_counts["games"], unassisted_counts["bot_wins"], unassisted_counts["bot_losses"]) == (1, 0, 1)
+    assert (unassisted_counts["bot_moves_from_opening_book"], unassisted_counts["bot_moves_from_base_model"]) == (0, 2)
+    assert unassisted_counts["impression_not_given"] == 1
+
+
+@pytest.mark.parametrize("assisted", ["yes", 1, None])
+def test_refuses_a_report_that_says_neither_yes_nor_no_about_analysis_mode(tmp_path, assisted):
+    store = open_store(tmp_path / "session-games.sqlite")
+    report = fools_mate_reported_by_the_page()
+    report["assisted"] = assisted
+
+    with pytest.raises(RejectedGame):
+        record_session_game(store, report, played_on=PLAYED_ON)
+
+
+def test_reads_the_games_of_a_store_made_before_analysis_mode_as_unassisted(tmp_path):
+    path = tmp_path / "session-games.sqlite"
+    older = sqlite3.connect(path)
+    older.executescript(
+        """
+        CREATE TABLE session_games (
+            id TEXT PRIMARY KEY, played_on TEXT NOT NULL, bot_colour TEXT NOT NULL,
+            result TEXT NOT NULL, pgn TEXT NOT NULL, felt_like_a_real_player INTEGER
+        );
+        INSERT INTO session_games VALUES ('older-game', '2026-10-05', 'black', '0-1', '', NULL);
+        """
+    )
+    older.close()
+
+    store = open_store(path)
+    record_session_game(store, fools_mate_reported_by_the_page(), played_on=PLAYED_ON)
+
+    assert session_game_counts(store, assisted=False)["games"] == 2
+    assert session_game_counts(store, assisted=True)["games"] == 0

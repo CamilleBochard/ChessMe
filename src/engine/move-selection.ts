@@ -4,11 +4,11 @@
 // page and the evaluation harness never change when the choice does.
 // Free of anything DOM so that it runs unchanged under Node.
 
-import { gameFromFen, legalMoves, type Game, type MoveRequest } from '../game/game';
+import { gameFromFen, legalMoves, uciName, type Game, type MoveRequest } from '../game/game';
 import type { BaseModel, MoveProbability } from './base-model';
 import { cutPolicy, type MoveCut } from './move-cut';
 import { drawMove, withTemperature } from './move-draw';
-import type { OpeningBook } from './opening-book';
+import type { BookCounts, OpeningBook } from './opening-book';
 
 /**
  * The last ply of the opening Phase: White's first move is ply 1, so the
@@ -44,11 +44,41 @@ export interface EngineOptions {
 /** Where a move of the Bot came from. */
 export type MoveSource = 'opening-book' | 'base-model' | 'random';
 
-/** One move of the Bot, with where it came from, which the Session Game records. */
-export interface BotMove {
+/** A move the Base Model weighed, as the panel beside the board shows it. */
+export interface Candidate {
   move: MoveRequest;
-  source: MoveSource;
+  /** The probability the Base Model gives the move. */
+  modelProbability: number;
+  /** The probability the Bot drew it with, once the cut and the temperature applied: 0 for a move cut. */
+  drawnProbability: number;
 }
+
+/**
+ * One move of the Bot, with where it came from, which the Session Game
+ * records, and for a Base Model move what the draw chose among.
+ */
+export type BotMove =
+  | {
+      move: MoveRequest;
+      source: 'opening-book';
+      /** How often Camille reached the position and played the move; undefined when the book does not say. */
+      counts: BookCounts | undefined;
+    }
+  | {
+      move: MoveRequest;
+      source: 'base-model';
+      /** How many legal moves the position had. */
+      legalMoves: number;
+      /** Every move the Base Model weighed, most likely first by its own probability. */
+      candidates: Candidate[];
+      /** Where the move played stands among the candidates: 1 for the model's most likely. */
+      rank: number;
+      /** The temperature the move was drawn at. */
+      temperature: number;
+      /** The cut that applied in this position: the opening cut up to ply 10, none after. */
+      cut: MoveCut;
+    }
+  | { move: MoveRequest; source: 'random' };
 
 /**
  * Chooses the Bot's move in the position the FEN describes: Camille's own
@@ -68,7 +98,24 @@ export async function selectMoveWithSource(fen: string, options: EngineOptions =
   const random = options.random ?? Math.random;
   const choice = await chooseDistribution(fen, options);
   const move = drawMove(choice.distribution, random);
-  return { move: move, source: choice.source };
+  if (choice.source === 'base-model') {
+    const candidates = candidatesOf(choice.policy, choice.distribution);
+    const playedName = uciName(move);
+    const playedIndex = candidates.findIndex((candidate) => uciName(candidate.move) === playedName);
+    return {
+      move: move,
+      source: 'base-model',
+      legalMoves: choice.legalMoves,
+      candidates: candidates,
+      rank: playedIndex + 1,
+      temperature: choice.temperature,
+      cut: choice.cut,
+    };
+  }
+  if (choice.source === 'opening-book') {
+    return { move: move, source: 'opening-book', counts: choice.counts };
+  }
+  return { move: move, source: 'random' };
 }
 
 /**
@@ -82,11 +129,22 @@ export async function botMoveDistribution(fen: string, options: EngineOptions = 
   return choice.distribution;
 }
 
-/** The moves the Bot may play and their probabilities, with where they come from. */
-interface Choice {
-  distribution: MoveProbability[];
-  source: MoveSource;
-}
+/**
+ * The moves the Bot may play and their probabilities, with where they come
+ * from; for the Base Model, also the model's own probabilities before the cut
+ * and the temperature.
+ */
+type Choice =
+  | { distribution: MoveProbability[]; source: 'opening-book'; counts: BookCounts | undefined }
+  | { distribution: MoveProbability[]; source: 'random' }
+  | {
+      distribution: MoveProbability[];
+      source: 'base-model';
+      policy: MoveProbability[];
+      legalMoves: number;
+      temperature: number;
+      cut: MoveCut;
+    };
 
 async function chooseDistribution(fen: string, options: EngineOptions): Promise<Choice> {
   const temperature = options.temperature ?? 1;
@@ -101,19 +159,48 @@ async function chooseDistribution(fen: string, options: EngineOptions): Promise<
   if (options.openingBook !== undefined) {
     const bookMove = options.openingBook.move(game);
     if (bookMove !== undefined) {
-      return { distribution: [{ move: bookMove, probability: 1 }], source: 'opening-book' };
+      return {
+        distribution: [{ move: bookMove, probability: 1 }],
+        source: 'opening-book',
+        counts: options.openingBook.counts(game),
+      };
     }
   }
 
   if (options.baseModel !== undefined) {
     const baseModel = await options.baseModel;
     const policy = await baseModel.movePolicy(game);
-    const kept = cutPolicy(policy, cutAt(game, options.openingCut));
-    return { distribution: withTemperature(kept, temperature), source: 'base-model' };
+    const cut = cutAt(game, options.openingCut);
+    const kept = cutPolicy(policy, cut);
+    return {
+      distribution: withTemperature(kept, temperature),
+      source: 'base-model',
+      policy: policy,
+      legalMoves: candidates.length,
+      temperature: temperature,
+      cut: cut,
+    };
   }
 
   const uniform = candidates.map((move) => ({ move: move, probability: 1 / candidates.length }));
   return { distribution: uniform, source: 'random' };
+}
+
+/**
+ * Each move of the Base Model's policy with the probability the draw gave it.
+ * The distribution holds only the moves the cut kept; the others were drawn
+ * with probability 0.
+ */
+function candidatesOf(policy: MoveProbability[], distribution: MoveProbability[]): Candidate[] {
+  const drawnByMove = new Map<string, number>();
+  for (const drawn of distribution) {
+    drawnByMove.set(uciName(drawn.move), drawn.probability);
+  }
+  return policy.map((weighed) => ({
+    move: weighed.move,
+    modelProbability: weighed.probability,
+    drawnProbability: drawnByMove.get(uciName(weighed.move)) ?? 0,
+  }));
 }
 
 /**

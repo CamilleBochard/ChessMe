@@ -4,7 +4,9 @@ Run against a copy of the database fetched from the VPS:
 
     python -m pipeline.report_session_games --database data/session-games.sqlite
 
-The counts are printed as JSON, so the write-up can read them as they are.
+The counts are printed as JSON, so the write-up can read them as they are:
+the games played without analysis mode first, the evidence about the Bot
+against an unaided visitor, then the assisted games apart.
 """
 
 import argparse
@@ -22,6 +24,9 @@ if __name__ == "__main__":
         parser.error(f"no database at {arguments.database}")
 
     store = open_store(arguments.database)
-    counts = session_game_counts(store)
+    counts = {
+        "unassisted": session_game_counts(store, assisted=False),
+        "assisted": session_game_counts(store, assisted=True),
+    }
     store.close()
     print(json.dumps(counts, indent=2))

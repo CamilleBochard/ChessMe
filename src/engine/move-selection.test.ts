@@ -410,7 +410,8 @@ describe('selectMoveWithSource', () => {
 
     const botMove = await selectMoveWithSource(startingPosition, { openingBook, baseModel, temperature: 0 });
 
-    expect(botMove).toEqual({ move: { from: 'e2', to: 'e4' }, source: 'base-model' });
+    expect(botMove.move).toEqual({ from: 'e2', to: 'e4' });
+    expect(botMove.source).toBe('base-model');
   });
 
   it('names chance as the source when neither the book nor a Base Model is given', async () => {
@@ -419,6 +420,84 @@ describe('selectMoveWithSource', () => {
     const botMove = await selectMoveWithSource(kingMustTakeTheRook);
 
     expect(botMove).toEqual({ move: { from: 'a1', to: 'b2' }, source: 'random' });
+  });
+});
+
+describe('selectMoveWithSource explaining the move', () => {
+  const startingPosition = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+  const baseModel = modelWithPolicy([
+    { move: { from: 'e2', to: 'e4' }, probability: 0.7 },
+    { move: { from: 'd2', to: 'd4' }, probability: 0.2 },
+    { move: { from: 'g1', to: 'f3' }, probability: 0.1 },
+  ]);
+
+  it('gives, for a Base Model move, the model\'s probabilities and the drawn ones, most likely first', async () => {
+    // Cut to the top two and drawn at 1, e2e4 owns [0, 0.778) and d2d4 [0.778, 1).
+    const botMove = await selectMoveWithSource(startingPosition, {
+      baseModel,
+      random: () => 0.9,
+      openingCut: { kind: 'top-k', k: 2 },
+    });
+
+    expect(botMove.source).toBe('base-model');
+    if (botMove.source !== 'base-model') {
+      return;
+    }
+    expect(botMove.move).toEqual({ from: 'd2', to: 'd4' });
+    expect(botMove.legalMoves).toBe(20);
+    expect(botMove.candidates.map((candidate) => candidate.move)).toEqual([
+      { from: 'e2', to: 'e4' },
+      { from: 'd2', to: 'd4' },
+      { from: 'g1', to: 'f3' },
+    ]);
+    expect(botMove.candidates.map((candidate) => candidate.modelProbability)).toEqual([0.7, 0.2, 0.1]);
+    const drawn = botMove.candidates.map((candidate) => candidate.drawnProbability);
+    expect(drawn[0]).toBeCloseTo(0.7 / 0.9, 10);
+    expect(drawn[1]).toBeCloseTo(0.2 / 0.9, 10);
+    expect(drawn[2]).toBe(0);
+  });
+
+  it('gives, for a book move, how often Camille reached the position and played the move', async () => {
+    const startKey = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -';
+    const file = {
+      min_occurrences: 3,
+      positions: { [startKey]: 'd2d4' },
+      counts: { [startKey]: { reached: 12, played: 9 } },
+    };
+    const openingBook = readOpeningBook(JSON.stringify(file));
+
+    const botMove = await selectMoveWithSource(startingPosition, { openingBook, baseModel });
+
+    expect(botMove.source).toBe('opening-book');
+    if (botMove.source !== 'opening-book') {
+      return;
+    }
+    expect(botMove.move).toEqual({ from: 'd2', to: 'd4' });
+    expect(botMove.counts).toEqual({ reached: 12, played: 9 });
+  });
+
+  it('names the temperature and the cut the draw was made with, the opening cut only up to ply 10', async () => {
+    const topTwo: MoveCut = { kind: 'top-k', k: 2 };
+    // White's sixth move is ply 11, the first after the opening.
+    const afterTheOpening = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 6';
+
+    const inOpening = await selectMoveWithSource(startingPosition, { baseModel, temperature: 0.5, openingCut: topTwo });
+    const afterOpening = await selectMoveWithSource(afterTheOpening, { baseModel, temperature: 0.5, openingCut: topTwo });
+
+    expect(inOpening).toMatchObject({ temperature: 0.5, cut: topTwo });
+    expect(afterOpening).toMatchObject({ temperature: 0.5, cut: { kind: 'none' } });
+  });
+
+  it('gives where the move played ranks among the Base Model\'s candidates', async () => {
+    // Without a cut, g1f3 owns [0.9, 1): the model's third most likely move.
+    const botMove = await selectMoveWithSource(startingPosition, { baseModel, random: () => 0.95 });
+
+    expect(botMove.source).toBe('base-model');
+    if (botMove.source !== 'base-model') {
+      return;
+    }
+    expect(botMove.move).toEqual({ from: 'g1', to: 'f3' });
+    expect(botMove.rank).toBe(3);
   });
 });
 
