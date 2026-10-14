@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import type { Phase } from '../evaluation/move-matching';
 import {
   gameImprobability,
+  gameLosses,
   improbabilityYardstick,
   lossYardstick,
   moveRarity,
@@ -167,5 +168,25 @@ describe("Camille's losses per game", () => {
     const yardstick = lossYardstick(moves);
 
     expect(yardstick.phases.middlegame.perGame).toEqual({ games: 10, low: 10, high: 90 });
+  });
+});
+
+describe("the Bot's losses so far against Camille's games", () => {
+  const camilleMoves: LossMove[] = [];
+  for (let tenth = 1; tenth <= 10; tenth++) {
+    camilleMoves.push(...middlegameLosing(`game-${tenth}`, 10 * tenth));
+  }
+  const yardstick = lossYardstick(camilleMoves);
+
+  it('reads the average loss over the moves made in open positions only', () => {
+    // Eight open moves losing 50 each, then three after the game was decided.
+    const botMoves = middlegameLosing('bot', 50);
+    for (let index = 0; index < 3; index++) {
+      botMoves.push({ game: 'bot', phase: 'middlegame', centipawnLoss: 1000, openPosition: false });
+    }
+
+    const verdicts = gameLosses(botMoves, yardstick);
+
+    expect(verdicts.middlegame).toEqual({ kind: 'inside', moves: 8, figure: 50, spread: { games: 10, low: 10, high: 90 } });
   });
 });

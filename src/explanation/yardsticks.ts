@@ -6,12 +6,16 @@
 
 import { PHASES, type Phase } from '../evaluation/move-matching';
 
-/** One of Camille's moves and the probability the Base Model gave it. */
-export interface WeighedMove {
-  /** The game the move comes from, such as lichess:zlKruDGM. */
-  game: string;
+/** One of the Bot's Base Model moves and the probability the model gave it. */
+export interface BotWeighedMove {
   phase: Phase;
   probability: number;
+}
+
+/** One of Camille's moves and the probability the Base Model gave it. */
+export interface WeighedMove extends BotWeighedMove {
+  /** The game the move comes from, such as lichess:zlKruDGM. */
+  game: string;
 }
 
 /**
@@ -127,15 +131,19 @@ export function moveRarity(yardstick: ImprobabilityYardstick, phase: Phase, prob
   return curve[below] + along * (curve[above] - curve[below]);
 }
 
-/** One move and the evaluation it lost, as the Blunder Profile measures it. */
-export interface LossMove {
-  /** The game the move comes from. */
-  game: string;
+/** One of the Bot's moves and the evaluation it lost, as the Blunder Profile measures it. */
+export interface BotLoss {
   phase: Phase;
   /** How much evaluation the move gave up against the best move, in centipawns. */
   centipawnLoss: number;
   /** Whether the move could still be a mistake: the best and the played move do not both score ten pawns for the same side. */
   openPosition: boolean;
+}
+
+/** One of Camille's moves and the evaluation it lost. */
+export interface LossMove extends BotLoss {
+  /** The game the move comes from. */
+  game: string;
 }
 
 /** Per Phase, how far Camille's games spread in the evaluation his moves lost. */
@@ -163,12 +171,6 @@ export function lossYardstick(moves: LossMove[]): LossYardstick {
 function averageLoss(moves: { centipawnLoss: number }[]): number {
   const total = moves.reduce((sum, move) => sum + move.centipawnLoss, 0);
   return total / moves.length;
-}
-
-/** One of the Bot's Base Model moves and the probability the model gave it. */
-export interface BotWeighedMove {
-  phase: Phase;
-  probability: number;
 }
 
 /** How a figure of the game so far compares with Camille's games, in one Phase. */
@@ -207,4 +209,20 @@ function againstSpread<Move>(moves: Move[], figureOf: (moves: Move[]) => number,
     return { kind: 'above', moves: moves.length, figure: figure, spread: spread };
   }
   return { kind: 'inside', moves: moves.length, figure: figure, spread: spread };
+}
+
+/**
+ * Per Phase, the Bot's average loss so far over its moves in open positions,
+ * set against the spread of the same average across Camille's games. Every
+ * move counts, the Opening Book's too, as every one of his moves counts in
+ * his.
+ */
+export function gameLosses(botMoves: BotLoss[], yardstick: LossYardstick): Record<Phase, Verdict> {
+  const open = botMoves.filter((move) => move.openPosition);
+  const verdicts = {} as Record<Phase, Verdict>;
+  for (const phase of PHASES) {
+    const inPhase = open.filter((move) => move.phase === phase);
+    verdicts[phase] = againstSpread(inPhase, averageLoss, yardstick.phases[phase].perGame);
+  }
+  return verdicts;
 }
