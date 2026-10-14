@@ -116,7 +116,7 @@ its temperature. If not, nothing changes on the site.
 for t in 0.75 1 1.25 1.5; do
   npm run bot-games -- --model models/onnx/maia3-5m-fine-tuned.onnx --temperature $t --opponent-rating 1100 --games 200 --out data/dataset/bot-games-fine-tuned-temperature-$t.jsonl
 done
-python -m pipeline.measure_draw_temperature --out docs/experiments/results/draw-temperature-fine-tuned.json \
+python -m pipeline.measure_draw_temperature --yardstick "every move" --out docs/experiments/results/draw-temperature-fine-tuned.json \
   --run 0.75=data/dataset/bot-games-fine-tuned-temperature-0.75.jsonl --run 1=data/dataset/bot-games-fine-tuned-temperature-1.jsonl \
   --run 1.25=data/dataset/bot-games-fine-tuned-temperature-1.25.jsonl --run 1.5=data/dataset/bot-games-fine-tuned-temperature-1.5.jsonl
 npm run compare-bots -- models/onnx/maia3-5m.onnx models/onnx/maia3-5m-fine-tuned.onnx \
@@ -125,7 +125,7 @@ npm run compare-bots -- models/onnx/maia3-5m.onnx models/onnx/maia3-5m-fine-tune
   --first-temperature 1 --second-temperature 1 --record docs/experiments/results/model-choice-test-set-equal-temperature.json
 npm run bot-games -- --temperature 1 --opponent-rating 1100 --games 400 --out data/dataset/bot-games-original.jsonl
 npm run bot-games -- --model models/onnx/maia3-5m-fine-tuned.onnx --temperature 1.25 --opponent-rating 1100 --games 400 --out data/dataset/bot-games-fine-tuned.jsonl
-python -m pipeline.measure_model_choice --run original=data/dataset/bot-games-original.jsonl --run fine-tuned=data/dataset/bot-games-fine-tuned.jsonl
+python -m pipeline.measure_model_choice --yardstick "every move" --run original=data/dataset/bot-games-original.jsonl --run fine-tuned=data/dataset/bot-games-fine-tuned.jsonl
 python -m pipeline.extract_style_fingerprint --bot-games data/dataset/bot-games-original.jsonl --out docs/experiments/results/style-fingerprint-original.json
 python -m pipeline.extract_style_fingerprint --bot-games data/dataset/bot-games-fine-tuned.jsonl --out docs/experiments/results/style-fingerprint-fine-tuned.json
 python -m pipeline.measure_model_choice_style --original data/dataset/bot-games-original.jsonl --fine-tuned data/dataset/bot-games-fine-tuned.jsonl
@@ -140,6 +140,11 @@ the seeded draws reproduce across machines. Every figure below was then
 computed again on the laptop from the merged cache, without a new
 analysis, and the fine-tuned temperature results came out byte for byte
 the same.
+
+`--yardstick "every move"` reads the distance on every move, as these rules
+did; the tools now read it on open positions by default ([Level on open
+positions](level-on-open-positions.md)), and write the same figures under
+other names than the results files committed here.
 
 ## Results
 

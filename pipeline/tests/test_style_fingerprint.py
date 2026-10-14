@@ -17,7 +17,7 @@ def black_positions(game_id: str, moves: str) -> list[Position]:
 
 
 def no_losses(positions: list[Position]) -> list[MoveLoss]:
-    return [MoveLoss(game_id=p.game_id, ply=p.ply, phase=p.phase, centipawn_loss=0) for p in positions]
+    return [MoveLoss(game_id=p.game_id, ply=p.ply, phase=p.phase, centipawn_loss=0, open_position=True) for p in positions]
 
 
 def fingerprint_of(positions: list[Position]) -> dict:
@@ -120,8 +120,8 @@ def test_records_which_side_each_game_castled_to_if_it_castled_at_all():
 def test_describes_the_shape_of_the_centipawn_losses_by_phase():
     positions = white_positions("lichess:a", "e2e4 e7e5 g1f3")
     losses = [
-        MoveLoss(game_id="lichess:a", ply=1, phase="opening", centipawn_loss=0),
-        MoveLoss(game_id="lichess:a", ply=3, phase="opening", centipawn_loss=300),
+        MoveLoss(game_id="lichess:a", ply=1, phase="opening", centipawn_loss=0, open_position=True),
+        MoveLoss(game_id="lichess:a", ply=3, phase="opening", centipawn_loss=300, open_position=True),
     ]
 
     centipawn_loss = build_style_fingerprint(positions, losses)["centipawn_loss"]

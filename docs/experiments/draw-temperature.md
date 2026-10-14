@@ -21,7 +21,7 @@ are never filtered or corrected by one.
 for t in 0.75 1 1.25; do
   npm run bot-games -- --temperature $t --opponent-rating 1100 --games 200 --out data/dataset/bot-games-temperature-$t.jsonl
 done
-python -m pipeline.measure_draw_temperature \
+python -m pipeline.measure_draw_temperature --yardstick "every move" \
   --run 0.75=data/dataset/bot-games-temperature-0.75.jsonl \
   --run 1=data/dataset/bot-games-temperature-1.jsonl \
   --run 1.25=data/dataset/bot-games-temperature-1.25.jsonl
@@ -35,7 +35,11 @@ temperature, and writes `docs/experiments/results/draw-temperature.json`
 with Markdown tables of the results: the losses per Phase, the distances,
 each Phase's own distance, and the losses again without the moves made in
 positions already decided. It ends by saying which temperature the rule
-wants measured next, or which one it chooses.
+wants measured next, or which one it chooses. `--yardstick "every move"` reads
+the distance on every move, as this rule did; the tools now read it on open
+positions by default ([Level on open positions](level-on-open-positions.md)).
+The results file was written in the format of the time: the same figures now
+come under other names.
 
 ## How the Bot's games are played
 

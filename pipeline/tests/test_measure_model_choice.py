@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 from chess.engine import Cp
 
+from pipeline.bot_losses import EVERY_MOVE
 from pipeline.dataset import Position
 from pipeline.measure_model_choice import extract, summary_table
 from pipeline.stockfish_analysis import Analysis
@@ -77,5 +78,25 @@ def test_sums_up_each_bot_s_distance_and_results_in_one_row(tmp_path):
     results = extract(tmp_path, runs, tmp_path / "cache.jsonl", tmp_path / "out.json", [OnlyE4IsBestAnalyser()])
     table = summary_table(results).splitlines()
 
-    assert table[0].startswith("| Bot | Games | Won, drawn, lost | Distance |")
+    assert table[0].startswith("| Bot | Games | Won, drawn, lost | Distance, every move | Distance, open positions |")
     assert table[2] == "| original | 1 | 0, 0, 1 | 50.0 | 50.0 | - |"
+
+
+def test_compares_each_bot_on_open_positions_unless_told_to_read_every_move(tmp_path):
+    # The Bot plays like Camille, plus a move in a game already won, which
+    # the cap reads as losing nothing.
+    write_camille_s_games(tmp_path)
+    runs = {"original": tmp_path / "original.jsonl"}
+    write_json_lines(
+        [bot_game("bot:13-0", "e2e4"), bot_game("bot:13-1", "f2f3"), bot_game("bot:13-2", "a2a3")],
+        runs["original"],
+    )
+
+    on_open_positions = extract(tmp_path, runs, tmp_path / "cache.jsonl", tmp_path / "open.json", [OnlyE4IsBestAnalyser()])
+    on_every_move = extract(
+        tmp_path, runs, tmp_path / "cache.jsonl", tmp_path / "every.json", [OnlyE4IsBestAnalyser()], yardstick=EVERY_MOVE
+    )
+
+    assert on_open_positions["yardstick"] == "open positions"
+    assert on_open_positions["bots"]["original"]["distance"] == 0
+    assert on_every_move["bots"]["original"]["distance"] == pytest.approx(100 / 6)
