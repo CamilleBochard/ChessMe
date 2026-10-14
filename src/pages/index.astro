@@ -1,8 +1,10 @@
 ---
 // The page a visitor lands on to play the Bot. Once a game has ended, the
-// summary of every game played on the site appears under the title.
+// summary of every game played on the site appears under the title. The page
+// is written in English and switches to French with the buttons under it.
 import Board from '../components/Board.astro';
 import SessionGameSummary from '../components/SessionGameSummary.astro';
+import LanguageSwitch from '../components/LanguageSwitch.astro';
 ---
 
 <!doctype html>
@@ -20,11 +22,12 @@ import SessionGameSummary from '../components/SessionGameSummary.astro';
     <main>
       <header class="intro">
         <h1>ChessMe</h1>
-        <p>Play a game against a bot that imitates Camille.</p>
+        <p data-text="intro">Play a game against a bot that imitates Camille.</p>
+        <LanguageSwitch />
       </header>
       <Board />
       <div class="visitor-summary">
-        <SessionGameSummary readOn="game-end" title="Games on this site" />
+        <SessionGameSummary readOn="game-end" titleKey="summaryTitle" />
       </div>
     </main>
   </body>
