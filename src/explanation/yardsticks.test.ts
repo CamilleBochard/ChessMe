@@ -119,4 +119,19 @@ describe("the Bot's game so far against Camille's games", () => {
 
     expect(verdicts.middlegame.kind).toBe('above');
   });
+
+  it("says the game's share is below his usual range when it falls under the 10th percentile of his games", () => {
+    // His games here have three to nine moves under 1% out of ten, so the
+    // middle 80% run from 0.3 to 0.9; a game without one falls below.
+    const rarerGames: WeighedMove[] = [];
+    for (let rare = 3; rare < 10; rare++) {
+      rarerGames.push(...middlegameWithRareMoves(`game-${rare}`, rare));
+    }
+    const rarerYardstick = improbabilityYardstick(rarerGames);
+    const botMoves = middlegameWithRareMoves('bot', 0);
+
+    const verdicts = gameImprobability(botMoves, rarerYardstick);
+
+    expect(verdicts.middlegame.kind).toBe('below');
+  });
 });
