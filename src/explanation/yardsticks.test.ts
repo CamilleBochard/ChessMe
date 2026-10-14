@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from 'vitest';
 import type { Phase } from '../evaluation/move-matching';
-import { improbabilityYardstick, moveRarity } from './yardsticks';
+import { improbabilityYardstick, moveRarity, type WeighedMove } from './yardsticks';
 
 /** One of Camille's moves, given the probability the Base Model gave it. */
 function weighed(game: string, phase: Phase, probability: number) {
@@ -32,5 +32,32 @@ describe('the rarity of a move', () => {
     const halfwayBetweenRungs = Math.pow(10, -2.05);
 
     expect(moveRarity(yardstick, 'middlegame', halfwayBetweenRungs)).toBeCloseTo(0.75, 10);
+  });
+});
+
+/** A game of Camille's with ten middlegame moves, the given number of them under 1%. */
+function middlegameWithRareMoves(game: string, rare: number): WeighedMove[] {
+  const moves: WeighedMove[] = [];
+  for (let index = 0; index < 10; index++) {
+    let probability = 0.3;
+    if (index < rare) {
+      probability = 0.005;
+    }
+    moves.push(weighed(game, 'middlegame', probability));
+  }
+  return moves;
+}
+
+describe("the spread of Camille's games", () => {
+  it('runs from the 10th to the 90th percentile of his games\' shares of moves under 1%', () => {
+    // Ten games, the k-th with k moves under 1% out of ten: shares 0 to 0.9.
+    const moves: WeighedMove[] = [];
+    for (let rare = 0; rare < 10; rare++) {
+      moves.push(...middlegameWithRareMoves(`game-${rare}`, rare));
+    }
+
+    const yardstick = improbabilityYardstick(moves);
+
+    expect(yardstick.phases.middlegame.perGame).toEqual({ games: 10, low: 0, high: 0.8 });
   });
 });

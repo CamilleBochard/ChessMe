@@ -31,7 +31,20 @@ export interface PhaseImprobabilityYardstick {
   moves: number;
   /** For each probability of RARITY_LADDER, the share of his moves the model gave no more. */
   atOrBelow: number[];
+  /** How far his games' shares of moves under 1% spread. */
+  perGame: Spread;
 }
+
+/** The range the middle 80% of Camille's games cover: from the 10th percentile of a figure to the 90th. */
+export interface Spread {
+  /** How many of his games the range is read from. */
+  games: number;
+  low: number;
+  high: number;
+}
+
+/** Below this probability a move counts as improbable. */
+export const IMPROBABLE_BELOW = 0.01;
 
 /** Camille's yardstick of improbability, from his moves and the probabilities the model gave them. */
 export function improbabilityYardstick(moves: WeighedMove[]): ImprobabilityYardstick {
@@ -42,9 +55,40 @@ export function improbabilityYardstick(moves: WeighedMove[]): ImprobabilityYards
       const asUnlikely = probabilities.filter((probability) => probability <= rung).length;
       return asUnlikely / probabilities.length;
     });
-    phases[phase] = { moves: probabilities.length, atOrBelow: atOrBelow };
+    const inPhase = moves.filter((move) => move.phase === phase);
+    const perGame = perGameSpread(inPhase, shareImprobable);
+    phases[phase] = { moves: probabilities.length, atOrBelow: atOrBelow, perGame: perGame };
   }
   return { phases: phases };
+}
+
+/** The share of the moves the model gave less than 1%. */
+function shareImprobable(moves: WeighedMove[]): number {
+  const improbable = moves.filter((move) => move.probability < IMPROBABLE_BELOW).length;
+  return improbable / moves.length;
+}
+
+/** The spread of a figure across games, each game's figure read from its own moves. */
+function perGameSpread<Move extends { game: string }>(moves: Move[], figureOf: (gameMoves: Move[]) => number): Spread {
+  const movesByGame = new Map<string, Move[]>();
+  for (const move of moves) {
+    const gameMoves = movesByGame.get(move.game) ?? [];
+    gameMoves.push(move);
+    movesByGame.set(move.game, gameMoves);
+  }
+
+  const figures: number[] = [];
+  for (const gameMoves of movesByGame.values()) {
+    figures.push(figureOf(gameMoves));
+  }
+  figures.sort((first, second) => first - second);
+  return { games: figures.length, low: nearestRank(figures, 10), high: nearestRank(figures, 90) };
+}
+
+/** The p-th percentile: the smallest value with at least p% of the values at or below it, as the Blunder Profile reads them. */
+function nearestRank(sorted: number[], percentile: number): number {
+  const rank = Math.ceil((percentile / 100) * sorted.length);
+  return sorted[rank - 1];
 }
 
 /**
