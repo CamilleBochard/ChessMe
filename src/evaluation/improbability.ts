@@ -450,3 +450,43 @@ function clusteredAverage(moves: PlacedMove[], scoreOf: (move: PlacedMove) => nu
   const average = total / moves.length;
   return { average: average, standardError: clusteredStandardError([...games.values()], average) };
 }
+
+/** Reads the records of npm run move-probabilities, with the loss of each move where one was measured. */
+export function readPlacedMoves(jsonLines: string, lossesByMove: Map<string, number> = new Map()): (PlacedMove & { fen: string })[] {
+  const moves: (PlacedMove & { fen: string })[] = [];
+  for (const line of jsonLines.split('\n')) {
+    if (line.trim() === '') {
+      continue;
+    }
+    const record = JSON.parse(line);
+    moves.push({
+      game: record.game_id,
+      ply: record.ply,
+      phase: record.phase,
+      fen: record.fen,
+      move: record.move,
+      rank: record.rank,
+      probability: record.probability,
+      policy: record.policy,
+      centipawnLoss: lossesByMove.get(moveKey(record.game_id, record.ply)),
+    });
+  }
+  return moves;
+}
+
+/** The losses of a file with one move per line, each with its game, ply and centipawn loss. */
+export function readLosses(jsonLines: string): Map<string, number> {
+  const lossesByMove = new Map<string, number>();
+  for (const line of jsonLines.split('\n')) {
+    if (line.trim() === '') {
+      continue;
+    }
+    const record = JSON.parse(line);
+    lossesByMove.set(moveKey(record.game_id, record.ply), record.centipawn_loss);
+  }
+  return lossesByMove;
+}
+
+function moveKey(game: string, ply: number): string {
+  return `${game}#${ply}`;
+}

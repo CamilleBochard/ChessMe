@@ -21,7 +21,8 @@
     "drawn-move": "tsx scripts/drawn-move.ts",
     "compare-bots": "tsx scripts/compare-bots.ts",
     "move-probabilities": "tsx scripts/move-probabilities.ts",
-    "improbability": "tsx scripts/improbability.ts"
+    "improbability": "tsx scripts/improbability.ts",
+    "opening-cut-check": "tsx scripts/opening-cut-check.ts"
   },
   "dependencies": {
     "@lichess-org/chessground": "^10.1.1",
