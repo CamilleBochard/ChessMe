@@ -40,7 +40,7 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
 
 <div
   class="game"
-  data-board-frame
+  data-game
   data-model-path={modelPath}
   data-model-bytes={modelBytes}
   data-model-rating={SERVED_MODEL_RATING}
@@ -122,7 +122,7 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
   // Astro bundles this script once per page, however many times the component
   // is used, so it has to set up every board on the page rather than the first
   // one it finds.
-  const frames = document.querySelectorAll<HTMLElement>('[data-board-frame]');
+  const frames = document.querySelectorAll<HTMLElement>('[data-game]');
   for (const frame of frames) {
     setUpBoard(frame);
   }
@@ -134,7 +134,7 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
    * waits for the visitor to pick a side; New game brings it back there.
    */
   function setUpBoard(frame: HTMLElement): void {
-    const boardElement = frame.querySelector<HTMLElement>('.board')!;
+    const boardElement = frame.querySelector<HTMLElement>('[data-board]')!;
     const statusElement = frame.querySelector<HTMLElement>('[data-status]')!;
     const modelStatus = frame.querySelector<HTMLElement>('[data-model-status]')!;
     const setupElement = frame.querySelector<HTMLElement>('[data-setup]')!;

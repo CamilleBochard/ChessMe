@@ -1,4 +1,4 @@
-/* The design tokens of Camille's portfolio, its "V4" look: paper in three
+/* The design tokens of Camille's portfolio: paper in three
    shades, ink in three strengths, and a single accent colour. Every colour on
    the game page comes from these variables; a shade a component needs, such as
    a tint of the accent, is mixed from them where it is used rather than
@@ -20,9 +20,7 @@
   --font-body: 'Plus Jakarta Sans', sans-serif;
   --font-mono: 'Space Mono', monospace;
 
-  /* The cut corner of a chamfered surface, and the octagon the board marks
-     an empty destination with. */
-  --chamfer: 10px;
+  /* The octagon the board marks an empty destination with. */
   --octagon: polygon(29% 0, 71% 0, 100% 29%, 100% 71%, 71% 100%, 29% 100%, 0 71%, 0 29%);
 
   /* Hatching: 2 px strokes every 7 px, at -45 degrees. */

@@ -1,4 +1,6 @@
 ---
+import BracketLabel from '../atoms/BracketLabel.astro';
+
 // The Session Game summary: how many games visitors have finished on the site,
 // the Bot's record in them, and what visitors made of it. The figures are read
 // from the Session Game service; this component only places them on the page.
@@ -11,8 +13,6 @@ interface Props {
   /** A heading for the summary, for a page that does not introduce it in its own words. */
   title?: string;
 }
-
-import BracketLabel from '../atoms/BracketLabel.astro';
 
 const { readOn, title } = Astro.props;
 const hiddenUntilAGameEnds = readOn === 'game-end';

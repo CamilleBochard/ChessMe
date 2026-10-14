@@ -1,19 +1,23 @@
 ---
+import BracketLabel from '../atoms/BracketLabel.astro';
+
 // The board itself: the element Chessground draws into, the frame around it,
 // and the dialog that asks which piece a pawn promotes to. Chessground keeps
 // its base stylesheet for layout and dragging; everything it would take from a
 // board or piece theme comes from the portfolio's look instead, below. The
 // board is played and redrawn by the game's script, which finds the drawing
-// element by its board class and the dialog by data-promotion.
+// element by data-board and the dialog by data-promotion.
 ---
 
 <div class="board-surround">
-  <div class="board"></div>
+  <div class="board" data-board></div>
 </div>
 
 <dialog class="promotion" data-promotion aria-label="Choose a promotion piece">
   <form method="dialog">
-    <p class="promotion-label">[Promote to]</p>
+    <div class="promotion-label">
+      <BracketLabel as="p" text="Promote to" />
+    </div>
     <div class="promotion-choices">
       <button value="queen"><span class="piece-name">Queen</span></button>
       <button value="rook"><span class="piece-name">Rook</span></button>
@@ -191,7 +195,10 @@
 <style>
   /* The board's side: as large as fits beside the side column and above the
      clocks and status on a wide screen, the screen's width less a margin on
-     a phone. Chessground sizes itself to its element. */
+     a phone. Chessground sizes itself to its element. The 460 px kept free
+     across the screen are the game's 340 px side column and 120 px of room
+     around the board; the 220 px kept free down it hold the title, the two
+     clocks and the status. */
   .board-surround {
     --board-size: min(640px, calc(100vw - 48px));
     position: relative;
@@ -239,10 +246,8 @@
   }
 
   .promotion-label {
-    margin: 0 0 12px;
+    margin-bottom: 12px;
     text-align: center;
-    font-family: var(--font-mono);
-    font-size: 12px;
   }
 
   .promotion-choices {
@@ -265,6 +270,9 @@
     cursor: pointer;
   }
 
+  /* Keyboard focus only: the dialog focuses its first button as it opens,
+     and a plain :focus would light that one beside the button under the
+     pointer. */
   .promotion-choices button:hover,
   .promotion-choices button:focus-visible {
     background-color: var(--accent);
