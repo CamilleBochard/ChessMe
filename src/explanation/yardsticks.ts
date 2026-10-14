@@ -43,6 +43,14 @@ export interface Spread {
   high: number;
 }
 
+/**
+ * The fewest moves in a Phase from which one game's figure is read. Below
+ * it a single move swings the share by more than an eighth, and the panel
+ * says there are too few moves to tell. The opening holds at most five of a
+ * player's moves, so one game's opening is never enough.
+ */
+export const MOVES_FOR_A_VERDICT = 8;
+
 /** Below this probability a move counts as improbable. */
 export const IMPROBABLE_BELOW = 0.01;
 
@@ -79,6 +87,9 @@ function perGameSpread<Move extends { game: string }>(moves: Move[], figureOf: (
 
   const figures: number[] = [];
   for (const gameMoves of movesByGame.values()) {
+    if (gameMoves.length < MOVES_FOR_A_VERDICT) {
+      continue;
+    }
     figures.push(figureOf(gameMoves));
   }
   figures.sort((first, second) => first - second);

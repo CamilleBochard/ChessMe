@@ -60,4 +60,19 @@ describe("the spread of Camille's games", () => {
 
     expect(yardstick.phases.middlegame.perGame).toEqual({ games: 10, low: 0, high: 0.8 });
   });
+
+  it('leaves out a game with fewer moves in the Phase than a verdict needs', () => {
+    const moves: WeighedMove[] = [];
+    for (let rare = 0; rare < 10; rare++) {
+      moves.push(...middlegameWithRareMoves(`game-${rare}`, rare));
+    }
+    // Seven moves, every one under 1%: one short of a verdict.
+    for (let index = 0; index < 7; index++) {
+      moves.push(weighed('short', 'middlegame', 0.005));
+    }
+
+    const yardstick = improbabilityYardstick(moves);
+
+    expect(yardstick.phases.middlegame.perGame).toEqual({ games: 10, low: 0, high: 0.8 });
+  });
 });
