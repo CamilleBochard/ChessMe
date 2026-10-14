@@ -11,6 +11,16 @@ export interface OpeningBook {
   minOccurrences: number;
   /** The move Camille played in this position, or undefined when the book does not hold it. */
   move(game: Game): MoveRequest | undefined;
+  /** How often Camille reached this position and played the book move, when the file says. */
+  counts(game: Game): BookCounts | undefined;
+}
+
+/** How a position earned its place in the book. */
+export interface BookCounts {
+  /** How many times Camille reached the position in his training games. */
+  reached: number;
+  /** How many of those times he played the book move. */
+  played: number;
 }
 
 /** The book as pipeline/build_opening_book.py writes it. */
@@ -18,6 +28,8 @@ export interface OpeningBookFile {
   min_occurrences: number;
   /** Position key, as positionKey gives it, to the move in UCI form. */
   positions: Record<string, string>;
+  /** Position key to its counts. A book written before the counts has none. */
+  counts?: Record<string, BookCounts>;
 }
 
 /** Reads the book from the text of its JSON file. */
@@ -29,6 +41,7 @@ export function readOpeningBook(json: string): OpeningBook {
 /** The book from its file once parsed, as a bundler hands over an imported JSON file. */
 export function openingBookFrom(file: OpeningBookFile): OpeningBook {
   const movesByPosition = new Map(Object.entries(file.positions));
+  const countsByPosition = new Map(Object.entries(file.counts ?? {}));
 
   return {
     minOccurrences: file.min_occurrences,
@@ -42,5 +55,6 @@ export function openingBookFrom(file: OpeningBookFile): OpeningBook {
       const legal = legalMoves(game);
       return legal.find((move) => uciName(move) === bookMove);
     },
+    counts: (game) => countsByPosition.get(positionKey(game)),
   };
 }

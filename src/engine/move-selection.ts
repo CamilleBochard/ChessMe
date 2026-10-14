@@ -8,7 +8,7 @@ import { gameFromFen, legalMoves, uciName, type Game, type MoveRequest } from '.
 import type { BaseModel, MoveProbability } from './base-model';
 import { cutPolicy, type MoveCut } from './move-cut';
 import { drawMove, withTemperature } from './move-draw';
-import type { OpeningBook } from './opening-book';
+import type { BookCounts, OpeningBook } from './opening-book';
 
 /**
  * The last ply of the opening Phase: White's first move is ply 1, so the
@@ -58,7 +58,12 @@ export interface Candidate {
  * records, and for a Base Model move what the draw chose among.
  */
 export type BotMove =
-  | { move: MoveRequest; source: 'opening-book' }
+  | {
+      move: MoveRequest;
+      source: 'opening-book';
+      /** How often Camille reached the position and played the move; undefined when the book does not say. */
+      counts: BookCounts | undefined;
+    }
   | {
       move: MoveRequest;
       source: 'base-model';
@@ -101,7 +106,10 @@ export async function selectMoveWithSource(fen: string, options: EngineOptions =
       rank: playedIndex + 1,
     };
   }
-  return { move: move, source: choice.source };
+  if (choice.source === 'opening-book') {
+    return { move: move, source: 'opening-book', counts: choice.counts };
+  }
+  return { move: move, source: 'random' };
 }
 
 /**
@@ -121,7 +129,8 @@ export async function botMoveDistribution(fen: string, options: EngineOptions = 
  * and the temperature.
  */
 type Choice =
-  | { distribution: MoveProbability[]; source: 'opening-book' | 'random' }
+  | { distribution: MoveProbability[]; source: 'opening-book'; counts: BookCounts | undefined }
+  | { distribution: MoveProbability[]; source: 'random' }
   | { distribution: MoveProbability[]; source: 'base-model'; policy: MoveProbability[]; legalMoves: number };
 
 async function chooseDistribution(fen: string, options: EngineOptions): Promise<Choice> {
@@ -137,7 +146,11 @@ async function chooseDistribution(fen: string, options: EngineOptions): Promise<
   if (options.openingBook !== undefined) {
     const bookMove = options.openingBook.move(game);
     if (bookMove !== undefined) {
-      return { distribution: [{ move: bookMove, probability: 1 }], source: 'opening-book' };
+      return {
+        distribution: [{ move: bookMove, probability: 1 }],
+        source: 'opening-book',
+        counts: options.openingBook.counts(game),
+      };
     }
   }
 

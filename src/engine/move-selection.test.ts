@@ -457,6 +457,25 @@ describe('selectMoveWithSource explaining the move', () => {
     expect(drawn[2]).toBe(0);
   });
 
+  it('gives, for a book move, how often Camille reached the position and played the move', async () => {
+    const startKey = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -';
+    const file = {
+      min_occurrences: 3,
+      positions: { [startKey]: 'd2d4' },
+      counts: { [startKey]: { reached: 12, played: 9 } },
+    };
+    const openingBook = readOpeningBook(JSON.stringify(file));
+
+    const botMove = await selectMoveWithSource(startingPosition, { openingBook, baseModel });
+
+    expect(botMove.source).toBe('opening-book');
+    if (botMove.source !== 'opening-book') {
+      return;
+    }
+    expect(botMove.move).toEqual({ from: 'd2', to: 'd4' });
+    expect(botMove.counts).toEqual({ reached: 12, played: 9 });
+  });
+
   it('gives where the move played ranks among the Base Model\'s candidates', async () => {
     // Without a cut, g1f3 owns [0.9, 1): the model's third most likely move.
     const botMove = await selectMoveWithSource(startingPosition, { baseModel, random: () => 0.95 });
