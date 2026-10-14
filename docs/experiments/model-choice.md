@@ -123,7 +123,7 @@ npm run compare-bots -- models/onnx/maia3-5m.onnx models/onnx/maia3-5m-fine-tune
   --first-temperature 1 --second-temperature 1.25 --record docs/experiments/results/model-choice-test-set.json
 npm run compare-bots -- models/onnx/maia3-5m.onnx models/onnx/maia3-5m-fine-tuned.onnx \
   --first-temperature 1 --second-temperature 1 --record docs/experiments/results/model-choice-test-set-equal-temperature.json
-npm run bot-games -- --temperature 1 --opponent-rating 1100 --games 400 --out data/dataset/bot-games-original.jsonl
+npm run bot-games -- --model models/onnx/maia3-5m.onnx --temperature 1 --opponent-rating 1100 --games 400 --out data/dataset/bot-games-original.jsonl
 npm run bot-games -- --model models/onnx/maia3-5m-fine-tuned.onnx --temperature 1.25 --opponent-rating 1100 --games 400 --out data/dataset/bot-games-fine-tuned.jsonl
 python -m pipeline.measure_model_choice --yardstick "every move" --run original=data/dataset/bot-games-original.jsonl --run fine-tuned=data/dataset/bot-games-fine-tuned.jsonl
 python -m pipeline.extract_style_fingerprint --bot-games data/dataset/bot-games-original.jsonl --out docs/experiments/results/style-fingerprint-original.json
@@ -294,7 +294,9 @@ would win. That would be a new measurement with its own rule, not a
 reading of this one.
 
 **What changes on the site: nothing.** The original model at temperature
-1 keeps being served.
+1 keeps being served. The choice was made again with Level read on open
+positions, and the fine-tuned model replaced the original: see [the model
+and its temperature, chosen again](model-choice-on-open-positions.md).
 
 ## Known limitations
 

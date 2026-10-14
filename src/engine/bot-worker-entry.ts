@@ -10,7 +10,7 @@ import openingBookFile from '../../data/dataset/opening-book.json';
 import { serveBot } from './bot-worker';
 import { downloadModel, type ModelCache } from './model-download';
 import { openingBookFrom } from './opening-book';
-import { SERVED_MODEL_TEMPERATURE } from './served-model';
+import { SERVED_MODEL_TEMPERATURE, SERVED_OPENING_CUT } from './served-model';
 
 /** The Cache API storage holding the Base Model. */
 const CACHE_NAME = 'chessme-base-model';
@@ -27,6 +27,7 @@ serveBot(self, {
   },
   openingBook: openingBookFrom(openingBookFile),
   temperature: SERVED_MODEL_TEMPERATURE,
+  openingCut: SERVED_OPENING_CUT,
 });
 
 /**

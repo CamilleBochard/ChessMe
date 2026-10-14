@@ -19,7 +19,7 @@ are never filtered or corrected by one.
 
 ```sh
 for t in 0.75 1 1.25; do
-  npm run bot-games -- --temperature $t --opponent-rating 1100 --games 200 --out data/dataset/bot-games-temperature-$t.jsonl
+  npm run bot-games -- --model models/onnx/maia3-5m.onnx --temperature $t --opponent-rating 1100 --games 200 --out data/dataset/bot-games-temperature-$t.jsonl
 done
 python -m pipeline.measure_draw_temperature --yardstick "every move" \
   --run 0.75=data/dataset/bot-games-temperature-0.75.jsonl \

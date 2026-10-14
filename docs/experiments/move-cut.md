@@ -409,13 +409,14 @@ The scripts that play and measure the Bot under Node take the cut as
 `top-k=<k>`, `top-p=<p>` or `min-p=<fraction>`:
 
 ```sh
-npm run bot-games -- --temperature 1 --opening-cut top-k=10 --out data/dataset/bot-games-top-10.jsonl
+npm run bot-games -- --model models/onnx/maia3-5m.onnx --temperature 1 --opening-cut top-k=10 --out data/dataset/bot-games-top-10.jsonl
 npm run drawn-move -- models/onnx/maia3-5m.onnx --rating 1100 --opening-cut top-k=10
 npm run compare-bots -- models/onnx/maia3-5m.onnx models/onnx/maia3-5m.onnx --second-opening-cut top-k=10
 ```
 
-Whether to serve the cut is decided with the model and the temperature,
-on games played with it.
+Whether to serve the cut was decided with the model and the temperature,
+in [the model and its temperature, chosen again](model-choice-on-open-positions.md):
+the site serves top-10 in the opening with the fine-tuned model.
 
 ## Known limitations
 

@@ -18,8 +18,8 @@ weaker signal.
 
 ```sh
 python -m pipeline.fetch_other_players
-npm run bot-games
-npm run bot-games -- --baseline --out data/dataset/baseline-games.jsonl
+npm run bot-games -- --model models/onnx/maia3-5m.onnx
+npm run bot-games -- --model models/onnx/maia3-5m.onnx --baseline --out data/dataset/baseline-games.jsonl
 python -m pipeline.measure_style_discriminator
 ```
 
