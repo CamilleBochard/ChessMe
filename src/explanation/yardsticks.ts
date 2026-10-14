@@ -162,5 +162,8 @@ function againstSpread<Move>(moves: Move[], figureOf: (moves: Move[]) => number,
     return { kind: 'too-few-moves', moves: moves.length };
   }
   const figure = figureOf(moves);
+  if (figure > spread.high) {
+    return { kind: 'above', moves: moves.length, figure: figure, spread: spread };
+  }
   return { kind: 'inside', moves: moves.length, figure: figure, spread: spread };
 }

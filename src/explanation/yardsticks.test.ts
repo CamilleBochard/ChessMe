@@ -110,4 +110,13 @@ describe("the Bot's game so far against Camille's games", () => {
 
     expect(verdicts.middlegame).toEqual({ kind: 'inside', moves: 10, figure: 0.2, spread: { games: 10, low: 0, high: 0.8 } });
   });
+
+  it("says the game's share is above his usual range when it passes the 90th percentile of his games", () => {
+    // Nine moves under 1% out of ten: 0.9, above 0.8.
+    const botMoves = middlegameWithRareMoves('bot', 9);
+
+    const verdicts = gameImprobability(botMoves, yardstick);
+
+    expect(verdicts.middlegame.kind).toBe('above');
+  });
 });
