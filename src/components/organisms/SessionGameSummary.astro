@@ -96,12 +96,9 @@ const hiddenUntilAGameEnds = readOn === 'game-end';
     color: var(--ink-soft);
   }
 
-  /* Only a shown list is laid out as a grid: a display set here would
-     otherwise override the hidden attribute and show an empty list. */
-  dl:not([hidden]) {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 6px 16px;
+  /* Each figure under its name, since some, such as the Bot's record, are
+     too long to share a line with it in a narrow column. */
+  dl {
     margin: 0;
   }
 
@@ -110,11 +107,10 @@ const hiddenUntilAGameEnds = readOn === 'game-end';
   }
 
   dd {
-    margin: 0;
+    margin: 0 0 8px;
     font-family: var(--font-mono);
     font-size: 12px;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
-    text-align: right;
   }
 </style>

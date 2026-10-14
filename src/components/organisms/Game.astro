@@ -12,6 +12,7 @@ import { readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { SERVED_MODEL_DIRECTORY, SERVED_MODEL_RATING } from '../../engine/served-model';
 import { BROWSER_ENGINE_FILES } from '../../analysis/browser-engine';
+import CornerMarks from '../atoms/CornerMarks.astro';
 import HatchBlock from '../atoms/HatchBlock.astro';
 import Clock from '../molecules/Clock.astro';
 import ModelStatus from '../molecules/ModelStatus.astro';
@@ -61,7 +62,8 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
   </div>
 
   <div class="side">
-    <section class="side-section">
+    <section class="side-section controls">
+      <CornerMarks />
       <GameControls />
     </section>
     <section class="side-section after-game">
@@ -829,6 +831,12 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
 
   .side-section:last-child {
     border-bottom: 0;
+  }
+
+  /* The section that runs the game carries the registration marks, as the
+     portfolio marks the region a visitor acts in. */
+  .controls {
+    position: relative;
   }
 
   .after-game {
