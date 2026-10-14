@@ -15,7 +15,7 @@ import type { OpeningBook } from './opening-book';
  * opening is each side's first five moves. A cut given as openingCut applies
  * up to it.
  */
-const LAST_OPENING_PLY = 10;
+export const LAST_OPENING_PLY = 10;
 
 /** What the engine depends on, supplied by the caller so tests can fix it. */
 export interface EngineOptions {
