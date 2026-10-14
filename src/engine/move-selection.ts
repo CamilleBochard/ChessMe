@@ -73,6 +73,10 @@ export type BotMove =
       candidates: Candidate[];
       /** Where the move played stands among the candidates: 1 for the model's most likely. */
       rank: number;
+      /** The temperature the move was drawn at. */
+      temperature: number;
+      /** The cut that applied in this position: the opening cut up to ply 10, none after. */
+      cut: MoveCut;
     }
   | { move: MoveRequest; source: 'random' };
 
@@ -104,6 +108,8 @@ export async function selectMoveWithSource(fen: string, options: EngineOptions =
       legalMoves: choice.legalMoves,
       candidates: candidates,
       rank: playedIndex + 1,
+      temperature: choice.temperature,
+      cut: choice.cut,
     };
   }
   if (choice.source === 'opening-book') {
@@ -131,7 +137,14 @@ export async function botMoveDistribution(fen: string, options: EngineOptions = 
 type Choice =
   | { distribution: MoveProbability[]; source: 'opening-book'; counts: BookCounts | undefined }
   | { distribution: MoveProbability[]; source: 'random' }
-  | { distribution: MoveProbability[]; source: 'base-model'; policy: MoveProbability[]; legalMoves: number };
+  | {
+      distribution: MoveProbability[];
+      source: 'base-model';
+      policy: MoveProbability[];
+      legalMoves: number;
+      temperature: number;
+      cut: MoveCut;
+    };
 
 async function chooseDistribution(fen: string, options: EngineOptions): Promise<Choice> {
   const temperature = options.temperature ?? 1;
@@ -157,12 +170,15 @@ async function chooseDistribution(fen: string, options: EngineOptions): Promise<
   if (options.baseModel !== undefined) {
     const baseModel = await options.baseModel;
     const policy = await baseModel.movePolicy(game);
-    const kept = cutPolicy(policy, cutAt(game, options.openingCut));
+    const cut = cutAt(game, options.openingCut);
+    const kept = cutPolicy(policy, cut);
     return {
       distribution: withTemperature(kept, temperature),
       source: 'base-model',
       policy: policy,
       legalMoves: candidates.length,
+      temperature: temperature,
+      cut: cut,
     };
   }
 

@@ -476,6 +476,18 @@ describe('selectMoveWithSource explaining the move', () => {
     expect(botMove.counts).toEqual({ reached: 12, played: 9 });
   });
 
+  it('names the temperature and the cut the draw was made with, the opening cut only up to ply 10', async () => {
+    const topTwo: MoveCut = { kind: 'top-k', k: 2 };
+    // White's sixth move is ply 11, the first after the opening.
+    const afterTheOpening = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 6';
+
+    const inOpening = await selectMoveWithSource(startingPosition, { baseModel, temperature: 0.5, openingCut: topTwo });
+    const afterOpening = await selectMoveWithSource(afterTheOpening, { baseModel, temperature: 0.5, openingCut: topTwo });
+
+    expect(inOpening).toMatchObject({ temperature: 0.5, cut: topTwo });
+    expect(afterOpening).toMatchObject({ temperature: 0.5, cut: { kind: 'none' } });
+  });
+
   it('gives where the move played ranks among the Base Model\'s candidates', async () => {
     // Without a cut, g1f3 owns [0.9, 1): the model's third most likely move.
     const botMove = await selectMoveWithSource(startingPosition, { baseModel, random: () => 0.95 });
