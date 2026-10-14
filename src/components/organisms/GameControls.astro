@@ -1,0 +1,40 @@
+---
+// The buttons that run a game: before it starts, the choice of a side; once
+// it has, take back, resign and start over. The game's script shows one group
+// or the other and enables only what the Session Game allows right now.
+import BracketLabel from '../atoms/BracketLabel.astro';
+import GameButton from '../molecules/GameButton.astro';
+---
+
+<div class="game-controls">
+  <div class="choices" data-setup>
+    <BracketLabel text="Play as" />
+    <div class="buttons">
+      <GameButton accent data-play-as="white">White</GameButton>
+      <GameButton accent data-play-as="black">Black</GameButton>
+    </div>
+  </div>
+
+  <div class="buttons" data-controls hidden>
+    <GameButton data-take-back>Take back</GameButton>
+    <GameButton data-resign>Resign</GameButton>
+    <GameButton data-new-game>New game</GameButton>
+  </div>
+</div>
+
+<style>
+  /* A display set here would otherwise override the hidden attribute. */
+  .choices:not([hidden]) {
+    display: grid;
+    gap: 10px;
+  }
+
+  .buttons:not([hidden]) {
+    display: grid;
+    gap: 10px;
+  }
+
+  .buttons :global(.game-button) {
+    width: 100%;
+  }
+</style>

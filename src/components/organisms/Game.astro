@@ -1,15 +1,25 @@
 ---
-// A chessboard where the visitor plays one side and the Bot plays the other,
-// with the controls around a game: choosing a side, taking back, resigning,
-// starting over, and the list of moves so far. The rules live in src/game/,
-// the Bot's choice in src/engine/ and what the visitor may do when in
-// src/session/; this component only translates between them, chessground
-// (which draws the board and handles dragging and clicking) and a few buttons.
+// A game against the Bot: the board between the two clocks, with the status
+// under it, and beside it a column of the controls, the end-of-game question,
+// the moves and the panel explaining the Bot's moves. The page puts its title
+// in the header slot and what appears once a game has ended in the after-game
+// slot. The rules live in src/game/, the Bot's choice in src/engine/ and what
+// the visitor may do when in src/session/; the script below only translates
+// between them, chessground (which draws the board and handles dragging and
+// clicking) and the markup of the components, which it reaches through their
+// data attributes.
 import { readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { SERVED_MODEL_DIRECTORY, SERVED_MODEL_RATING } from '../engine/served-model';
-import { BROWSER_ENGINE_FILES } from '../analysis/browser-engine';
-import ChessBoard from './organisms/ChessBoard.astro';
+import { SERVED_MODEL_DIRECTORY, SERVED_MODEL_RATING } from '../../engine/served-model';
+import { BROWSER_ENGINE_FILES } from '../../analysis/browser-engine';
+import HatchBlock from '../atoms/HatchBlock.astro';
+import Clock from '../molecules/Clock.astro';
+import ModelStatus from '../molecules/ModelStatus.astro';
+import ChessBoard from './ChessBoard.astro';
+import EndOfGameQuestion from './EndOfGameQuestion.astro';
+import ExplanationPanel from './ExplanationPanel.astro';
+import GameControls from './GameControls.astro';
+import MoveList from './MoveList.astro';
 
 // The model the page downloads, found where scripts/stage-model.ts put it. Its
 // size is read here, at build time, because the server sends it compressed and
@@ -28,7 +38,7 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
 ---
 
 <div
-  class="board-frame"
+  class="game"
   data-board-frame
   data-model-path={modelPath}
   data-model-bytes={modelBytes}
@@ -36,83 +46,42 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
   data-base-model={baseModelName}
   data-engine-path={enginePath}
 >
-  <div class="play">
-    <div class="clock" data-clock="top">
-      <span class="clock-name" data-clock-name></span>
-      <span class="clock-time" data-clock-time></span>
+  <div class="stage">
+    <div class="stage-head">
+      <slot name="header" />
     </div>
+    <Clock position="top" />
     <ChessBoard />
-    <div class="clock" data-clock="bottom">
-      <span class="clock-name" data-clock-name></span>
-      <span class="clock-time" data-clock-time></span>
+    <Clock position="bottom" />
+    <div class="stage-foot">
+      <p class="status" data-status aria-live="polite"></p>
+      <HatchBlock class="foot-band" />
     </div>
-    <p class="status" data-status aria-live="polite"></p>
-
-    <div class="model-status" data-model-status hidden>
-      <progress data-model-progress></progress>
-      <p data-model-message></p>
-    </div>
-
-    <div class="buttons" data-setup>
-      <span class="buttons-label">Play as</span>
-      <button type="button" class="brand" data-play-as="white">White</button>
-      <button type="button" class="brand" data-play-as="black">Black</button>
-    </div>
-
-    <div class="buttons" data-controls hidden>
-      <button type="button" data-take-back>Take back</button>
-      <button type="button" data-resign>Resign</button>
-      <button type="button" data-new-game>New game</button>
-    </div>
+    <ModelStatus />
   </div>
 
-  <div class="impression" data-impression hidden>
-    <p>Did the Bot feel like a real player of about {SERVED_MODEL_RATING} on Lichess?</p>
-    <div class="buttons" data-impression-choices>
-      <button type="button" data-felt-real="yes">Yes</button>
-      <button type="button" data-felt-real="no">No</button>
-    </div>
-    <p class="impression-thanks" data-impression-thanks hidden></p>
-  </div>
-
-  <aside class="moves">
-    <div class="moves-header">
-      <h2 id="moves-heading">Moves</h2>
-      <div class="browse">
-        <button type="button" data-view-back aria-label="Previous position" title="Previous position (←)">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
-        </button>
-        <button type="button" data-view-forward aria-label="Next position" title="Next position (→)">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
-        </button>
-      </div>
-    </div>
-    <ol class="move-list" data-move-list aria-labelledby="moves-heading"></ol>
-
-    <section class="explanation" aria-labelledby="explanation-heading">
-      <h2 id="explanation-heading">Why the Bot played it</h2>
-      <div class="explained-move" data-move-explanation aria-live="polite"></div>
-      <h2>The game so far, against Camille's</h2>
-      <div class="game-comparison" data-game-comparison></div>
-      <label class="analysis-switch">
-        <input type="checkbox" data-analysis-switch />
-        Analysis mode
-      </label>
-      <p class="analysis-note">
-        Runs <a href="https://github.com/nmrugg/stockfish.js">Stockfish</a> (GPL-3.0) in your browser, a 1.8 MB
-        download, to show how much evaluation each of the Bot's moves lost. A game played with it on is recorded
-        as assisted.
-      </p>
+  <div class="side">
+    <section class="side-section">
+      <GameControls />
     </section>
-  </aside>
-
+    <section class="side-section after-game">
+      <EndOfGameQuestion />
+      <slot name="after-game" />
+    </section>
+    <section class="side-section">
+      <MoveList />
+    </section>
+    <section class="side-section">
+      <ExplanationPanel />
+    </section>
+  </div>
 </div>
 
 <script>
   import { Chessground } from '@lichess-org/chessground';
   import type { Key } from '@lichess-org/chessground/types';
   import type { SquareName } from 'chessops/types';
-  import type { Colour } from '../board/starting-position';
+  import type { Colour } from '../../board/starting-position';
   import {
     currentFen,
     isInCheck,
@@ -124,20 +93,20 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
     type MoveListRow,
     type MoveRequest,
     type PromotionPiece,
-  } from '../game/game';
-  import { formatClockTime } from '../game/clock';
-  import { gameStatus } from '../game/game-status';
-  import { connectBot, type Bot } from '../engine/bot-client';
-  import type { BotStatus } from '../engine/bot-protocol';
-  import type { BotMove } from '../engine/move-selection';
-  import type { DownloadProgress } from '../engine/model-download';
-  import { clockFaces, createSessionGame, type ClockFace, type FinishedGame } from '../session/session-game';
-  import { connectTelemetry, sessionGameReport } from '../telemetry/session-game';
-  import { SESSION_GAMES_CHANGED } from '../telemetry/session-game-summary';
-  import { startBrowserAnalyser, type BrowserAnalyser } from '../analysis/browser-analyser';
-  import { moveLoss } from '../analysis/engine-analysis';
-  import { botMovesOf, moveKeyOf, replyKey, type ExplainedMove } from '../explanation/explained-moves';
-  import { showPanel, type MoveEvaluation } from '../explanation/panel';
+  } from '../../game/game';
+  import { formatClockTime } from '../../game/clock';
+  import { gameStatus } from '../../game/game-status';
+  import { connectBot, type Bot } from '../../engine/bot-client';
+  import type { BotStatus } from '../../engine/bot-protocol';
+  import type { BotMove } from '../../engine/move-selection';
+  import type { DownloadProgress } from '../../engine/model-download';
+  import { clockFaces, createSessionGame, type ClockFace, type FinishedGame } from '../../session/session-game';
+  import { connectTelemetry, sessionGameReport } from '../../telemetry/session-game';
+  import { SESSION_GAMES_CHANGED } from '../../telemetry/session-game-summary';
+  import { startBrowserAnalyser, type BrowserAnalyser } from '../../analysis/browser-analyser';
+  import { moveLoss } from '../../analysis/engine-analysis';
+  import { botMovesOf, moveKeyOf, replyKey, type ExplainedMove } from '../../explanation/explained-moves';
+  import { showPanel, type MoveEvaluation } from '../../explanation/panel';
 
   /**
    * Remembered once the model has reached the browser's cache, so that a
@@ -622,7 +591,7 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
 
   /** Starts the Bot in its own Web Worker, so its thinking never blocks the board. */
   function startBot(frame: HTMLElement, onStatus: (status: BotStatus) => void): Bot {
-    const worker = new Worker(new URL('../engine/bot-worker-entry.ts', import.meta.url), { type: 'module' });
+    const worker = new Worker(new URL('../../engine/bot-worker-entry.ts', import.meta.url), { type: 'module' });
 
     // A worker that cannot even start, for instance on a browser without
     // WebAssembly, reports nothing through the Bot's own messages.
@@ -812,379 +781,84 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
 </script>
 
 <style>
-  /* On a phone everything stacks: board, controls, then the moves. From
-     960px the moves move into their own column on the right, behind a divider
-     line, and the whole thing fits the screen height without scrolling. */
-  .board-frame {
-    display: grid;
-    gap: 1.5rem;
-  }
-
-  /* One column as wide as the board: the clocks stretch to its width, and
-     the status and the buttons wrap within it. */
-  .play {
+  /* On a phone everything stacks: the title, the board between the two
+     clocks, the status, then the side column's sections. From 960px the side
+     column stands on the right of the board at the portfolio's 340px, and
+     the board is centred in the rest of the screen. */
+  .stage {
     display: grid;
     grid-template-columns: min-content;
     justify-content: center;
-    gap: 0.75rem;
+    gap: 12px;
+    padding: 20px 16px 28px;
   }
 
-  /* A clock sits right above and right below the board, as wide as it, with
-     the name on the left and the time on the right. The running clock is
-     filled so the eye finds whose time is going without reading it. */
-  .clock {
+  .stage-head {
+    margin-bottom: 4px;
+  }
+
+  .stage-foot {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 0.25rem 0.75rem;
-    border: 1px solid var(--divider);
-    border-radius: 0.5rem;
-    color: var(--text-2);
-  }
-
-  .clock-time {
-    font-variant-numeric: tabular-nums;
-    font-weight: 600;
-    font-size: 1.25rem;
-  }
-
-  .clock.running {
-    background: var(--brand);
-    border-color: var(--brand);
-    color: var(--bg);
+    gap: 16px;
   }
 
   .status {
     margin: 0;
     min-height: 1.5em;
-    text-align: center;
-    font-weight: 600;
-    color: var(--text-1);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 700;
   }
 
-  .model-status {
-    width: 100%;
-    max-width: 24rem;
-    text-align: center;
+  .stage-foot :global(.foot-band) {
+    flex: 1 1 3rem;
+    height: 10px;
+    opacity: 0.8;
   }
 
-  .model-status[hidden] {
-    display: none;
+  .side {
+    border-top: var(--line);
+    background: var(--paper);
   }
 
-  .model-status progress {
-    width: 100%;
+  .side-section {
+    padding: 18px 20px;
+    border-bottom: var(--line);
   }
 
-  .model-status p {
-    margin: 0.25rem 0 0;
-    font-size: 0.875rem;
-    color: var(--text-2);
+  .side-section:last-child {
+    border-bottom: 0;
   }
 
-  .model-status.failed p {
-    font-weight: 600;
-    color: var(--text-1);
-  }
-
-  .buttons {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-  }
-
-  .buttons[hidden] {
-    display: none;
-  }
-
-  .buttons-label {
-    margin-right: 0.25rem;
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--text-2);
-  }
-
-  /* Pill buttons on a soft grey, with the brand colour kept for the one
-     choice that starts a game. */
-  .buttons button {
-    font: inherit;
-    font-size: 0.875rem;
-    font-weight: 600;
-    line-height: 2.25rem;
-    padding: 0 1.25rem;
-    border: 1px solid transparent;
-    border-radius: 1.25rem;
-    background: var(--default-soft);
-    color: var(--text-1);
-    cursor: pointer;
-    transition: border-color 0.2s, background-color 0.2s;
-  }
-
-  .buttons button:hover:not(:disabled) {
-    border-color: var(--brand);
-  }
-
-  .buttons button.brand {
-    background: var(--brand);
-    color: var(--brand-contrast);
-  }
-
-  .buttons button:disabled {
-    opacity: 0.4;
-    cursor: default;
-  }
-
-  /* Under the buttons on a phone. On a wide screen the page places it, since
-     it decides what sits in its columns. */
-  .impression {
-    width: 100%;
-    max-width: 24rem;
-    margin-inline: auto;
-    text-align: center;
-  }
-
-  .impression[hidden] {
-    display: none;
-  }
-
-  .impression p {
-    margin: 0 0 0.5rem;
-    font-size: 0.875rem;
-    color: var(--text-2);
-  }
-
-  .moves {
-    border-top: 1px solid var(--divider);
-    padding-top: 1.25rem;
-  }
-
-  .moves-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 0.75rem;
-  }
-
-  .browse {
-    display: flex;
-    gap: 0.25rem;
-  }
-
-  .browse button {
+  .after-game {
     display: grid;
-    place-items: center;
-    width: 2.25rem;
-    height: 2rem;
-    padding: 0;
-    border: 1px solid transparent;
-    border-radius: 0.5rem;
-    background: var(--default-soft);
-    color: var(--text-1);
-    cursor: pointer;
-    transition: border-color 0.2s;
+    gap: 20px;
   }
 
-  .browse button:hover:not(:disabled) {
-    border-color: var(--brand);
-  }
-
-  .browse button:disabled {
-    opacity: 0.4;
-    cursor: default;
-  }
-
-  .browse svg {
-    width: 1.125rem;
-    height: 1.125rem;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 2.25;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-
-  .moves h2 {
-    margin: 0;
-    font-size: 0.8125rem;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--text-1);
-  }
-
-  /* Three columns, number then White then Black, like a scoresheet. Its rows
-     are created by the script, which Astro's scoping cannot see, hence
-     :global for everything inside the list. */
-  .move-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    max-height: 12rem;
-    overflow-y: auto;
-    font-size: 0.875rem;
-    font-variant-numeric: tabular-nums;
-    color: var(--text-2);
-  }
-
-  .move-list :global(li) {
-    display: grid;
-    grid-template-columns: 2.5rem 1fr 1fr;
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.25rem;
-  }
-
-  .move-list :global(li:nth-child(odd)) {
-    background: var(--bg-soft);
-  }
-
-  .move-list :global(.move-number) {
-    color: var(--text-3);
-  }
-
-  .move-list :global(.latest) {
-    color: var(--brand);
-    font-weight: 600;
-  }
-
-  /* The panel under the moves: why the Bot played the move on display, and
-     the game so far against Camille's. Its contents are created by the
-     script, hence :global for everything inside the two containers. */
-  .explanation {
-    margin-top: 1.25rem;
-    padding-top: 1rem;
-    border-top: 1px solid var(--divider);
-    font-size: 0.875rem;
-    color: var(--text-2);
-  }
-
-  .explanation h2 {
-    margin: 1rem 0 0.5rem;
-  }
-
-  .explanation h2:first-child {
-    margin-top: 0;
-  }
-
-  .explanation :global(p) {
-    margin: 0 0 0.5rem;
-  }
-
-  .explanation :global(.move-heading) {
-    font-weight: 600;
-    color: var(--text-1);
-  }
-
-  .explanation :global(.placeholder),
-  .explanation :global(.sources) {
-    color: var(--text-3);
-  }
-
-  .explanation :global(.sources) {
-    font-size: 0.8125rem;
-  }
-
-  .explanation :global(table.candidates) {
-    width: 100%;
-    margin: 0 0 0.5rem;
-    border-collapse: collapse;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .explanation :global(table.candidates th) {
-    font-weight: 600;
-    color: var(--text-3);
-    text-align: right;
-  }
-
-  .explanation :global(table.candidates th:first-child),
-  .explanation :global(table.candidates td:first-child) {
-    text-align: left;
-  }
-
-  .explanation :global(table.candidates td) {
-    padding: 0.125rem 0;
-    text-align: right;
-  }
-
-  .explanation :global(table.candidates tr.played) {
-    color: var(--brand);
-    font-weight: 600;
-  }
-
-  .explanation :global(dl.phases) {
-    margin: 0 0 0.5rem;
-  }
-
-  .explanation :global(dl.phases dt) {
-    font-weight: 600;
-    color: var(--text-1);
-  }
-
-  .explanation :global(dl.phases dd) {
-    margin: 0 0 0.5rem;
-  }
-
-  .analysis-switch {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-top: 1rem;
-    font-weight: 600;
-    color: var(--text-1);
-    cursor: pointer;
-  }
-
-  .analysis-switch input {
-    accent-color: var(--brand);
-  }
-
-  .analysis-note {
-    margin: 0.25rem 0 0;
-    font-size: 0.8125rem;
-    color: var(--text-3);
-  }
-
-  .analysis-note a {
-    color: inherit;
+  /* The question and the summary of the site's games only appear once a
+     game has ended; until then their section takes no room. Astro may place
+     a component's script beside it, which never counts as shown. */
+  .after-game:not(:has(> :not([hidden], script))) {
+    display: none;
   }
 
   @media (min-width: 960px) {
-    /* The play area and the moves become columns of the page's own grid, so
-       the page can set the title right against the board's left edge. */
-    .board-frame {
-      display: contents;
+    .game {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 340px;
+      height: 100dvh;
     }
 
-    /* Both span every row of the page's grid, so the page can stack more than
-       its title in the first column. */
-    .play {
-      grid-row: 1 / -1;
-      padding: 2rem 2rem 2rem 0;
-      min-height: 0;
+    .stage {
+      align-content: center;
+      padding: 16px 32px;
+      overflow-y: auto;
     }
 
-    .moves {
-      grid-row: 1 / -1;
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-      border-top: none;
-      border-left: 1px solid var(--divider);
-      padding: 2rem 1.5rem;
-    }
-
-    /* The moves keep up to a third of the column and the panel scrolls in
-       the rest, so the explanation stays in view beside the board. */
-    .move-list {
-      flex: 0 1 auto;
-      max-height: 33%;
-    }
-
-    .explanation {
-      flex: 1;
-      min-height: 0;
+    .side {
+      border-top: 0;
+      border-left: var(--line);
       overflow-y: auto;
     }
   }

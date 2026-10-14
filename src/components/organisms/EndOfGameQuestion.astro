@@ -1,0 +1,41 @@
+---
+// The question asked once a game has ended and been stored: did the Bot feel
+// like a real player of its rating? The game's script shows it, sends the
+// answer and thanks the visitor.
+import { SERVED_MODEL_RATING } from '../../engine/served-model';
+import GameButton from '../molecules/GameButton.astro';
+---
+
+<div class="impression" data-impression hidden>
+  <p class="question">Did the Bot feel like a real player of about {SERVED_MODEL_RATING} on Lichess?</p>
+  <div class="choices" data-impression-choices>
+    <GameButton data-felt-real="yes">Yes</GameButton>
+    <GameButton data-felt-real="no">No</GameButton>
+  </div>
+  <p class="thanks" data-impression-thanks hidden></p>
+</div>
+
+<style>
+  .impression:not([hidden]) {
+    display: grid;
+    gap: 10px;
+  }
+
+  .question {
+    margin: 0;
+    font-weight: 600;
+  }
+
+  .choices:not([hidden]) {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .thanks {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+</style>

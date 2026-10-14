@@ -1,0 +1,149 @@
+---
+// The panel beside the moves: why the Bot played the move on display, how the
+// game so far compares with Camille's own games, and the switch for analysis
+// mode. Its two containers are filled by src/explanation/panel.ts and the
+// switch is wired by the game's script.
+import PanelHeader from '../molecules/PanelHeader.astro';
+---
+
+<section class="explanation" aria-labelledby="explanation-heading">
+  <PanelHeader title="Why the Bot played it" id="explanation-heading" />
+  <div class="explained-move" data-move-explanation aria-live="polite"></div>
+
+  <PanelHeader title="The game so far, against Camille's" />
+  <div class="game-comparison" data-game-comparison></div>
+
+  <label class="analysis-switch">
+    <input type="checkbox" data-analysis-switch />
+    Analysis mode
+  </label>
+  <p class="analysis-note">
+    Runs <a href="https://github.com/nmrugg/stockfish.js">Stockfish</a> (GPL-3.0) in your browser, a 1.8 MB download,
+    to show how much evaluation each of the Bot's moves lost. A game played with it on is recorded as assisted.
+  </p>
+</section>
+
+<style>
+  .explanation {
+    font-size: 13px;
+  }
+
+  .explanation > :global(.panel-header:not(:first-child)) {
+    margin-top: 20px;
+  }
+
+  /* The contents of the two containers are created by the script, which the
+     component's scoping cannot see, hence :global inside them. */
+  .explanation :global(p) {
+    margin: 0 0 8px;
+  }
+
+  .explanation :global(.move-heading) {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .explanation :global(.placeholder),
+  .explanation :global(.sources) {
+    color: var(--ink-soft);
+  }
+
+  .explanation :global(.sources) {
+    font-size: 12px;
+  }
+
+  .explanation :global(table.candidates) {
+    width: 100%;
+    margin: 0 0 8px;
+    border-collapse: collapse;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .explanation :global(table.candidates th) {
+    padding-bottom: 4px;
+    border-bottom: var(--line);
+    font-weight: 400;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    text-align: right;
+  }
+
+  .explanation :global(table.candidates th:first-child),
+  .explanation :global(table.candidates td:first-child) {
+    text-align: left;
+  }
+
+  .explanation :global(table.candidates td) {
+    padding: 2px 4px;
+    text-align: right;
+  }
+
+  .explanation :global(table.candidates tr.played) {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .explanation :global(dl.phases) {
+    margin: 0 0 8px;
+  }
+
+  .explanation :global(dl.phases dt) {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .explanation :global(dl.phases dd) {
+    margin: 0 0 8px;
+  }
+
+  .analysis-switch {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 20px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  /* A square box in ink, filled with accent hatching when ticked. */
+  .analysis-switch input {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    border: var(--line);
+    background: var(--paper-light);
+    cursor: pointer;
+  }
+
+  .analysis-switch input:checked {
+    background: var(--hatch-accent), var(--paper-light);
+  }
+
+  .analysis-switch input:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .explanation .analysis-note {
+    margin-top: 6px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-soft);
+  }
+
+  .analysis-note a {
+    color: inherit;
+  }
+</style>

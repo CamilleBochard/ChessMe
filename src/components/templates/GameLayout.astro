@@ -1,0 +1,54 @@
+---
+// The document the game page is laid out in: its head, the portfolio's tokens
+// and typefaces, and the paper ground with its grid of dots that everything
+// else sits on. The page's content fills the whole screen.
+import '../../styles/tokens.css';
+import '../../styles/fonts.css';
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+  </head>
+  <body>
+    <main>
+      <slot />
+    </main>
+  </body>
+</html>
+
+<style is:global>
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--paper);
+    background-image: radial-gradient(var(--ink-faint) 1px, transparent 1.2px);
+    background-size: 24px 24px;
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  a {
+    color: inherit;
+  }
+
+  a:hover {
+    color: var(--accent);
+  }
+</style>

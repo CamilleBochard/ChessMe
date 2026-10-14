@@ -1,0 +1,114 @@
+---
+// The portfolio's game-menu button: a label in capitals on a chamfered ink
+// plate, a small accent arrow, and a hatched box beside it. The accent
+// variant marks the choice that starts a game. Any other attribute, such as
+// the data attribute the game's script finds the button by, is passed on to
+// the button itself.
+import type { HTMLAttributes } from 'astro/types';
+import HatchBlock from '../atoms/HatchBlock.astro';
+
+interface Props extends HTMLAttributes<'button'> {
+  accent?: boolean;
+}
+
+const { accent = false, class: className, type = 'button', ...attributes } = Astro.props;
+---
+
+<button type={type} class:list={['game-button', className, { accent }]} {...attributes}>
+  <span class="plate"><slot /></span>
+  <HatchBlock class="hatch-box" />
+</button>
+
+<style>
+  .game-button {
+    display: inline-flex;
+    align-items: stretch;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--paper);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  .plate {
+    --chamfer: 8px;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 10px 14px;
+    background: var(--ink);
+    clip-path: polygon(
+      var(--chamfer) 0,
+      100% 0,
+      100% calc(100% - var(--chamfer)),
+      calc(100% - var(--chamfer)) 100%,
+      0 100%,
+      0 var(--chamfer)
+    );
+    transition: background-color 0.15s;
+  }
+
+  .plate::after {
+    content: '▸' / '';
+    color: var(--accent);
+  }
+
+  .game-button :global(.hatch-box) {
+    width: 26px;
+    margin-left: 4px;
+    border: var(--line);
+  }
+
+  .game-button.accent {
+    color: var(--ink);
+  }
+
+  .game-button.accent .plate {
+    background: var(--accent);
+  }
+
+  .game-button.accent .plate::after {
+    color: var(--ink);
+  }
+
+  /* Under the pointer or the keyboard an ink plate turns accent, and the
+     accent one turns ink. */
+  .game-button:hover:not(:disabled) .plate,
+  .game-button:focus-visible .plate {
+    background: var(--accent);
+    color: var(--ink);
+  }
+
+  .game-button:hover:not(:disabled) .plate::after,
+  .game-button:focus-visible .plate::after {
+    color: var(--ink);
+  }
+
+  .game-button.accent:hover:not(:disabled) .plate,
+  .game-button.accent:focus-visible .plate {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .game-button.accent:hover:not(:disabled) .plate::after,
+  .game-button.accent:focus-visible .plate::after {
+    color: var(--accent);
+  }
+
+  .game-button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  .game-button:disabled {
+    opacity: 0.35;
+    cursor: default;
+  }
+</style>

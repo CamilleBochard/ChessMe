@@ -1,0 +1,25 @@
+---
+// A hatched surface, in ink or in the accent colour: the box beside a game
+// button, or a band that fills the space left on a line. It carries no
+// meaning, so screen readers skip it. Its size comes from where it is placed,
+// through the class passed to it.
+interface Props {
+  accent?: boolean;
+  class?: string;
+}
+
+const { accent = false, class: className } = Astro.props;
+---
+
+<span class:list={['hatch-block', className, { accent }]} aria-hidden="true"></span>
+
+<style>
+  .hatch-block {
+    display: block;
+    background: var(--hatch);
+  }
+
+  .hatch-block.accent {
+    background: var(--hatch-accent);
+  }
+</style>

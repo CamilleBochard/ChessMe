@@ -1,0 +1,25 @@
+---
+// The smallest text of the portfolio: Space Mono at 10 px, in capitals,
+// spaced out and in soft ink, for notes that sit beside a label or a value
+// rather than being read first.
+interface Props {
+  as?: 'span' | 'p';
+  class?: string;
+}
+
+const { as: Element = 'span', class: className } = Astro.props;
+---
+
+<Element class:list={['micro-text', className]}><slot /></Element>
+
+<style>
+  .micro-text {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    line-height: 1.5;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+</style>

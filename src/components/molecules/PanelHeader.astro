@@ -1,0 +1,29 @@
+---
+// The head of a section of the page: its name as a bracket label on the left,
+// and on the right whatever the section adds, such as a note in micro text or
+// a pair of buttons.
+import BracketLabel from '../atoms/BracketLabel.astro';
+
+interface Props {
+  title: string;
+  /** The heading's id, for the section it names to be labelled by it. */
+  id?: string;
+}
+
+const { title, id } = Astro.props;
+---
+
+<div class="panel-header">
+  <BracketLabel as="h2" text={title} id={id} />
+  <slot />
+</div>
+
+<style>
+  .panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+</style>

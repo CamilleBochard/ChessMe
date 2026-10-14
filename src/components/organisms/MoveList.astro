@@ -1,0 +1,95 @@
+---
+// The moves of the game as a scoresheet, number then White then Black, with
+// the move that led to the position on display marked, and the two buttons
+// that step back and forth through the positions. The game's script writes
+// the rows and enables the buttons.
+import PanelHeader from '../molecules/PanelHeader.astro';
+---
+
+<div class="move-list-panel">
+  <PanelHeader title="Moves" id="moves-heading">
+    <div class="browse">
+      <button type="button" data-view-back aria-label="Previous position" title="Previous position (←)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
+      </button>
+      <button type="button" data-view-forward aria-label="Next position" title="Next position (→)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+      </button>
+    </div>
+  </PanelHeader>
+  <ol class="move-list" data-move-list aria-labelledby="moves-heading"></ol>
+</div>
+
+<style>
+  .browse {
+    display: flex;
+    gap: 4px;
+  }
+
+  .browse button {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 26px;
+    padding: 0;
+    border: var(--line);
+    background: var(--paper-light);
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  .browse button:hover:not(:disabled),
+  .browse button:focus-visible {
+    background: var(--accent);
+    outline: none;
+  }
+
+  .browse button:disabled {
+    color: var(--ink-faint);
+    border-color: var(--ink-faint);
+    cursor: default;
+  }
+
+  .browse svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.25;
+    stroke-linecap: square;
+  }
+
+  /* Its rows are created by the script, which the component's scoping cannot
+     see, hence :global for everything inside the list. */
+  .move-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 12rem;
+    overflow-y: auto;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .move-list :global(li) {
+    display: grid;
+    grid-template-columns: 34px 1fr 1fr;
+    align-items: start;
+    padding: 2px 0;
+  }
+
+  .move-list :global(.move-number) {
+    color: var(--ink-faint);
+  }
+
+  .move-list :global(.move) {
+    justify-self: start;
+    padding: 0 4px;
+  }
+
+  .move-list :global(.latest) {
+    background: var(--ink);
+    color: var(--paper);
+  }
+</style>
