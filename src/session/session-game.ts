@@ -18,10 +18,16 @@ import {
 } from '../game/game';
 import { newClock, remainingTime, startTurn, stopClock, type Clock } from '../game/clock';
 import { describeTurn, gameStatus } from '../game/game-status';
-import type { BotMove, MoveSource } from '../engine/move-selection';
+import type { MoveSource } from '../engine/move-selection';
+
+/** A move of the Bot and where it came from: all the session needs of the Bot's reply. */
+export interface SourcedMove {
+  move: MoveRequest;
+  source: MoveSource;
+}
 
 /** How the Bot chooses its move: a position as FEN in, one move out, with where it came from. */
-export type ChooseMove = (fen: string) => Promise<BotMove>;
+export type ChooseMove = (fen: string) => Promise<SourcedMove>;
 
 /** One move of a finished game. The Bot's moves also say where they came from. */
 export interface PlayedMove {
@@ -291,7 +297,7 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
 
   async function playBotMove(): Promise<void> {
     const askedAbout = game;
-    let reply: BotMove;
+    let reply: SourcedMove;
     try {
       reply = await options.chooseMove(currentFen(askedAbout));
     } catch (error) {

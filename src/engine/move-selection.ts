@@ -4,7 +4,7 @@
 // page and the evaluation harness never change when the choice does.
 // Free of anything DOM so that it runs unchanged under Node.
 
-import { gameFromFen, legalMoves, type Game, type MoveRequest } from '../game/game';
+import { gameFromFen, legalMoves, uciName, type Game, type MoveRequest } from '../game/game';
 import type { BaseModel, MoveProbability } from './base-model';
 import { cutPolicy, type MoveCut } from './move-cut';
 import { drawMove, withTemperature } from './move-draw';
@@ -44,11 +44,30 @@ export interface EngineOptions {
 /** Where a move of the Bot came from. */
 export type MoveSource = 'opening-book' | 'base-model' | 'random';
 
-/** One move of the Bot, with where it came from, which the Session Game records. */
-export interface BotMove {
+/** A move the Base Model weighed, as the panel beside the board shows it. */
+export interface Candidate {
   move: MoveRequest;
-  source: MoveSource;
+  /** The probability the Base Model gives the move. */
+  modelProbability: number;
+  /** The probability the Bot drew it with, once the cut and the temperature applied: 0 for a move cut. */
+  drawnProbability: number;
 }
+
+/**
+ * One move of the Bot, with where it came from, which the Session Game
+ * records, and for a Base Model move what the draw chose among.
+ */
+export type BotMove =
+  | { move: MoveRequest; source: 'opening-book' }
+  | {
+      move: MoveRequest;
+      source: 'base-model';
+      /** How many legal moves the position had. */
+      legalMoves: number;
+      /** Every move the Base Model weighed, most likely first by its own probability. */
+      candidates: Candidate[];
+    }
+  | { move: MoveRequest; source: 'random' };
 
 /**
  * Chooses the Bot's move in the position the FEN describes: Camille's own
@@ -68,6 +87,14 @@ export async function selectMoveWithSource(fen: string, options: EngineOptions =
   const random = options.random ?? Math.random;
   const choice = await chooseDistribution(fen, options);
   const move = drawMove(choice.distribution, random);
+  if (choice.source === 'base-model') {
+    return {
+      move: move,
+      source: 'base-model',
+      legalMoves: choice.legalMoves,
+      candidates: candidatesOf(choice.policy, choice.distribution),
+    };
+  }
   return { move: move, source: choice.source };
 }
 
@@ -82,11 +109,14 @@ export async function botMoveDistribution(fen: string, options: EngineOptions = 
   return choice.distribution;
 }
 
-/** The moves the Bot may play and their probabilities, with where they come from. */
-interface Choice {
-  distribution: MoveProbability[];
-  source: MoveSource;
-}
+/**
+ * The moves the Bot may play and their probabilities, with where they come
+ * from; for the Base Model, also the model's own probabilities before the cut
+ * and the temperature.
+ */
+type Choice =
+  | { distribution: MoveProbability[]; source: 'opening-book' | 'random' }
+  | { distribution: MoveProbability[]; source: 'base-model'; policy: MoveProbability[]; legalMoves: number };
 
 async function chooseDistribution(fen: string, options: EngineOptions): Promise<Choice> {
   const temperature = options.temperature ?? 1;
@@ -109,11 +139,33 @@ async function chooseDistribution(fen: string, options: EngineOptions): Promise<
     const baseModel = await options.baseModel;
     const policy = await baseModel.movePolicy(game);
     const kept = cutPolicy(policy, cutAt(game, options.openingCut));
-    return { distribution: withTemperature(kept, temperature), source: 'base-model' };
+    return {
+      distribution: withTemperature(kept, temperature),
+      source: 'base-model',
+      policy: policy,
+      legalMoves: candidates.length,
+    };
   }
 
   const uniform = candidates.map((move) => ({ move: move, probability: 1 / candidates.length }));
   return { distribution: uniform, source: 'random' };
+}
+
+/**
+ * Each move of the Base Model's policy with the probability the draw gave it.
+ * The distribution holds only the moves the cut kept; the others were drawn
+ * with probability 0.
+ */
+function candidatesOf(policy: MoveProbability[], distribution: MoveProbability[]): Candidate[] {
+  const drawnByMove = new Map<string, number>();
+  for (const drawn of distribution) {
+    drawnByMove.set(uciName(drawn.move), drawn.probability);
+  }
+  return policy.map((weighed) => ({
+    move: weighed.move,
+    modelProbability: weighed.probability,
+    drawnProbability: drawnByMove.get(uciName(weighed.move)) ?? 0,
+  }));
 }
 
 /**

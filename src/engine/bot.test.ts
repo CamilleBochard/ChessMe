@@ -57,7 +57,8 @@ describe('the Bot', () => {
 
     const botMove = await bot.requestMove(STARTING_POSITION);
 
-    expect(botMove).toEqual({ move: { from: 'e2', to: 'e4' }, source: 'base-model' });
+    expect(botMove.move).toEqual({ from: 'e2', to: 'e4' });
+    expect(botMove.source).toBe('base-model');
   });
 
   it('draws its move at the temperature it is served with', async () => {
@@ -73,7 +74,8 @@ describe('the Bot', () => {
 
     const botMove = await bot.requestMove(STARTING_POSITION);
 
-    expect(botMove).toEqual({ move: { from: 'e2', to: 'e4' }, source: 'base-model' });
+    expect(botMove.move).toEqual({ from: 'e2', to: 'e4' });
+    expect(botMove.source).toBe('base-model');
   });
 
   it('draws its opening moves among those the opening cut it is served with keeps', async () => {
@@ -90,7 +92,8 @@ describe('the Bot', () => {
 
     const botMove = await bot.requestMove(STARTING_POSITION);
 
-    expect(botMove).toEqual({ move: { from: 'e2', to: 'e4' }, source: 'base-model' });
+    expect(botMove.move).toEqual({ from: 'e2', to: 'e4' });
+    expect(botMove.source).toBe('base-model');
   });
 
   it('plays a book move while the model is still downloading', async () => {
@@ -110,7 +113,8 @@ describe('the Bot', () => {
 
     const botMove = await bot.requestMove(STARTING_POSITION);
 
-    expect(botMove).toEqual({ move: { from: 'd2', to: 'd4' }, source: 'opening-book' });
+    expect(botMove.move).toEqual({ from: 'd2', to: 'd4' });
+    expect(botMove.source).toBe('opening-book');
   });
 
   it('reports the download as it progresses, then preparing the model, then that it is ready', async () => {
