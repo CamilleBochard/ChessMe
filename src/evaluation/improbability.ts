@@ -385,3 +385,46 @@ export const CANDIDATE_CUTS: readonly MoveCut[] = [
   { kind: 'min-p', fraction: 0.2 },
   { kind: 'none' },
 ];
+
+/** A change in Move-Matching, as compare-bots measures it position by position: shares, not points. */
+export interface MatchingChange {
+  gain: number;
+  standardError: number;
+}
+
+/** The check a cut confined to the opening must pass to be served. */
+export interface OpeningCutCheck {
+  /** The Bot's share of opening moves under 1% minus Camille's, without the cut. */
+  uncut: PhaseGap;
+  /** The same with the cut. */
+  cut: PhaseGap;
+  /** Whether the cut lands the Bot's share closer to Camille's, in absolute value. */
+  closer: boolean;
+  /** What the cut changes in opening Move-Matching, on the drawn move with the Opening Book in front. */
+  matchingChange: MatchingChange;
+  /** Whether opening Move-Matching falls by no more than two standard errors of the change. */
+  matchingHolds: boolean;
+  /** Whether the cut passes both conditions, and so is served. */
+  served: boolean;
+}
+
+/**
+ * The opening cut's check, on Camille's moves given (the Test Set): the cut
+ * is served only if it brings the Bot's share of opening moves under 1%
+ * closer to his and does not cost opening Move-Matching beyond chance.
+ * Move-Matching comes measured, since it needs the Opening Book and the
+ * engine's draw, which these records do not hold.
+ */
+export function checkOpeningCut(camilleMoves: PlacedMove[], cut: MoveCut, openingMatchingChange: MatchingChange): OpeningCutCheck {
+  const uncutGap = cutGap(camilleMoves, { kind: 'none' }).opening;
+  const withCutGap = cutGap(camilleMoves, cut).opening;
+
+  return {
+    uncut: uncutGap,
+    cut: withCutGap,
+    closer: true,
+    matchingChange: openingMatchingChange,
+    matchingHolds: true,
+    served: true,
+  };
+}

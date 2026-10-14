@@ -4,6 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   CANDIDATE_CUTS,
+  checkOpeningCut,
   chooseCut,
   cutGap,
   improbabilityProfile,
@@ -226,5 +227,23 @@ describe("the chosen cut's gap to Camille, for the check on the Test Set", () =>
 
     expect(gap.middlegame.gap).toBeCloseTo(-0.49);
     expect(gap.middlegame.standardError).toBeCloseTo(0.5);
+  });
+});
+
+describe('the opening cut check', () => {
+  // The two least likely moves are under 1%: without a cut the Bot plays
+  // them 1% of the time, top-2 never.
+  const tail = [0.6, 0.39, 0.005, 0.005];
+  const topTwo = { kind: 'top-k', k: 2 } as const;
+  const noMatchingCost = { gain: 0, standardError: 0.01 };
+
+  it('serves a cut that brings the opening closer to Camille at no cost to Move-Matching', () => {
+    // Camille plays likely moves only, so the cut takes the Bot's share from 1% to his 0%.
+    const camille = [placed('a', 'opening', tail, 1), placed('b', 'opening', tail, 2)];
+
+    const check = checkOpeningCut(camille, topTwo, noMatchingCost);
+
+    expect(check.closer).toBe(true);
+    expect(check.served).toBe(true);
   });
 });
