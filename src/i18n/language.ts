@@ -26,3 +26,23 @@ export function chooseLanguage(stored: string | null, browserLanguages: readonly
   }
   return 'en';
 }
+
+/** The letters French gives the pieces: Roi, Dame, Tour, Fou, Cavalier. */
+const FRENCH_PIECE_LETTERS: Record<string, string> = { K: 'R', Q: 'D', R: 'T', B: 'F', N: 'C' };
+
+/**
+ * A move in algebraic notation as the language writes it. Only the pieces'
+ * capital letters change; squares, captures, checks and castling read the
+ * same in both. Each letter is replaced once, from the English one, so a
+ * rook's R never turns into a king's.
+ */
+export function notation(san: string, language: Language): string {
+  if (language === 'en') {
+    return san;
+  }
+  let written = '';
+  for (const character of san) {
+    written += FRENCH_PIECE_LETTERS[character] ?? character;
+  }
+  return written;
+}
