@@ -81,6 +81,6 @@ def test_writes_the_level_on_open_positions_beside_the_profile_and_marks_each_mo
     open_positions = profile["open_positions"]
     assert open_positions["phases"]["opening"]["mean"] == 100
     assert open_positions["phases"]["middlegame"]["moves"] == 0
-    assert open_positions["share_left_out"] == {"opening": 0, "middlegame": 1, "endgame": None}
+    assert open_positions["share_in_decided_positions"] == {"opening": 0, "middlegame": 1, "endgame": None}
     written_losses = [json.loads(line) for line in losses_path.read_text(encoding="utf-8").splitlines()]
     assert [loss["open_position"] for loss in written_losses] == [True, False]

@@ -134,9 +134,9 @@ def test_reports_the_distance_on_every_move_beside_the_one_on_open_positions(tmp
     written = json.loads(results_path.read_text(encoding="utf-8"))
     at_1 = written["temperatures"]["1"]
     assert at_1["distance_on_every_move"] == pytest.approx(100 / 6)
-    assert at_1["share_left_out"]["opening"] == pytest.approx(1 / 3)
+    assert at_1["share_in_decided_positions"]["opening"] == pytest.approx(1 / 3)
     assert at_1["distance_in_open_positions"] == 0
-    assert written["camille"]["share_left_out"]["opening"] == 0
+    assert written["camille"]["share_in_decided_positions"]["opening"] == 0
 
 
 def test_breaks_the_distance_down_by_phase_and_describes_the_losses_in_open_positions(tmp_path):

@@ -165,10 +165,11 @@ match Camille best at 1.
 
 **What it means for the model choice, which this experiment does not make.**
 The model choice's rule compared the two Bots each at its own temperature. With the
-fine-tuned model at 1, the comparison is the one already run there as a check
-(`model-choice-test-set-equal-temperature.json`). There, the fine-tuned Bot
-plays Camille's move more often after ply 10 by 1.33 points ± 0.10, about
-thirteen standard errors. The rule would then choose the fine-tuned model.
+fine-tuned model at 1, the comparison to run is the one already made there as
+a check, both Bots at 1 (`model-choice-test-set-equal-temperature.json`).
+There, the fine-tuned Bot played Camille's move more often after ply 10 by
+1.33 points ± 0.10. That figure is Move-Matching, which the yardstick does not
+touch; what changes is which temperature the rule pairs it with.
 
 Two cautions keep this a reading, not a decision:
 

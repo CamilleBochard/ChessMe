@@ -14,8 +14,9 @@ analysis, at the same depth, from the same cache. Camille's moves are in the
 cache once the profile has been extracted, so only the Bot's moves cost
 Stockfish time. The output says which temperature the rule
 (pipeline/draw_temperature.py) wants measured next, or which it chooses.
-The rule reads the distance on the moves made in Open Positions; pass
---yardstick "every move" to reproduce the choices made on every move.
+The rule reads the distance on the moves made in Open Positions; with
+--yardstick "every move" it reads it on every move, as the Blunder Profile
+counts them.
 Written to docs/experiments/results/draw-temperature.json; the tables go to
 standard output as Markdown.
 """
@@ -58,7 +59,7 @@ def extract(
     for temperature, games_path in sorted(runs.items()):
         labelled_runs[f"{temperature:g}"] = games_path
     measured = bot_losses.measure_against_camille(
-        dataset_dir, labelled_runs, cache_path, analysers, report_progress, yardstick
+        dataset_dir, labelled_runs, cache_path, analysers, report_progress, yardstick=yardstick
     )
 
     distances = {}
@@ -122,20 +123,20 @@ if __name__ == "__main__":
         default=RESULTS_PATH,
         help=f"where to write the results, e.g. for another model's runs (default {RESULTS_PATH})",
     )
-    parser.add_argument(
-        "--yardstick",
-        choices=bot_losses.YARDSTICKS,
-        default=bot_losses.OPEN_POSITIONS,
-        help="the moves the distance that decides is read on; 'every move' reproduces the choices made before "
-        f"open positions were the yardstick (default {bot_losses.OPEN_POSITIONS})",
-    )
+    bot_losses.add_yardstick_argument(parser)
     add_stockfish_arguments(parser)
     arguments = parser.parse_args()
     runs = dict(arguments.run)
 
     with running_stockfish(arguments.depth, arguments.workers) as (stockfish_processes, cache_path):
         results = extract(
-            DATASET_DIR, runs, cache_path, arguments.out, stockfish_processes, ProgressPrinter(), arguments.yardstick
+            DATASET_DIR,
+            runs,
+            cache_path,
+            arguments.out,
+            stockfish_processes,
+            ProgressPrinter(),
+            yardstick=arguments.yardstick,
         )
 
     print(f"Written to {arguments.out}")
@@ -145,7 +146,7 @@ if __name__ == "__main__":
     print()
     print(phase_distance_table(results))
     print()
-    print("The same moves without those made in positions already decided:")
+    print("The same moves, in Open Positions only:")
     print()
     print(loss_tables(results, in_open_positions=True))
     noise = results["camille_test_set_from_training_games"]

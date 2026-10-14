@@ -260,7 +260,7 @@
     ]
    }
   },
-  "share_left_out": {
+  "share_in_decided_positions": {
    "opening": 0.00019138755980861245,
    "middlegame": 0.009366727754021585,
    "endgame": 0.18484790994751155
@@ -544,7 +544,7 @@
     "middlegame": 7.145376289614663,
     "endgame": 22.078386933314356
    },
-   "share_left_out": {
+   "share_in_decided_positions": {
     "opening": 0.0,
     "middlegame": 0.028833886195458024,
     "endgame": 0.36197697276046054
@@ -1082,7 +1082,7 @@
     "middlegame": 30.074223459749636,
     "endgame": 8.729920718456743
    },
-   "share_left_out": {
+   "share_in_decided_positions": {
     "opening": 0.0,
     "middlegame": 0.027143581938102485,
     "endgame": 0.40158066015806604

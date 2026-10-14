@@ -7,6 +7,7 @@ reported per Phase beside Camille's losses with how far apart the two are.
 The profile is a yardstick: nothing here feeds back into how the Bot plays.
 """
 
+import argparse
 from pathlib import Path
 from typing import Callable
 
@@ -15,7 +16,7 @@ from pipeline.blunder_profile import (
     MoveLoss,
     build_blunder_profile,
     in_open_positions,
-    share_left_out,
+    share_in_decided_positions,
     share_losing_at_least,
 )
 from pipeline.bot_games import read_bot_games, read_bot_results
@@ -27,11 +28,29 @@ from pipeline.stockfish_analysis import Analyser
 # Which of the players' moves the distance that decides is read on. Open
 # positions compare like with like: the Bot's games run on to mate while
 # Camille's often end in a resignation, so on every move the Bot would be
-# credited with the moves it makes in games already decided. Every move is
-# how the earlier choices were made, kept so they can be reproduced.
+# credited with the moves it makes in games already decided. Every move
+# counts those moves too, as the Blunder Profile itself does.
 OPEN_POSITIONS = "open positions"
 EVERY_MOVE = "every move"
 YARDSTICKS = [OPEN_POSITIONS, EVERY_MOVE]
+
+
+def add_yardstick_argument(parser: argparse.ArgumentParser) -> None:
+    """The --yardstick option of every command that compares the Bot's losses with Camille's."""
+    parser.add_argument(
+        "--yardstick",
+        choices=YARDSTICKS,
+        default=OPEN_POSITIONS,
+        help="the moves the distance that decides is read on: those made in Open Positions, or every move, "
+        f"including those made once the game was decided (default {OPEN_POSITIONS})",
+    )
+
+
+def moves_read_on(yardstick: str, moves: list[MoveLoss]) -> list[MoveLoss]:
+    """The moves a distance on this yardstick is read on."""
+    if yardstick == OPEN_POSITIONS:
+        return in_open_positions(moves)
+    return moves
 
 
 def measure_against_camille(
@@ -62,31 +81,22 @@ def measure_against_camille(
         bot_positions = read_bot_games(games_path)
         bot = measure_move_losses(bot_positions, analysers, cache_path, report_progress)
         games = {position.game_id for position in bot_positions}
-        distance_on_every_move = loss_distance(bot, camille)
-        distance_in_open_positions = loss_distance(in_open_positions(bot), in_open_positions(camille))
-        if yardstick == OPEN_POSITIONS:
-            distance = distance_in_open_positions
-        else:
-            distance = distance_on_every_move
+        bot_in_open_positions = in_open_positions(bot)
+        camille_in_open_positions = in_open_positions(camille)
         measured_runs[label] = {
             "games": len(games),
             "results": read_bot_results(games_path),
-            "distance": distance,
-            "distance_on_every_move": distance_on_every_move,
-            "distance_in_open_positions": distance_in_open_positions,
+            "distance": loss_distance(moves_read_on(yardstick, bot), moves_read_on(yardstick, camille)),
+            "distance_on_every_move": loss_distance(bot, camille),
+            "distance_in_open_positions": loss_distance(bot_in_open_positions, camille_in_open_positions),
             "phase_distances_on_every_move": phase_distances(bot, camille),
-            "phase_distances_in_open_positions": phase_distances(
-                in_open_positions(bot), in_open_positions(camille)
-            ),
-            "share_left_out": share_left_out(bot),
+            "phase_distances_in_open_positions": phase_distances(bot_in_open_positions, camille_in_open_positions),
+            "share_in_decided_positions": share_in_decided_positions(bot),
             "centipawn_loss": build_blunder_profile(bot),
-            "centipawn_loss_in_open_positions": build_blunder_profile(in_open_positions(bot)),
+            "centipawn_loss_in_open_positions": build_blunder_profile(bot_in_open_positions),
         }
 
-    if yardstick == OPEN_POSITIONS:
-        chance_gap = loss_distance(in_open_positions(test_set), in_open_positions(training_games))
-    else:
-        chance_gap = loss_distance(test_set, training_games)
+    chance_gap = loss_distance(moves_read_on(yardstick, test_set), moves_read_on(yardstick, training_games))
 
     return {
         "engine": analysers[0].engine,
@@ -94,7 +104,7 @@ def measure_against_camille(
         "yardstick": yardstick,
         "camille": {
             "centipawn_loss": build_blunder_profile(camille),
-            "share_left_out": share_left_out(camille),
+            "share_in_decided_positions": share_in_decided_positions(camille),
             "centipawn_loss_in_open_positions": build_blunder_profile(in_open_positions(camille)),
         },
         "camille_test_set_from_training_games": chance_gap,
@@ -167,7 +177,7 @@ def summary_table(runs: dict[str, dict], run_heading: str) -> str:
             f"{outcome['won']}, {outcome['drawn']}, {outcome['lost']}",
             decimal(measured["distance_on_every_move"]),
             decimal(measured["distance_in_open_positions"]),
-            percent(measured["share_left_out"]["endgame"]),
+            percent(measured["share_in_decided_positions"]["endgame"]),
         ]
         lines.append(table_row(cells))
     return "\n".join(lines)

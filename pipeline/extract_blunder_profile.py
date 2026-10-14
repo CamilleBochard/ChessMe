@@ -35,7 +35,7 @@ from pipeline.blunder_profile import (
     centipawn_loss,
     in_open_positions,
     position_already_decided,
-    share_left_out,
+    share_in_decided_positions,
 )
 from pipeline.dataset import Position, read_dataset
 from pipeline.stockfish_analysis import Analyser, StockfishAnalyser, analyse_positions
@@ -88,7 +88,7 @@ def extract(
         "open_positions": {
             "phases": open_positions["phases"],
             "all_phases": open_positions["all_phases"],
-            "share_left_out": share_left_out(move_losses),
+            "share_in_decided_positions": share_in_decided_positions(move_losses),
         },
     }
     profile_path.write_text(json.dumps(profile, indent=1), encoding="utf-8")

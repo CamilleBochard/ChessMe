@@ -260,7 +260,7 @@
     ]
    }
   },
-  "share_left_out": {
+  "share_in_decided_positions": {
    "opening": 0.00019138755980861245,
    "middlegame": 0.009366727754021585,
    "endgame": 0.18484790994751155
@@ -544,7 +544,7 @@
     "middlegame": 18.333186917937162,
     "endgame": 22.15914538446578
    },
-   "share_left_out": {
+   "share_in_decided_positions": {
     "opening": 0.0,
     "middlegame": 0.03279515640766902,
     "endgame": 0.3963905196781909
@@ -1082,7 +1082,7 @@
     "middlegame": 12.551469659680894,
     "endgame": 19.47025741921536
    },
-   "share_left_out": {
+   "share_in_decided_positions": {
     "opening": 0.0,
     "middlegame": 0.038598273235144746,
     "endgame": 0.406170170956966
@@ -1620,7 +1620,7 @@
     "middlegame": 28.976704458197915,
     "endgame": 15.03252419388535
    },
-   "share_left_out": {
+   "share_in_decided_positions": {
     "opening": 0.0,
     "middlegame": 0.03137651821862348,
     "endgame": 0.4261776205548315
@@ -2158,7 +2158,7 @@
     "middlegame": 41.43894304105582,
     "endgame": 21.694367352192316
    },
-   "share_left_out": {
+   "share_in_decided_positions": {
     "opening": 0.0,
     "middlegame": 0.04233870967741935,
     "endgame": 0.4419921875

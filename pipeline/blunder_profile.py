@@ -61,7 +61,7 @@ def in_open_positions(moves: list[MoveLoss]) -> list[MoveLoss]:
     return [move for move in moves if move.open_position]
 
 
-def share_left_out(moves: list[MoveLoss]) -> dict[str, float | None]:
+def share_in_decided_positions(moves: list[MoveLoss]) -> dict[str, float | None]:
     """Per Phase, the share of moves made once the game was decided; None for a Phase with no move."""
     shares = {}
     for phase in PHASES:

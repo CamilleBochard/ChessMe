@@ -47,7 +47,9 @@ def extract(
     yardstick: str = bot_losses.OPEN_POSITIONS,
 ) -> dict:
     """Measures Camille's moves and each Bot's, keyed by the name given in `runs`."""
-    measured = bot_losses.measure_against_camille(dataset_dir, runs, cache_path, analysers, report_progress, yardstick)
+    measured = bot_losses.measure_against_camille(
+        dataset_dir, runs, cache_path, analysers, report_progress, yardstick=yardstick
+    )
     results = {
         "format_version": FORMAT_VERSION,
         "engine": measured["engine"],
@@ -89,20 +91,20 @@ if __name__ == "__main__":
         default=RESULTS_PATH,
         help=f"where to write the results (default {RESULTS_PATH})",
     )
-    parser.add_argument(
-        "--yardstick",
-        choices=bot_losses.YARDSTICKS,
-        default=bot_losses.OPEN_POSITIONS,
-        help="the moves the distance that decides is read on; 'every move' reproduces the choices made before "
-        f"open positions were the yardstick (default {bot_losses.OPEN_POSITIONS})",
-    )
+    bot_losses.add_yardstick_argument(parser)
     add_stockfish_arguments(parser)
     arguments = parser.parse_args()
     runs = dict(arguments.run)
 
     with running_stockfish(arguments.depth, arguments.workers) as (stockfish_processes, cache_path):
         results = extract(
-            DATASET_DIR, runs, cache_path, arguments.out, stockfish_processes, ProgressPrinter(), arguments.yardstick
+            DATASET_DIR,
+            runs,
+            cache_path,
+            arguments.out,
+            stockfish_processes,
+            ProgressPrinter(),
+            yardstick=arguments.yardstick,
         )
 
     print(f"Written to {arguments.out}")
@@ -112,7 +114,7 @@ if __name__ == "__main__":
     print()
     print(bot_losses.phase_distance_table(results["bots"]))
     print()
-    print("The same moves without those made in positions already decided:")
+    print("The same moves, in Open Positions only:")
     print()
     print(bot_losses.loss_tables(results["camille"], results["bots"], in_open_positions=True))
     noise = results["camille_test_set_from_training_games"]
