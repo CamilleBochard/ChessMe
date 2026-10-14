@@ -5,6 +5,12 @@ scripts/fetch_stockfish.sh:
 
     python -m pipeline.extract_blunder_profile
 
+or at the settings of the engine the site runs in the browser:
+
+    python -m pipeline.extract_blunder_profile --engine scripts/stockfish-lite.sh --depth 14 \
+        --profile data/dataset/blunder-profile-browser.json \
+        --losses data/dataset/centipawn-losses-browser.jsonl
+
 A full run takes hours. It can be stopped with Ctrl+C at any point and run
 again to carry on: analyses are kept in data/analysis, one cache file per
 engine and depth, which is also why a finished run repeats nothing.
@@ -178,14 +184,16 @@ def add_stockfish_arguments(parser: argparse.ArgumentParser) -> None:
 
 
 @contextmanager
-def running_stockfish(depth: int, workers: int) -> Iterator[tuple[list[StockfishAnalyser], Path]]:
+def running_stockfish(
+    depth: int, workers: int, engine_path: Path = STOCKFISH_PATH
+) -> Iterator[tuple[list[StockfishAnalyser], Path]]:
     """Starts the Stockfish processes and names their cache file; closes the processes however the run ends."""
-    if not STOCKFISH_PATH.exists():
-        raise SystemExit(f"Stockfish is not at {STOCKFISH_PATH}; run scripts/fetch_stockfish.sh first.")
+    if not engine_path.exists():
+        raise SystemExit(f"Stockfish is not at {engine_path}; run scripts/fetch_stockfish.sh first.")
 
     stockfish_processes = []
     for _ in range(workers):
-        stockfish_processes.append(StockfishAnalyser(STOCKFISH_PATH, depth))
+        stockfish_processes.append(StockfishAnalyser(engine_path, depth))
     try:
         engine = stockfish_processes[0].engine
         cache_path = cache_path_for(engine, depth)
@@ -200,10 +208,22 @@ def running_stockfish(depth: int, workers: int) -> Iterator[tuple[list[Stockfish
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Measure every move in the dataset with Stockfish.")
     add_stockfish_arguments(parser)
+    # The same measure at another engine's settings, such as the build of
+    # Stockfish the site runs in the browser (scripts/stockfish-lite.sh).
+    parser.add_argument(
+        "--engine",
+        type=Path,
+        default=STOCKFISH_PATH,
+        help=f"the UCI engine to run (default {STOCKFISH_PATH.relative_to(REPOSITORY_ROOT)})",
+    )
+    parser.add_argument("--profile", type=Path, default=PROFILE_PATH, help="where to write the profile")
+    parser.add_argument("--losses", type=Path, default=LOSSES_PATH, help="where to write each move's loss")
     arguments = parser.parse_args()
 
-    with running_stockfish(arguments.depth, arguments.workers) as (stockfish_processes, cache_path):
-        written = extract(DATASET_DIR, cache_path, PROFILE_PATH, LOSSES_PATH, stockfish_processes, ProgressPrinter())
+    with running_stockfish(arguments.depth, arguments.workers, arguments.engine) as (stockfish_processes, cache_path):
+        written = extract(
+            DATASET_DIR, cache_path, arguments.profile, arguments.losses, stockfish_processes, ProgressPrinter()
+        )
 
     all_phases = written["all_phases"]
-    print(f"{all_phases['moves']} moves measured, mean loss {all_phases['mean']:.1f} cp, written to {PROFILE_PATH}")
+    print(f"{all_phases['moves']} moves measured, mean loss {all_phases['mean']:.1f} cp, written to {arguments.profile}")
