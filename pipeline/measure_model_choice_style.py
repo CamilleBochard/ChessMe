@@ -104,10 +104,16 @@ if __name__ == "__main__":
     parser.add_argument("--other-players", type=Path, default=OTHER_PLAYERS_PATH)
     parser.add_argument("--original", type=Path, required=True, help="games the Bot played with the original model")
     parser.add_argument("--fine-tuned", type=Path, required=True, help="games the Bot played with the fine-tuned model")
+    parser.add_argument(
+        "--out",
+        type=Path,
+        default=RESULTS_PATH,
+        help=f"where to write the results, e.g. for Bots at other temperatures (default {RESULTS_PATH})",
+    )
     arguments = parser.parse_args()
 
     results = measure(DATASET_DIR, arguments.other_players, arguments.original, arguments.fine_tuned)
-    RESULTS_PATH.write_text(json.dumps(results, indent=1), encoding="utf-8")
-    print(f"Written to {RESULTS_PATH}")
+    arguments.out.write_text(json.dumps(results, indent=1), encoding="utf-8")
+    print(f"Written to {arguments.out}")
     print()
     print(table(results))
