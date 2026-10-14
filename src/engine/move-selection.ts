@@ -60,8 +60,7 @@ export async function selectMove(fen: string, options: EngineOptions = {}): Prom
 export async function selectMoveWithSource(fen: string, options: EngineOptions = {}): Promise<BotMove> {
   const random = options.random ?? Math.random;
   const choice = await chooseDistribution(fen, options);
-  const kept = cutPolicy(choice.distribution, options.openingCut ?? { kind: 'none' });
-  const move = drawMove(kept, random);
+  const move = drawMove(choice.distribution, random);
   return { move: move, source: choice.source };
 }
 
@@ -102,7 +101,9 @@ async function chooseDistribution(fen: string, options: EngineOptions): Promise<
   if (options.baseModel !== undefined) {
     const baseModel = await options.baseModel;
     const policy = await baseModel.movePolicy(game);
-    return { distribution: withTemperature(policy, temperature), source: 'base-model' };
+    const tempered = withTemperature(policy, temperature);
+    const kept = cutPolicy(tempered, options.openingCut ?? { kind: 'none' });
+    return { distribution: kept, source: 'base-model' };
   }
 
   const uniform = candidates.map((move) => ({ move: move, probability: 1 / candidates.length }));

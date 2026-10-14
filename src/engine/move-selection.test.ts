@@ -253,6 +253,26 @@ describe('botMoveDistribution', () => {
     expect(distribution[1].probability).toBeCloseTo(0.04 / 0.54, 10);
     expect(distribution[2].probability).toBeCloseTo(0.01 / 0.54, 10);
   });
+
+  it('gives only the moves an opening cut keeps, their probabilities summing to one', async () => {
+    const baseModel = modelWithPolicy([
+      { move: { from: 'e2', to: 'e4' }, probability: 0.7 },
+      { move: { from: 'd2', to: 'd4' }, probability: 0.2 },
+      { move: { from: 'g1', to: 'f3' }, probability: 0.1 },
+    ]);
+
+    const distribution = await botMoveDistribution(startingPosition, {
+      baseModel,
+      openingCut: { kind: 'top-k', k: 2 },
+    });
+
+    expect(distribution.map((candidate) => candidate.move)).toEqual([
+      { from: 'e2', to: 'e4' },
+      { from: 'd2', to: 'd4' },
+    ]);
+    expect(distribution[0].probability).toBeCloseTo(0.7 / 0.9, 10);
+    expect(distribution[1].probability).toBeCloseTo(0.2 / 0.9, 10);
+  });
 });
 
 /** An Opening Book holding the given positions, each mapped to a move in UCI form. */
