@@ -27,7 +27,7 @@ alike. That measure becomes the yardstick the next choices are made with.
 **An Open Position** is one in which the move played could still be a
 mistake. A move is left out when the best move and the move played both score
 ten pawns or more for the same side, mates included: there, the cap reads any
-move as losing nothing. The test is the one tickets 22 and 19 already used for
+move as losing nothing. The test is the one both earlier choices already used for
 their check (`position_already_decided` in `pipeline/blunder_profile.py`),
 unchanged.
 
@@ -47,15 +47,16 @@ that is not evidence that one is closer.
 
 ## What is re-read, stated before the figures were read
 
-Nothing is played or analysed again. The games of tickets 22 and 19 are read
-from the same files and every move from the same Stockfish cache.
+Nothing is played or analysed again. The games of [the draw's
+temperature](draw-temperature.md) and [the model choice](model-choice.md) are
+read from the same files and every move from the same Stockfish cache.
 
-- **The original model's temperature** (ticket 22): its runs at 0.75, 1 and
-  1.25.
-- **The fine-tuned model's temperature** (ticket 19): its runs at 0.75, 1, 1.25
-  and 1.5.
-- **The two Bots of the model choice** (ticket 19): 400 games each, reported on
-  open positions as context.
+- **The original model's temperature** (the draw's temperature): its runs at
+  0.75, 1 and 1.25.
+- **The fine-tuned model's temperature** (the model choice): its runs at 0.75,
+  1, 1.25 and 1.5.
+- **The two Bots of the model choice:** 400 games each, reported on open
+  positions as context.
 
 For each model, the draw's temperature's rule (`next_step` in
 `pipeline/draw_temperature.py`) is applied unchanged to the distances on open
@@ -68,7 +69,7 @@ Camille's Level on open positions is reported per Phase beside his Blunder
 Profile, with the share of his moves left out.
 
 **What follows.** Nothing the site serves changes here. The temperature and
-the model are chosen again, with this yardstick, in the next ticket.
+the model are chosen again, with this yardstick, in the next choice.
 
 ## Reproducing
 
@@ -84,11 +85,11 @@ python -m pipeline.measure_model_choice --out docs/experiments/results/model-cho
   --run original=data/dataset/bot-games-original.jsonl --run fine-tuned=data/dataset/bot-games-fine-tuned.jsonl
 ```
 
-The games are those of tickets 22 and 19, and every move was already in the
+The games are those of the two earlier choices, and every move was already in the
 Stockfish 19 depth 18 cache: the whole re-read analysed nothing and ran on the
 laptop in about a minute. The comparison tools now read the distance on open
 positions by default. Run with `--yardstick "every move"`, they give back the
-figures committed for tickets 22 and 19, value for value; that was checked
+figures committed for them, value for value; that was checked
 before the open-position figures were read.
 
 ## Results
@@ -115,8 +116,8 @@ training games on open positions, against 3.6 on every move.
 
 The three right-hand columns are each Phase's own distance on open positions.
 **The rule chooses temperature 1**, closer than both neighbours by 8.7
-centipawns or more, about twice the chance gap. Nothing changes from ticket
-22.
+centipawns or more, about twice the chance gap. Nothing changes from the
+draw's temperature.
 
 ### The fine-tuned model: temperature 1 rather than 1.25
 
@@ -140,8 +141,8 @@ by 16.4 (12.6 against 29.0).
 
 In open endgames, Camille loses 128.1 centipawns a move. The fine-tuned Bot
 loses 108.7 at 1 and 143.1 at 1.25: he sits between the two, a little
-nearer 1.25. In the middlegame he loses 104.1, the Bot 116.3 at 1 and 133.0 at
-1.25.
+nearer 1.25. In the middlegame Camille loses 104.1, the Bot 116.3 at 1 and
+133.0 at 1.25.
 
 ### The two Bots of the model choice, as context
 
@@ -162,8 +163,8 @@ move, and the fine-tuned model's moves from 1.25 to 1. The two models now
 agree, which is what one would expect of two models whose middlegames both
 match Camille best at 1.
 
-**What it means for the model choice, which this ticket does not make.**
-Ticket 19's rule compared the two Bots each at its own temperature. With the
+**What it means for the model choice, which this experiment does not make.**
+The model choice's rule compared the two Bots each at its own temperature. With the
 fine-tuned model at 1, the comparison is the one already run there as a check
 (`model-choice-test-set-equal-temperature.json`). There, the fine-tuned Bot
 plays Camille's move more often after ply 10 by 1.33 points ± 0.10, about
@@ -175,14 +176,14 @@ Two cautions keep this a reading, not a decision:
 - These are the same 200 games per temperature that were read before.
 
 Choosing the temperature and the model again, on this yardstick and with
-fresh games, is the next ticket's work. The site keeps serving the original
+fresh games, is the next choice's work. The site keeps serving the original
 model at 1.
 
 **A single temperature still cannot fit every Phase.** On open positions, the
 Bot at 1 plays the endgame a little better than Camille: 110.4 centipawns a
 move for the original model and 108.7 for the fine-tuned one, against his
 128.1. A hotter draw fits his endgame better and overshoots his middlegame.
-This is the same tension ticket 22 found, now measured without the bias.
+This is the same tension the draw's temperature found, now measured without the bias.
 
 ## What the measure cannot see
 
@@ -192,7 +193,6 @@ This is the same tension ticket 22 found, now measured without the bias.
   whether either converts a won one cleanly, is not measured.
 - **The mistake that throws a won game away is still counted.** A move from
   +12 to +3 leaves the cap, so it is measured, at the capped loss of 7 pawns.
-  So is a move that turns a lost position back into a fight.
 - **The cap still compresses losses near it.** A move from +9 to +2 counts
   its full 7 pawns, a move from +15 to +8 counts 2. Open positions remove the
   moves the cap reads as nothing, not the cap's effect on the moves around
@@ -203,7 +203,7 @@ This is the same tension ticket 22 found, now measured without the bias.
 ## Known limitations
 
 - **No new games.** Every figure re-reads the 200 games per temperature and
-  the 400 per Bot of tickets 22 and 19, with one seed and one stand-in
+  the 400 per Bot of the two earlier choices, with one seed and one stand-in
   opponent.
 - **The Phases are weighed by Camille's moves on open positions:** 18.8%
   opening, 34.9% middlegame, 46.3% endgame, against 17%, 32% and 51% on every
