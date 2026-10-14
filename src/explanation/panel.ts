@@ -1,13 +1,14 @@
 // The panel beside the board: why the Bot played the move on display, and how
 // the game so far compares with Camille's own games. It only draws what the
-// engine reported with each move and what the tested comparisons in
-// ./yardsticks.ts conclude; nothing here decides anything.
+// Move-Selection Engine reported with each move and what the tested functions
+// of ./explained-moves.ts and ./yardsticks.ts conclude.
 
 import type { MoveLoss } from '../analysis/engine-analysis';
 import { cutName } from '../engine/move-cut';
 import type { BotMove, Candidate } from '../engine/move-selection';
 import { playMove, type Game } from '../game/game';
-import type { ExplainedMove } from './explained-moves';
+import { candidateRows, moveKeyOf, type ExplainedMove } from './explained-moves';
+import { LAST_OPENING_PLY } from '../engine/move-selection';
 import { PHASE_LABELS, PHASES, type Phase } from '../evaluation/move-matching';
 import improbabilityFile from './improbability-yardstick.json';
 import lossFile from './loss-yardstick.json';
@@ -18,16 +19,16 @@ import {
   moveRarity,
   type BotLoss,
   type BotWeighedMove,
-  type ImprobabilityYardstick,
-  type LossYardstick,
+  type ShippedImprobabilityYardstick,
+  type ShippedLossYardstick,
   type Verdict,
 } from './yardsticks';
 
-const improbabilityYardstick = improbabilityFile as ImprobabilityYardstick & { games: number };
-const lossYardstick = lossFile as LossYardstick & { engine: string; depth: number; games: number };
+const improbabilityYardstick = improbabilityFile as ShippedImprobabilityYardstick;
+const lossYardstick = lossFile as ShippedLossYardstick;
 
-/** How many of the Base Model's candidates the table lists, the move played added when it ranks lower. */
-const CANDIDATES_SHOWN = 5;
+/** A Base Model move, as the Move-Selection Engine reports it. */
+type ModelMove = Extract<BotMove, { source: 'base-model' }>;
 
 /** What analysis mode knows of a move: its loss, or that it is still being evaluated. */
 export type MoveEvaluation = MoveLoss | 'pending' | 'failed';
@@ -37,9 +38,9 @@ export interface PanelView {
   focus: ExplainedMove | null;
   /** Every move the Bot has played in the game so far, oldest first. */
   botMoves: ExplainedMove[];
-  /** Whether analysis mode is on, and what it knows of each move, by its ply. */
   analysisOn: boolean;
-  evaluations: Map<number, MoveEvaluation>;
+  /** What analysis mode knows of each move, filed as moveKeyOf files it. */
+  evaluations: Map<string, MoveEvaluation>;
 }
 
 /** Draws the panel into its two containers. */
@@ -67,7 +68,7 @@ function moveExplanation(view: PanelView): HTMLElement[] {
   }
 
   if (view.analysisOn) {
-    parts.push(lossLine(view.evaluations.get(explained.ply)));
+    parts.push(lossLine(view.evaluations.get(moveKeyOf(explained))));
   }
   return parts;
 }
@@ -82,7 +83,7 @@ function bookExplanation(san: string, counts: { reached: number; played: number 
   );
 }
 
-function baseModelExplanation(explained: ExplainedMove, botMove: Extract<BotMove, { source: 'base-model' }>): HTMLElement[] {
+function baseModelExplanation(explained: ExplainedMove, botMove: ModelMove): HTMLElement[] {
   let drawnAmong = 'among every legal move';
   if (botMove.cut.kind !== 'none') {
     drawnAmong = `among the model's ${cutName(botMove.cut)} moves, the cut the Bot plays its opening with`;
@@ -91,17 +92,23 @@ function baseModelExplanation(explained: ExplainedMove, botMove: Extract<BotMove
     `From the Base Model, out of ${botMove.legalMoves} legal moves, drawn at temperature ${botMove.temperature} ${drawnAmong}.`,
   );
 
-  const played = botMove.candidates[botMove.rank - 1];
   let rankText = `It was the model's most likely move.`;
   if (botMove.rank > 1) {
     rankText = `It was the model's ${ordinal(botMove.rank)} most likely move.`;
   }
 
-  return [how, candidateTable(explained.before, botMove.candidates, botMove.rank), paragraph(rankText), rarityLine(explained.phase, played)];
+  const table = candidateTable(explained.before, botMove);
+  const rarity = rarityLine(explained.phase, playedCandidate(botMove));
+  return [how, table, paragraph(rankText), rarity];
+}
+
+/** The candidate the Bot played, among those the model weighed. */
+function playedCandidate(botMove: ModelMove): Candidate {
+  return botMove.candidates[botMove.rank - 1];
 }
 
 /** The model's most likely moves with both probabilities, the move played marked and added if it ranks lower. */
-function candidateTable(before: Game, candidates: Candidate[], rank: number): HTMLElement {
+function candidateTable(before: Game, botMove: ModelMove): HTMLElement {
   const table = document.createElement('table');
   table.className = 'candidates';
   const head = table.createTHead().insertRow();
@@ -113,16 +120,17 @@ function candidateTable(before: Game, candidates: Candidate[], rank: number): HT
   }
 
   const body = table.createTBody();
-  const shown = candidates.slice(0, CANDIDATES_SHOWN);
-  for (const candidate of shown) {
-    addCandidateRow(body, before, candidate, candidate === candidates[rank - 1]);
+  const played = playedCandidate(botMove);
+  const rows = candidateRows(botMove.candidates, botMove.rank);
+  for (const candidate of rows.mostLikely) {
+    addCandidateRow(body, before, candidate, candidate === played);
   }
-  if (rank > CANDIDATES_SHOWN) {
+  if (rows.playedFurtherDown !== null) {
     const gap = body.insertRow();
     const cell = gap.insertCell();
     cell.colSpan = 3;
     cell.textContent = '…';
-    addCandidateRow(body, before, candidates[rank - 1], true);
+    addCandidateRow(body, before, rows.playedFurtherDown, true);
   }
   return table;
 }
@@ -142,11 +150,10 @@ function addCandidateRow(body: HTMLTableSectionElement, before: Game, candidate:
 /** How often Camille plays a move the model finds as unlikely, in the move's Phase. */
 function rarityLine(phase: Phase, played: Candidate): HTMLElement {
   const share = moveRarity(improbabilityYardstick, phase, played.modelProbability);
-  const phaseName = PHASE_LABELS[phase].split(' ')[0].toLowerCase();
   if (share === 0) {
-    return paragraph(`None of Camille's ${phaseName} moves measured was this unlikely to the model.`, 'rarity');
+    return paragraph(`None of Camille's ${phase} moves measured was this unlikely to the model.`, 'rarity');
   }
-  return paragraph(`Camille plays a move this unlikely on ${percent(share)} of his ${phaseName} moves.`, 'rarity');
+  return paragraph(`Camille plays a move this unlikely on ${percent(share)} of his ${phase} moves.`, 'rarity');
 }
 
 function lossLine(evaluation: MoveEvaluation | undefined): HTMLElement {
@@ -173,7 +180,7 @@ function gameComparison(view: PanelView): HTMLElement[] {
     if (botMove.source !== 'base-model') {
       continue;
     }
-    const played = botMove.candidates[botMove.rank - 1];
+    const played = playedCandidate(botMove);
     fromModel.push({ phase: explained.phase, probability: played.modelProbability });
   }
   const improbability = gameImprobability(fromModel, improbabilityYardstick);
@@ -205,7 +212,7 @@ function gameComparison(view: PanelView): HTMLElement[] {
   if (view.analysisOn) {
     sources.push(
       `Losses: ${lossYardstick.engine} at depth ${lossYardstick.depth}, the settings used here, on all ${lossYardstick.games} of his games, ` +
-        `counting only the moves made while the game was undecided.`,
+        `counting only the moves made in open positions.`,
     );
   }
   return [list, paragraph(sources.join(' '), 'sources')];
@@ -215,7 +222,7 @@ function gameComparison(view: PanelView): HTMLElement[] {
 function evaluatedLosses(view: PanelView): BotLoss[] {
   const losses: BotLoss[] = [];
   for (const explained of view.botMoves) {
-    const evaluation = view.evaluations.get(explained.ply);
+    const evaluation = view.evaluations.get(moveKeyOf(explained));
     if (evaluation === undefined || evaluation === 'pending' || evaluation === 'failed') {
       continue;
     }
@@ -226,10 +233,7 @@ function evaluatedLosses(view: PanelView): BotLoss[] {
 
 function improbabilityText(phase: Phase, verdict: Verdict): string {
   if (verdict.kind === 'too-few-moves') {
-    if (phase === 'opening') {
-      return 'Moves under 1%: the opening holds at most five of the Bot\'s moves, too few to tell from one game.';
-    }
-    return `Moves under 1%: ${verdict.moves} Base Model ${moves(verdict.moves)} so far, too few to tell (${MOVES_FOR_A_VERDICT} needed).`;
+    return tooFewText('Moves under 1%', phase, `${verdict.moves} Base Model ${moves(verdict.moves)} so far`);
   }
   const improbableMoves = Math.round(verdict.figure * verdict.moves);
   const range = `${percent(verdict.spread.low)} to ${percent(verdict.spread.high)}`;
@@ -238,23 +242,33 @@ function improbabilityText(phase: Phase, verdict: Verdict): string {
 
 function lossText(phase: Phase, verdict: Verdict): string {
   if (verdict.kind === 'too-few-moves') {
-    if (phase === 'opening') {
-      return 'Average loss: the opening holds at most five of the Bot\'s moves, too few to tell from one game.';
-    }
-    return (
-      `Average loss: ${verdict.moves} ${moves(verdict.moves)} from undecided positions evaluated so far, ` +
-      `too few to tell (${MOVES_FOR_A_VERDICT} needed).`
-    );
+    const evaluated = `${verdict.moves} ${moves(verdict.moves)} in open positions evaluated so far`;
+    return tooFewText('Average loss', phase, evaluated);
   }
   const range = `${Math.round(verdict.spread.low)} to ${Math.round(verdict.spread.high)} cp`;
   return `Average loss: ${Math.round(verdict.figure)} cp over ${verdict.moves} moves, ${placement(verdict)} (${range}).`;
 }
 
-function placement(verdict: Extract<Verdict, { kind: 'inside' | 'below' | 'above' }>): string {
-  if (verdict.kind === 'inside') {
-    return 'inside his usual range';
+/**
+ * Why a Phase has no verdict yet. The opening is never long enough: it
+ * holds at most five of a player's moves, below the eight a verdict needs.
+ */
+function tooFewText(figure: string, phase: Phase, counted: string): string {
+  if (phase === 'opening') {
+    const botMovesInOpening = LAST_OPENING_PLY / 2;
+    return `${figure}: the opening holds at most ${botMovesInOpening} of the Bot's moves, too few to tell from one game.`;
   }
-  return `${verdict.kind} his usual range`;
+  return `${figure}: ${counted}, too few to tell (${MOVES_FOR_A_VERDICT} needed).`;
+}
+
+function placement(verdict: Extract<Verdict, { kind: 'inside' | 'below' | 'above' }>): string {
+  if (verdict.kind === 'below') {
+    return 'below his usual range';
+  }
+  if (verdict.kind === 'above') {
+    return 'above his usual range';
+  }
+  return 'inside his usual range';
 }
 
 /** "12." for White's twelfth move, "12…" for Black's. */

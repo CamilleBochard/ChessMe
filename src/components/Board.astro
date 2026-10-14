@@ -146,7 +146,7 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
   import { SESSION_GAMES_CHANGED } from '../telemetry/session-game-summary';
   import { startBrowserAnalyser, type BrowserAnalyser } from '../analysis/browser-analyser';
   import { moveLoss } from '../analysis/engine-analysis';
-  import { botMovesOf, replyKey, type ExplainedMove } from '../explanation/explained-moves';
+  import { botMovesOf, moveKeyOf, replyKey, type ExplainedMove } from '../explanation/explained-moves';
   import { showPanel, type MoveEvaluation } from '../explanation/panel';
 
   /**
@@ -249,7 +249,12 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
         const colour = button.dataset.playAs as Colour;
         board.set({ orientation: colour });
         forgetEndedGame();
-        session.start(colour).catch(() => {
+        const started = session.start(colour);
+        // A game started with analysis mode on is assisted from its first move.
+        if (analysis !== null) {
+          session.markAssisted();
+        }
+        started.catch(() => {
           // The Bot failed while choosing its first move; its status already
           // says so, and the board only needs redrawing.
           showGame();
@@ -500,8 +505,8 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
 
     /**
      * Draws the panel: the Bot's last move up to the position on display, and
-     * the game so far against Camille's. In analysis mode the game is marked
-     * assisted and every Bot move not yet evaluated is sent to the engine.
+     * the game so far against Camille's. In analysis mode every Bot move not
+     * yet evaluated is sent to Stockfish.
      */
     function showExplanation(): void {
       const visitor = session.visitor();
@@ -527,22 +532,13 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
       }
 
       if (analysis !== null) {
-        session.markAssisted();
         evaluateMissing(botMoves);
       }
-      const evaluationsByPly = new Map<number, MoveEvaluation>();
-      for (const explained of botMoves) {
-        const evaluation = evaluations.get(moveKeyOf(explained));
-        if (evaluation !== undefined) {
-          evaluationsByPly.set(explained.ply, evaluation);
-        }
-      }
-
       showPanel(moveExplanation, gameComparison, {
         focus: focus,
         botMoves: botMoves,
         analysisOn: analysis !== null,
-        evaluations: evaluationsByPly,
+        evaluations: evaluations,
       });
     }
 
@@ -550,6 +546,9 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
       if (analysis !== null) {
         return;
       }
+      // The visitor can now see where the Bot goes wrong: the game in
+      // progress is assisted, whatever happens to the switch later.
+      session.markAssisted();
       const engineUrl = new URL(frame.dataset.enginePath!, window.location.href).href;
       analysis = startBrowserAnalyser(engineUrl, () => {
         // An engine that cannot start leaves every move it was given unevaluated.
@@ -624,11 +623,6 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
       timeElement.textContent = formatClockTime(timeLeft);
       element.classList.toggle('running', isRunning);
     }
-  }
-
-  /** How a Bot move on the board is filed, among the replies and the evaluations alike. */
-  function moveKeyOf(explained: ExplainedMove): string {
-    return replyKey(currentFen(explained.before), explained.botMove.move);
   }
 
   /** Tells whatever shows the Session Game summary on this page to read it again. */
