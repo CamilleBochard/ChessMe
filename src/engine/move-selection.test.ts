@@ -8,6 +8,7 @@ import { parseSquare } from 'chessops/util';
 import { currentFen, legalMoves, newGame, playMove, type Game, type MoveRequest } from '../game/game';
 import { gameStatus } from '../game/game-status';
 import { loadBaseModel, type BaseModel, type MoveProbability } from './base-model';
+import type { MoveCut } from './move-cut';
 import { botMoveDistribution, selectMove, selectMoveWithSource } from './move-selection';
 import { readOpeningBook, type OpeningBook } from './opening-book';
 import { seededRandom } from '../evaluation/seeded-random';
@@ -206,6 +207,27 @@ describe('selectMove drawing from the Base Model', () => {
     expect(Math.abs(timesPlayed['e2e4'] / draws - 0.7)).toBeLessThan(0.015);
     expect(Math.abs(timesPlayed['d2d4'] / draws - 0.2)).toBeLessThan(0.015);
     expect(Math.abs(timesPlayed['g1f3'] / draws - 0.1)).toBeLessThan(0.015);
+  });
+});
+
+describe('selectMove with a cut in the opening', () => {
+  const startingPosition = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+  // The same probabilities in every position: e2e4 0.7, d2d4 0.2, g1f3 0.1.
+  const baseModel = modelWithPolicy([
+    { move: { from: 'e2', to: 'e4' }, probability: 0.7 },
+    { move: { from: 'd2', to: 'd4' }, probability: 0.2 },
+    { move: { from: 'g1', to: 'f3' }, probability: 0.1 },
+  ]);
+  const topTwo: MoveCut = { kind: 'top-k', k: 2 };
+
+  it('never plays a move outside the cut in the opening, whatever the random number', async () => {
+    // Kept and rescaled, e2e4 owns [0, 0.778) and d2d4 [0.778, 1): the top
+    // of the range, which draws g1f3 without a cut, now falls to d2d4.
+    for (const drawn of [0.95, 0.99, 0.999999]) {
+      const move = await selectMove(startingPosition, { baseModel, random: () => drawn, openingCut: topTwo });
+
+      expect(move).toEqual({ from: 'd2', to: 'd4' });
+    }
   });
 });
 

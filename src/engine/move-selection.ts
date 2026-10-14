@@ -6,6 +6,7 @@
 
 import { gameFromFen, legalMoves, type MoveRequest } from '../game/game';
 import type { BaseModel, MoveProbability } from './base-model';
+import { cutPolicy, type MoveCut } from './move-cut';
 import { drawMove, withTemperature } from './move-draw';
 import type { OpeningBook } from './opening-book';
 
@@ -26,6 +27,11 @@ export interface EngineOptions {
    * it always plays it. Defaults to 1.
    */
   temperature?: number;
+  /**
+   * Which of the Base Model's moves the draw keeps in the opening. Left out,
+   * the Bot draws among every legal move.
+   */
+  openingCut?: MoveCut;
 }
 
 /** Where a move of the Bot came from. */
@@ -54,7 +60,8 @@ export async function selectMove(fen: string, options: EngineOptions = {}): Prom
 export async function selectMoveWithSource(fen: string, options: EngineOptions = {}): Promise<BotMove> {
   const random = options.random ?? Math.random;
   const choice = await chooseDistribution(fen, options);
-  const move = drawMove(choice.distribution, random);
+  const kept = cutPolicy(choice.distribution, options.openingCut ?? { kind: 'none' });
+  const move = drawMove(kept, random);
   return { move: move, source: choice.source };
 }
 
