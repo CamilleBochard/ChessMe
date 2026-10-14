@@ -14,6 +14,8 @@ analysis, at the same depth, from the same cache. Camille's moves are in the
 cache once the profile has been extracted, so only the Bot's moves cost
 Stockfish time. The output says which temperature the rule
 (pipeline/draw_temperature.py) wants measured next, or which it chooses.
+The rule reads the distance on the moves made in Open Positions; pass
+--yardstick "every move" to reproduce the choices made on every move.
 Written to docs/experiments/results/draw-temperature.json; the tables go to
 standard output as Markdown.
 """
@@ -37,7 +39,7 @@ from pipeline.stockfish_analysis import Analyser
 
 # The version of the file's layout. Raise it whenever a reader of the old
 # layout would misread the new one.
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2
 
 RESULTS_PATH = REPOSITORY_ROOT / "docs" / "experiments" / "results" / "draw-temperature.json"
 
@@ -49,12 +51,15 @@ def extract(
     results_path: Path,
     analysers: list[Analyser],
     report_progress: Callable[[int, int], None] | None = None,
+    yardstick: str = bot_losses.OPEN_POSITIONS,
 ) -> dict:
     """Measures Camille's moves and the Bot's at each temperature, keyed by temperature in `runs`."""
     labelled_runs = {}
     for temperature, games_path in sorted(runs.items()):
         labelled_runs[f"{temperature:g}"] = games_path
-    measured = bot_losses.measure_against_camille(dataset_dir, labelled_runs, cache_path, analysers, report_progress)
+    measured = bot_losses.measure_against_camille(
+        dataset_dir, labelled_runs, cache_path, analysers, report_progress, yardstick
+    )
 
     distances = {}
     for temperature in runs:
@@ -64,6 +69,7 @@ def extract(
         "format_version": FORMAT_VERSION,
         "engine": measured["engine"],
         "depth": measured["depth"],
+        "yardstick": measured["yardstick"],
         "camille": measured["camille"],
         "camille_test_set_from_training_games": measured["camille_test_set_from_training_games"],
         "temperatures": measured["runs"],
@@ -73,12 +79,12 @@ def extract(
     return results
 
 
-def loss_tables(results: dict, in_undecided_positions: bool = False) -> str:
+def loss_tables(results: dict, in_open_positions: bool = False) -> str:
     """One Markdown table per Phase: Camille's losses, then the Bot's at each temperature."""
     runs = {}
     for temperature, measured in results["temperatures"].items():
         runs[f"Bot at {temperature}"] = measured
-    return bot_losses.loss_tables(results["camille"], runs, in_undecided_positions)
+    return bot_losses.loss_tables(results["camille"], runs, in_open_positions)
 
 
 def summary_table(results: dict) -> str:
@@ -87,7 +93,7 @@ def summary_table(results: dict) -> str:
 
 
 def phase_distance_table(results: dict) -> str:
-    """Each Phase's own distance at each temperature, with all moves, then without those in decided positions."""
+    """Each Phase's own distance at each temperature, on every move, then on the moves made in open positions."""
     return bot_losses.phase_distance_table(results["temperatures"])
 
 
@@ -116,12 +122,21 @@ if __name__ == "__main__":
         default=RESULTS_PATH,
         help=f"where to write the results, e.g. for another model's runs (default {RESULTS_PATH})",
     )
+    parser.add_argument(
+        "--yardstick",
+        choices=bot_losses.YARDSTICKS,
+        default=bot_losses.OPEN_POSITIONS,
+        help="the moves the distance that decides is read on; 'every move' reproduces the choices made before "
+        f"open positions were the yardstick (default {bot_losses.OPEN_POSITIONS})",
+    )
     add_stockfish_arguments(parser)
     arguments = parser.parse_args()
     runs = dict(arguments.run)
 
     with running_stockfish(arguments.depth, arguments.workers) as (stockfish_processes, cache_path):
-        results = extract(DATASET_DIR, runs, cache_path, arguments.out, stockfish_processes, ProgressPrinter())
+        results = extract(
+            DATASET_DIR, runs, cache_path, arguments.out, stockfish_processes, ProgressPrinter(), arguments.yardstick
+        )
 
     print(f"Written to {arguments.out}")
     print()
@@ -132,9 +147,10 @@ if __name__ == "__main__":
     print()
     print("The same moves without those made in positions already decided:")
     print()
-    print(loss_tables(results, in_undecided_positions=True))
+    print(loss_tables(results, in_open_positions=True))
     noise = results["camille_test_set_from_training_games"]
-    print(f"Camille's Test Set from his training games: {noise:.1f}")
+    print(f"The rule reads the distance on {results['yardstick']}.")
+    print(f"Camille's Test Set from his training games, on {results['yardstick']}: {noise:.1f}")
     step = results["next_step"]
     if step["chosen"] is None:
         print(f"The rule asks for temperature {step['measure']:g} to be measured next.")

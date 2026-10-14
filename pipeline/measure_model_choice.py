@@ -32,7 +32,7 @@ from pipeline.stockfish_analysis import Analyser
 
 # The version of the file's layout. Raise it whenever a reader of the old
 # layout would misread the new one.
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2
 
 RESULTS_PATH = REPOSITORY_ROOT / "docs" / "experiments" / "results" / "model-choice-losses.json"
 
@@ -44,13 +44,15 @@ def extract(
     results_path: Path,
     analysers: list[Analyser],
     report_progress: Callable[[int, int], None] | None = None,
+    yardstick: str = bot_losses.OPEN_POSITIONS,
 ) -> dict:
     """Measures Camille's moves and each Bot's, keyed by the name given in `runs`."""
-    measured = bot_losses.measure_against_camille(dataset_dir, runs, cache_path, analysers, report_progress)
+    measured = bot_losses.measure_against_camille(dataset_dir, runs, cache_path, analysers, report_progress, yardstick)
     results = {
         "format_version": FORMAT_VERSION,
         "engine": measured["engine"],
         "depth": measured["depth"],
+        "yardstick": measured["yardstick"],
         "camille": measured["camille"],
         "camille_test_set_from_training_games": measured["camille_test_set_from_training_games"],
         "bots": measured["runs"],
@@ -81,14 +83,29 @@ if __name__ == "__main__":
         required=True,
         help="a Bot's name and the games npm run bot-games played with it, as fine-tuned=path/to/games.jsonl",
     )
+    parser.add_argument(
+        "--out",
+        type=Path,
+        default=RESULTS_PATH,
+        help=f"where to write the results (default {RESULTS_PATH})",
+    )
+    parser.add_argument(
+        "--yardstick",
+        choices=bot_losses.YARDSTICKS,
+        default=bot_losses.OPEN_POSITIONS,
+        help="the moves the distance that decides is read on; 'every move' reproduces the choices made before "
+        f"open positions were the yardstick (default {bot_losses.OPEN_POSITIONS})",
+    )
     add_stockfish_arguments(parser)
     arguments = parser.parse_args()
     runs = dict(arguments.run)
 
     with running_stockfish(arguments.depth, arguments.workers) as (stockfish_processes, cache_path):
-        results = extract(DATASET_DIR, runs, cache_path, RESULTS_PATH, stockfish_processes, ProgressPrinter())
+        results = extract(
+            DATASET_DIR, runs, cache_path, arguments.out, stockfish_processes, ProgressPrinter(), arguments.yardstick
+        )
 
-    print(f"Written to {RESULTS_PATH}")
+    print(f"Written to {arguments.out}")
     print()
     print(bot_losses.loss_tables(results["camille"], results["bots"]))
     print(summary_table(results))
@@ -97,6 +114,6 @@ if __name__ == "__main__":
     print()
     print("The same moves without those made in positions already decided:")
     print()
-    print(bot_losses.loss_tables(results["camille"], results["bots"], in_undecided_positions=True))
+    print(bot_losses.loss_tables(results["camille"], results["bots"], in_open_positions=True))
     noise = results["camille_test_set_from_training_games"]
-    print(f"Camille's Test Set from his training games: {noise:.1f}")
+    print(f"Camille's Test Set from his training games, on {results['yardstick']}: {noise:.1f}")

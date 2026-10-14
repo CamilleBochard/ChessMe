@@ -77,5 +77,5 @@ def test_sums_up_each_bot_s_distance_and_results_in_one_row(tmp_path):
     results = extract(tmp_path, runs, tmp_path / "cache.jsonl", tmp_path / "out.json", [OnlyE4IsBestAnalyser()])
     table = summary_table(results).splitlines()
 
-    assert table[0].startswith("| Bot | Games | Won, drawn, lost | Distance |")
+    assert table[0].startswith("| Bot | Games | Won, drawn, lost | Distance, every move | Distance, open positions |")
     assert table[2] == "| original | 1 | 0, 0, 1 | 50.0 | 50.0 | - |"

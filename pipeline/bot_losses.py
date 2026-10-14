@@ -14,14 +14,24 @@ from pipeline.blunder_profile import (
     PERCENTILES,
     MoveLoss,
     build_blunder_profile,
-    position_already_decided,
+    in_open_positions,
+    share_left_out,
     share_losing_at_least,
 )
 from pipeline.bot_games import read_bot_games, read_bot_results
-from pipeline.dataset import PHASE_LABELS, PHASES, Position, read_dataset
+from pipeline.dataset import PHASE_LABELS, PHASES, read_dataset
 from pipeline.draw_temperature import loss_distance, phase_distances
 from pipeline.extract_blunder_profile import measure_move_losses
-from pipeline.stockfish_analysis import Analyser, analyse_positions
+from pipeline.stockfish_analysis import Analyser
+
+# Which of the players' moves the distance that decides is read on. Open
+# positions compare like with like: the Bot's games run on to mate while
+# Camille's often end in a resignation, so on every move the Bot would be
+# credited with the moves it makes in games already decided. Every move is
+# how the earlier choices were made, kept so they can be reproduced.
+OPEN_POSITIONS = "open positions"
+EVERY_MOVE = "every move"
+YARDSTICKS = [OPEN_POSITIONS, EVERY_MOVE]
 
 
 def measure_against_camille(
@@ -30,99 +40,76 @@ def measure_against_camille(
     cache_path: Path,
     analysers: list[Analyser],
     report_progress: Callable[[int, int], None] | None = None,
+    yardstick: str = OPEN_POSITIONS,
 ) -> dict:
-    """Measures Camille's moves and the Bot's in each run, keyed by the run's label."""
+    """Measures Camille's moves and the Bot's in each run, keyed by the run's label.
+
+    Each run's "distance" is read on the yardstick's moves; the distance on
+    the other moves is reported beside it.
+    """
+    if yardstick not in YARDSTICKS:
+        raise ValueError(f"unknown yardstick {yardstick!r}, expected one of {YARDSTICKS}")
     dataset = read_dataset(dataset_dir)
-    camille = measure_moves(dataset.train + dataset.test, analysers, cache_path, report_progress)
+    camille = measure_move_losses(dataset.train + dataset.test, analysers, cache_path, report_progress)
     # The same player on two sets of his own games: how far apart they land
     # is how far two sets of games drift by chance, the yardstick for whether
     # the gap between two runs means anything.
-    training_games = measure_moves(dataset.train, analysers, cache_path, report_progress)
-    test_set = measure_moves(dataset.test, analysers, cache_path, report_progress)
+    training_games = measure_move_losses(dataset.train, analysers, cache_path, report_progress)
+    test_set = measure_move_losses(dataset.test, analysers, cache_path, report_progress)
 
     measured_runs = {}
     for label, games_path in runs.items():
         bot_positions = read_bot_games(games_path)
-        bot = measure_moves(bot_positions, analysers, cache_path, report_progress)
+        bot = measure_move_losses(bot_positions, analysers, cache_path, report_progress)
         games = {position.game_id for position in bot_positions}
+        distance_on_every_move = loss_distance(bot, camille)
+        distance_in_open_positions = loss_distance(in_open_positions(bot), in_open_positions(camille))
+        if yardstick == OPEN_POSITIONS:
+            distance = distance_in_open_positions
+        else:
+            distance = distance_on_every_move
         measured_runs[label] = {
             "games": len(games),
             "results": read_bot_results(games_path),
-            "centipawn_loss": build_blunder_profile(bot.losses),
-            "distance": loss_distance(bot.losses, camille.losses),
-            "already_decided_share": bot.already_decided_share(),
-            "distance_in_undecided_positions": loss_distance(bot.undecided_losses(), camille.undecided_losses()),
-            "phase_distances": phase_distances(bot.losses, camille.losses),
-            "phase_distances_in_undecided_positions": phase_distances(
-                bot.undecided_losses(), camille.undecided_losses()
+            "distance": distance,
+            "distance_on_every_move": distance_on_every_move,
+            "distance_in_open_positions": distance_in_open_positions,
+            "phase_distances_on_every_move": phase_distances(bot, camille),
+            "phase_distances_in_open_positions": phase_distances(
+                in_open_positions(bot), in_open_positions(camille)
             ),
-            "centipawn_loss_in_undecided_positions": build_blunder_profile(bot.undecided_losses()),
+            "share_left_out": share_left_out(bot),
+            "centipawn_loss": build_blunder_profile(bot),
+            "centipawn_loss_in_open_positions": build_blunder_profile(in_open_positions(bot)),
         }
+
+    if yardstick == OPEN_POSITIONS:
+        chance_gap = loss_distance(in_open_positions(test_set), in_open_positions(training_games))
+    else:
+        chance_gap = loss_distance(test_set, training_games)
 
     return {
         "engine": analysers[0].engine,
         "depth": analysers[0].depth,
+        "yardstick": yardstick,
         "camille": {
-            "centipawn_loss": build_blunder_profile(camille.losses),
-            "already_decided_share": camille.already_decided_share(),
-            "centipawn_loss_in_undecided_positions": build_blunder_profile(camille.undecided_losses()),
+            "centipawn_loss": build_blunder_profile(camille),
+            "share_left_out": share_left_out(camille),
+            "centipawn_loss_in_open_positions": build_blunder_profile(in_open_positions(camille)),
         },
-        "camille_test_set_from_training_games": loss_distance(test_set.losses, training_games.losses),
+        "camille_test_set_from_training_games": chance_gap,
         "runs": measured_runs,
     }
-
-
-class MeasuredMoves:
-    """A player's moves with the evaluation each lost, and whether its position was already decided."""
-
-    def __init__(self, losses: list[MoveLoss], already_decided: list[bool]):
-        self.losses = losses
-        self.already_decided = already_decided
-
-    def undecided_losses(self) -> list[MoveLoss]:
-        """The moves made while the game was still open, the only ones that could be a mistake."""
-        undecided = []
-        for loss, decided in zip(self.losses, self.already_decided):
-            if not decided:
-                undecided.append(loss)
-        return undecided
-
-    def already_decided_share(self) -> dict[str, float | None]:
-        """Per Phase, the share of moves made in a position already decided."""
-        shares = {}
-        for phase in PHASES:
-            flags = [decided for loss, decided in zip(self.losses, self.already_decided) if loss.phase == phase]
-            if not flags:
-                shares[phase] = None
-                continue
-            shares[phase] = sum(flags) / len(flags)
-        return shares
-
-
-def measure_moves(
-    positions: list[Position],
-    analysers: list[Analyser],
-    cache_path: Path,
-    report_progress: Callable[[int, int], None] | None,
-) -> MeasuredMoves:
-    losses = measure_move_losses(positions, analysers, cache_path, report_progress)
-    # Every move is in the cache by now, so this analyses nothing again.
-    analyses = analyse_positions(positions, analysers, cache_path)
-    already_decided = []
-    for position in positions:
-        analysis = analyses[(position.fen, position.move)]
-        already_decided.append(position_already_decided(best=analysis.best, played=analysis.played))
-    return MeasuredMoves(losses, already_decided)
 
 
 # The usual thresholds for an inaccuracy, a mistake and a blunder.
 LOSS_THRESHOLDS = [50, 100, 300]
 
 
-def loss_tables(camille: dict, runs: dict[str, dict], in_undecided_positions: bool = False) -> str:
+def loss_tables(camille: dict, runs: dict[str, dict], in_open_positions: bool = False) -> str:
     """One Markdown table per Phase: Camille's losses, then the Bot's in each run, under the run's name.
 
-    With in_undecided_positions, only the moves made while the game was still
+    With in_open_positions, only the moves made while the game was still
     open are counted, for both players.
     """
     header_cells = ["Player", "Moves", "Mean"]
@@ -130,8 +117,8 @@ def loss_tables(camille: dict, runs: dict[str, dict], in_undecided_positions: bo
     header_cells += [f"{threshold} or more" for threshold in LOSS_THRESHOLDS]
 
     profile_key = "centipawn_loss"
-    if in_undecided_positions:
-        profile_key = "centipawn_loss_in_undecided_positions"
+    if in_open_positions:
+        profile_key = "centipawn_loss_in_open_positions"
     players = [("Camille", camille[profile_key])]
     for name, measured in runs.items():
         players.append((name, measured[profile_key]))
@@ -167,8 +154,8 @@ def summary_table(runs: dict[str, dict], run_heading: str) -> str:
         run_heading,
         "Games",
         "Won, drawn, lost",
-        "Distance",
-        "Distance, undecided positions",
+        "Distance, every move",
+        "Distance, open positions",
         "Endgame moves in decided positions",
     ]
     lines = [table_row(header_cells), "|---|" + "---|" * (len(header_cells) - 1)]
@@ -178,25 +165,25 @@ def summary_table(runs: dict[str, dict], run_heading: str) -> str:
             label,
             f"{measured['games']:,}",
             f"{outcome['won']}, {outcome['drawn']}, {outcome['lost']}",
-            decimal(measured["distance"]),
-            decimal(measured["distance_in_undecided_positions"]),
-            percent(measured["already_decided_share"]["endgame"]),
+            decimal(measured["distance_on_every_move"]),
+            decimal(measured["distance_in_open_positions"]),
+            percent(measured["share_left_out"]["endgame"]),
         ]
         lines.append(table_row(cells))
     return "\n".join(lines)
 
 
 def phase_distance_table(runs: dict[str, dict]) -> str:
-    """Each Phase's own distance in each run, with all moves, then without those in decided positions."""
+    """Each Phase's own distance in each run, on every move, then on the moves made in open positions."""
     labels = list(runs)
-    header_cells = ["Phase"] + labels + [f"{label}, undecided positions" for label in labels]
+    header_cells = ["Phase"] + labels + [f"{label}, open positions" for label in labels]
     lines = [table_row(header_cells), "|---|" + "---|" * (len(header_cells) - 1)]
     for phase in PHASES:
         cells = [PHASE_LABELS[phase]]
         for label in labels:
-            cells.append(decimal(runs[label]["phase_distances"][phase]))
+            cells.append(decimal(runs[label]["phase_distances_on_every_move"][phase]))
         for label in labels:
-            cells.append(decimal(runs[label]["phase_distances_in_undecided_positions"][phase]))
+            cells.append(decimal(runs[label]["phase_distances_in_open_positions"][phase]))
         lines.append(table_row(cells))
     return "\n".join(lines)
 
