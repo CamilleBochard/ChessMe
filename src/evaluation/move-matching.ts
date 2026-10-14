@@ -28,6 +28,17 @@ export type Phase = 'opening' | 'middlegame' | 'endgame';
 /** The Phases in the order a game passes through them. */
 export const PHASES: readonly Phase[] = ['opening', 'middlegame', 'endgame'];
 
+/** The Phase a ply belongs to, by the same boundaries as pipeline/dataset.py. */
+export function phaseOfPly(ply: number): Phase {
+  if (ply <= 10) {
+    return 'opening';
+  }
+  if (ply <= 30) {
+    return 'middlegame';
+  }
+  return 'endgame';
+}
+
 /** How a Phase is named in a table, with the plies that belong to it. */
 export const PHASE_LABELS: Record<Phase, string> = {
   opening: 'Opening (1-10)',

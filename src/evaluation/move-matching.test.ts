@@ -10,6 +10,7 @@ import {
   compareBots,
   measureDrawnMoveMatching,
   measureMoveMatching,
+  phaseOfPly,
   readPositions,
   type PlayedPosition,
 } from './move-matching';
@@ -163,5 +164,13 @@ describe('compareBots', () => {
     expect(comparison.gain.drawn.afterPly10.matched).toBeCloseTo(0.9, 10);
     // Every game gains the same share, so no game strays from the mean gain.
     expect(comparison.gain.drawn.overall.standardError).toBeCloseTo(0, 10);
+  });
+});
+
+describe('the Phase of a ply', () => {
+  it('is the opening up to ply 10, the middlegame up to ply 30, and the endgame after', () => {
+    const phases = [1, 10, 11, 30, 31, 120].map(phaseOfPly);
+
+    expect(phases).toEqual(['opening', 'opening', 'middlegame', 'middlegame', 'endgame', 'endgame']);
   });
 });
