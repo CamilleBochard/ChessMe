@@ -142,6 +142,9 @@ export function connectAnalyser(port: EnginePort, depth: number): Analyser {
       await started;
       await exchange(['ucinewgame', 'isready'], (line) => line === 'readyok');
       const best = await search(fen);
+      if (best.bestMove === move) {
+        return { bestMove: best.bestMove, best: best.score, played: best.score };
+      }
       const played = await search(fen, move);
       return { bestMove: best.bestMove, best: best.score, played: played.score };
     },

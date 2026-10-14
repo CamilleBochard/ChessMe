@@ -99,4 +99,17 @@ describe('analysing a move', () => {
       'go depth 14 searchmoves a7a5',
     ]);
   });
+
+  it('searches only once when the played move is the best one', async () => {
+    const engine = scriptedEngine(
+      ['info depth 14 multipv 1 score mate 2 nodes 500 pv d8h4', 'bestmove d8h4'],
+      ['info depth 14 multipv 1 score cp 0 nodes 1 pv d8h4', 'bestmove d8h4'],
+    );
+    const analyser = connectAnalyser(engine, 14);
+
+    const analysis = await analyser.analyse(position, 'd8h4');
+
+    expect(analysis).toEqual({ bestMove: 'd8h4', best: { mateIn: 2 }, played: { mateIn: 2 } });
+    expect(engine.received.filter((command) => command.startsWith('go'))).toEqual(['go depth 14']);
+  });
 });
