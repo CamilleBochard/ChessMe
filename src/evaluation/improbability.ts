@@ -418,13 +418,14 @@ export interface OpeningCutCheck {
 export function checkOpeningCut(camilleMoves: PlacedMove[], cut: MoveCut, openingMatchingChange: MatchingChange): OpeningCutCheck {
   const uncutGap = cutGap(camilleMoves, { kind: 'none' }).opening;
   const withCutGap = cutGap(camilleMoves, cut).opening;
+  const closer = Math.abs(withCutGap.gap) < Math.abs(uncutGap.gap);
 
   return {
     uncut: uncutGap,
     cut: withCutGap,
-    closer: true,
+    closer: closer,
     matchingChange: openingMatchingChange,
     matchingHolds: true,
-    served: true,
+    served: closer,
   };
 }

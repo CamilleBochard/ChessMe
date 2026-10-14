@@ -246,4 +246,15 @@ describe('the opening cut check', () => {
     expect(check.closer).toBe(true);
     expect(check.served).toBe(true);
   });
+
+  it('does not serve a cut that takes the Bot further from Camille', () => {
+    // Camille plays an improbable move in every position: the Bot's 1% is
+    // 99 points short of him, the cut's 0% a point further.
+    const camille = [placed('a', 'opening', tail, 3), placed('b', 'opening', tail, 4)];
+
+    const check = checkOpeningCut(camille, topTwo, noMatchingCost);
+
+    expect(check.closer).toBe(false);
+    expect(check.served).toBe(false);
+  });
 });
