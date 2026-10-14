@@ -1,0 +1,32 @@
+{
+ "measuredOn": "2026-10-14",
+ "baseModel": "maia3-5m-fine-tuned",
+ "temperature": 1,
+ "openingCut": {
+  "cut": {
+   "kind": "top-k",
+   "k": 10
+  },
+  "name": "top-10"
+ },
+ "openingMoves": 1150,
+ "uncut": {
+  "gap": 0.005226271361413324,
+  "standardError": 0.0038962174304325047
+ },
+ "cut": {
+  "gap": -0.0026203096872569587,
+  "standardError": 0.003974528850052883
+ },
+ "shareChange": {
+  "change": -0.007846581048670245,
+  "standardError": 0.0003179523877202
+ },
+ "closer": true,
+ "matchingChange": {
+  "gain": 0.0016235274165002779,
+  "standardError": 0.00011492484133919055
+ },
+ "matchingHolds": true,
+ "served": true
+}

@@ -1,0 +1,226 @@
+{
+ "measuredOn": "2026-10-14",
+ "openingBook": "data/dataset/opening-book.json",
+ "rating": 1100,
+ "first": {
+  "baseModel": "maia3-5m-fine-tuned",
+  "temperature": 1,
+  "openingCut": {
+   "kind": "none"
+  },
+  "topMove": {
+   "overall": {
+    "matched": 3822,
+    "positions": 7092,
+    "games": 230,
+    "standardError": 0.0061681446445694815
+   },
+   "afterPly10": {
+    "matched": 3060,
+    "positions": 5942,
+    "games": 230,
+    "standardError": 0.006936325237346487
+   },
+   "byPhase": {
+    "opening": {
+     "matched": 762,
+     "positions": 1150,
+     "games": 230,
+     "standardError": 0.015130866874800194
+    },
+    "middlegame": {
+     "matched": 1112,
+     "positions": 2187,
+     "games": 230,
+     "standardError": 0.010922965027940193
+    },
+    "endgame": {
+     "matched": 1948,
+     "positions": 3755,
+     "games": 205,
+     "standardError": 0.009966280080049158
+    }
+   }
+  },
+  "drawn": {
+   "overall": {
+    "matched": 2935.072770673646,
+    "positions": 7092,
+    "games": 230,
+    "standardError": 0.004893219242203397
+   },
+   "afterPly10": {
+    "matched": 2257.7428874180887,
+    "positions": 5942,
+    "games": 230,
+    "standardError": 0.005105282074739437
+   },
+   "byPhase": {
+    "opening": {
+     "matched": 677.3298832555566,
+     "positions": 1150,
+     "games": 230,
+     "standardError": 0.014277550395153696
+    },
+    "middlegame": {
+     "matched": 801.0883438016988,
+     "positions": 2187,
+     "games": 230,
+     "standardError": 0.00612433143442321
+    },
+    "endgame": {
+     "matched": 1456.6545436163901,
+     "positions": 3755,
+     "games": 205,
+     "standardError": 0.007156149225749838
+    }
+   }
+  }
+ },
+ "second": {
+  "baseModel": "maia3-5m-fine-tuned",
+  "temperature": 1,
+  "openingCut": {
+   "kind": "top-k",
+   "k": 10
+  },
+  "topMove": {
+   "overall": {
+    "matched": 3822,
+    "positions": 7092,
+    "games": 230,
+    "standardError": 0.0061681446445694815
+   },
+   "afterPly10": {
+    "matched": 3060,
+    "positions": 5942,
+    "games": 230,
+    "standardError": 0.006936325237346487
+   },
+   "byPhase": {
+    "opening": {
+     "matched": 762,
+     "positions": 1150,
+     "games": 230,
+     "standardError": 0.015130866874800194
+    },
+    "middlegame": {
+     "matched": 1112,
+     "positions": 2187,
+     "games": 230,
+     "standardError": 0.010922965027940193
+    },
+    "endgame": {
+     "matched": 1948,
+     "positions": 3755,
+     "games": 205,
+     "standardError": 0.009966280080049158
+    }
+   }
+  },
+  "drawn": {
+   "overall": {
+    "matched": 2936.9398272026197,
+    "positions": 7092,
+    "games": 230,
+    "standardError": 0.0048890230420741195
+   },
+   "afterPly10": {
+    "matched": 2257.7428874180887,
+    "positions": 5942,
+    "games": 230,
+    "standardError": 0.005105282074739437
+   },
+   "byPhase": {
+    "opening": {
+     "matched": 679.196939784532,
+     "positions": 1150,
+     "games": 230,
+     "standardError": 0.014233637027102338
+    },
+    "middlegame": {
+     "matched": 801.0883438016988,
+     "positions": 2187,
+     "games": 230,
+     "standardError": 0.00612433143442321
+    },
+    "endgame": {
+     "matched": 1456.6545436163901,
+     "positions": 3755,
+     "games": 205,
+     "standardError": 0.007156149225749838
+    }
+   }
+  }
+ },
+ "gain": {
+  "topMove": {
+   "overall": {
+    "matched": 0,
+    "positions": 7092,
+    "games": 230,
+    "standardError": 0
+   },
+   "afterPly10": {
+    "matched": 0,
+    "positions": 5942,
+    "games": 230,
+    "standardError": 0
+   },
+   "byPhase": {
+    "opening": {
+     "matched": 0,
+     "positions": 1150,
+     "games": 230,
+     "standardError": 0
+    },
+    "middlegame": {
+     "matched": 0,
+     "positions": 2187,
+     "games": 230,
+     "standardError": 0
+    },
+    "endgame": {
+     "matched": 0,
+     "positions": 3755,
+     "games": 205,
+     "standardError": 0
+    }
+   }
+  },
+  "drawn": {
+   "overall": {
+    "matched": 1.8670565289753196,
+    "positions": 7092,
+    "games": 230,
+    "standardError": 0.000020810296468336235
+   },
+   "afterPly10": {
+    "matched": 0,
+    "positions": 5942,
+    "games": 230,
+    "standardError": 0
+   },
+   "byPhase": {
+    "opening": {
+     "matched": 1.8670565289753196,
+     "positions": 1150,
+     "games": 230,
+     "standardError": 0.00011492484133919055
+    },
+    "middlegame": {
+     "matched": 0,
+     "positions": 2187,
+     "games": 230,
+     "standardError": 0
+    },
+    "endgame": {
+     "matched": 0,
+     "positions": 3755,
+     "games": 205,
+     "standardError": 0
+    }
+   }
+  }
+ }
+}

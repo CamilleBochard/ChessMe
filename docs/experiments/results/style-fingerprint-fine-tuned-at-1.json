@@ -1,0 +1,1369 @@
+{
+ "format_version": 1,
+ "engine": "Stockfish 19",
+ "depth": 18,
+ "camille": {
+  "games": 1046,
+  "moves": 30860,
+  "centipawn_loss": {
+   "phases": {
+    "opening": {
+     "moves": 5225,
+     "mean": 25.699712918660286,
+     "percentiles": {
+      "50": 1,
+      "75": 27,
+      "90": 62,
+      "95": 104,
+      "99": 315
+     },
+     "histogram": [
+      {
+       "from": 0,
+       "to": 1,
+       "moves": 2558
+      },
+      {
+       "from": 1,
+       "to": 10,
+       "moves": 511
+      },
+      {
+       "from": 10,
+       "to": 25,
+       "moves": 734
+      },
+      {
+       "from": 25,
+       "to": 50,
+       "moves": 763
+      },
+      {
+       "from": 50,
+       "to": 100,
+       "moves": 378
+      },
+      {
+       "from": 100,
+       "to": 200,
+       "moves": 191
+      },
+      {
+       "from": 200,
+       "to": 300,
+       "moves": 34
+      },
+      {
+       "from": 300,
+       "to": 500,
+       "moves": 25
+      },
+      {
+       "from": 500,
+       "to": 1000,
+       "moves": 27
+      },
+      {
+       "from": 1000,
+       "to": null,
+       "moves": 4
+      }
+     ]
+    },
+    "middlegame": {
+     "moves": 9822,
+     "mean": 103.13571574017512,
+     "percentiles": {
+      "50": 24,
+      "75": 115,
+      "90": 313,
+      "95": 526,
+      "99": 878
+     },
+     "histogram": [
+      {
+       "from": 0,
+       "to": 1,
+       "moves": 3832
+      },
+      {
+       "from": 1,
+       "to": 10,
+       "moves": 393
+      },
+      {
+       "from": 10,
+       "to": 25,
+       "moves": 692
+      },
+      {
+       "from": 25,
+       "to": 50,
+       "moves": 967
+      },
+      {
+       "from": 50,
+       "to": 100,
+       "moves": 1222
+      },
+      {
+       "from": 100,
+       "to": 200,
+       "moves": 1158
+      },
+      {
+       "from": 200,
+       "to": 300,
+       "moves": 513
+      },
+      {
+       "from": 300,
+       "to": 500,
+       "moves": 514
+      },
+      {
+       "from": 500,
+       "to": 1000,
+       "moves": 467
+      },
+      {
+       "from": 1000,
+       "to": null,
+       "moves": 64
+      }
+     ]
+    },
+    "endgame": {
+     "moves": 15813,
+     "mean": 104.4522228546133,
+     "percentiles": {
+      "50": 0,
+      "75": 95,
+      "90": 320,
+      "95": 563,
+      "99": 1184
+     },
+     "histogram": [
+      {
+       "from": 0,
+       "to": 1,
+       "moves": 8261
+      },
+      {
+       "from": 1,
+       "to": 10,
+       "moves": 460
+      },
+      {
+       "from": 10,
+       "to": 25,
+       "moves": 723
+      },
+      {
+       "from": 25,
+       "to": 50,
+       "moves": 1094
+      },
+      {
+       "from": 50,
+       "to": 100,
+       "moves": 1426
+      },
+      {
+       "from": 100,
+       "to": 200,
+       "moves": 1409
+      },
+      {
+       "from": 200,
+       "to": 300,
+       "moves": 752
+      },
+      {
+       "from": 300,
+       "to": 500,
+       "moves": 766
+      },
+      {
+       "from": 500,
+       "to": 1000,
+       "moves": 650
+      },
+      {
+       "from": 1000,
+       "to": null,
+       "moves": 272
+      }
+     ]
+    }
+   },
+   "all_phases": {
+    "moves": 30860,
+    "mean": 90.69938431626701,
+    "percentiles": {
+     "50": 6,
+     "75": 81,
+     "90": 273,
+     "95": 487,
+     "99": 1000
+    },
+    "histogram": [
+     {
+      "from": 0,
+      "to": 1,
+      "moves": 14651
+     },
+     {
+      "from": 1,
+      "to": 10,
+      "moves": 1364
+     },
+     {
+      "from": 10,
+      "to": 25,
+      "moves": 2149
+     },
+     {
+      "from": 25,
+      "to": 50,
+      "moves": 2824
+     },
+     {
+      "from": 50,
+      "to": 100,
+      "moves": 3026
+     },
+     {
+      "from": 100,
+      "to": 200,
+      "moves": 2758
+     },
+     {
+      "from": 200,
+      "to": 300,
+      "moves": 1299
+     },
+     {
+      "from": 300,
+      "to": 500,
+      "moves": 1305
+     },
+     {
+      "from": 500,
+      "to": 1000,
+      "moves": 1144
+     },
+     {
+      "from": 1000,
+      "to": null,
+      "moves": 340
+     }
+    ]
+   }
+  },
+  "piece_share": {
+   "phases": {
+    "opening": {
+     "pawn": 0.5282296650717704,
+     "knight": 0.2558851674641148,
+     "bishop": 0.15272727272727274,
+     "rook": 0.0005741626794258373,
+     "queen": 0.05799043062200957,
+     "king": 0.004593301435406699
+    },
+    "middlegame": {
+     "pawn": 0.2684789248625534,
+     "knight": 0.2240887802891468,
+     "bishop": 0.24750559967420077,
+     "rook": 0.04754632457747913,
+     "queen": 0.13296680920382814,
+     "king": 0.0794135613927917
+    },
+    "endgame": {
+     "pawn": 0.21608802883703282,
+     "knight": 0.11288180610889774,
+     "bishop": 0.12774299626889268,
+     "rook": 0.22272813507873268,
+     "queen": 0.15639031176879784,
+     "king": 0.16416872193764623
+    }
+   },
+   "all_phases": {
+    "pawn": 0.28561244329228774,
+    "knight": 0.17248865845755024,
+    "bishop": 0.17009073233959818,
+    "rook": 0.12935839274141284,
+    "queen": 0.1322747893713545,
+    "king": 0.1101749837977965
+   }
+  },
+  "capture_taken_rate": {
+   "phases": {
+    "opening": {
+     "positions_with_a_capture": 2520,
+     "captures_played": 752,
+     "rate": 0.2984126984126984
+    },
+    "middlegame": {
+     "positions_with_a_capture": 8700,
+     "captures_played": 2612,
+     "rate": 0.3002298850574713
+    },
+    "endgame": {
+     "positions_with_a_capture": 11686,
+     "captures_played": 4311,
+     "rate": 0.3689029608078042
+    }
+   },
+   "all_phases": {
+    "positions_with_a_capture": 22906,
+    "captures_played": 7675,
+    "rate": 0.33506504845891905
+   }
+  },
+  "queen_trade_before_move_20": {
+   "games": 1046,
+   "games_with_a_queen_trade": 201,
+   "rate": 0.1921606118546845
+  },
+  "material_at_move_30": {
+   "games": 1046,
+   "games_reaching_move_30": 444,
+   "mean": 37.468468468468465,
+   "percentiles": {
+    "25": 28,
+    "50": 37,
+    "75": 46
+   }
+  },
+  "castling": {
+   "games": 1046,
+   "kingside": 0.5353728489483748,
+   "queenside": 0.15200764818355642,
+   "never": 0.31261950286806883
+  }
+ },
+ "bot": {
+  "games": 400,
+  "moves": 16245,
+  "centipawn_loss": {
+   "phases": {
+    "opening": {
+     "moves": 2000,
+     "mean": 25.6375,
+     "percentiles": {
+      "50": 0,
+      "75": 21,
+      "90": 68,
+      "95": 125,
+      "99": 449
+     },
+     "histogram": [
+      {
+       "from": 0,
+       "to": 1,
+       "moves": 1165
+      },
+      {
+       "from": 1,
+       "to": 10,
+       "moves": 131
+      },
+      {
+       "from": 10,
+       "to": 25,
+       "moves": 230
+      },
+      {
+       "from": 25,
+       "to": 50,
+       "moves": 215
+      },
+      {
+       "from": 50,
+       "to": 100,
+       "moves": 130
+      },
+      {
+       "from": 100,
+       "to": 200,
+       "moves": 97
+      },
+      {
+       "from": 200,
+       "to": 300,
+       "moves": 10
+      },
+      {
+       "from": 300,
+       "to": 500,
+       "moves": 7
+      },
+      {
+       "from": 500,
+       "to": 1000,
+       "moves": 15
+      },
+      {
+       "from": 1000,
+       "to": null,
+       "moves": 0
+      }
+     ]
+    },
+    "middlegame": {
+     "moves": 3943,
+     "mean": 110.07532335784936,
+     "percentiles": {
+      "50": 27,
+      "75": 124,
+      "90": 336,
+      "95": 568,
+      "99": 929
+     },
+     "histogram": [
+      {
+       "from": 0,
+       "to": 1,
+       "moves": 1561
+      },
+      {
+       "from": 1,
+       "to": 10,
+       "moves": 119
+      },
+      {
+       "from": 10,
+       "to": 25,
+       "moves": 250
+      },
+      {
+       "from": 25,
+       "to": 50,
+       "moves": 373
+      },
+      {
+       "from": 50,
+       "to": 100,
+       "moves": 484
+      },
+      {
+       "from": 100,
+       "to": 200,
+       "moves": 489
+      },
+      {
+       "from": 200,
+       "to": 300,
+       "moves": 221
+      },
+      {
+       "from": 300,
+       "to": 500,
+       "moves": 212
+      },
+      {
+       "from": 500,
+       "to": 1000,
+       "moves": 203
+      },
+      {
+       "from": 1000,
+       "to": null,
+       "moves": 31
+      }
+     ]
+    },
+    "endgame": {
+     "moves": 10302,
+     "mean": 65.69151621044458,
+     "percentiles": {
+      "50": 0,
+      "75": 35,
+      "90": 180,
+      "95": 372,
+      "99": 1000
+     },
+     "histogram": [
+      {
+       "from": 0,
+       "to": 1,
+       "moves": 6760
+      },
+      {
+       "from": 1,
+       "to": 10,
+       "moves": 273
+      },
+      {
+       "from": 10,
+       "to": 25,
+       "moves": 435
+      },
+      {
+       "from": 25,
+       "to": 50,
+       "moves": 561
+      },
+      {
+       "from": 50,
+       "to": 100,
+       "moves": 697
+      },
+      {
+       "from": 100,
+       "to": 200,
+       "moves": 625
+      },
+      {
+       "from": 200,
+       "to": 300,
+       "moves": 309
+      },
+      {
+       "from": 300,
+       "to": 500,
+       "moves": 267
+      },
+      {
+       "from": 500,
+       "to": 1000,
+       "moves": 248
+      },
+      {
+       "from": 1000,
+       "to": null,
+       "moves": 127
+      }
+     ]
+    }
+   },
+   "all_phases": {
+    "moves": 16245,
+    "mean": 71.5331486611265,
+    "percentiles": {
+     "50": 0,
+     "75": 53,
+     "90": 204,
+     "95": 401,
+     "99": 998
+    },
+    "histogram": [
+     {
+      "from": 0,
+      "to": 1,
+      "moves": 9486
+     },
+     {
+      "from": 1,
+      "to": 10,
+      "moves": 523
+     },
+     {
+      "from": 10,
+      "to": 25,
+      "moves": 915
+     },
+     {
+      "from": 25,
+      "to": 50,
+      "moves": 1149
+     },
+     {
+      "from": 50,
+      "to": 100,
+      "moves": 1311
+     },
+     {
+      "from": 100,
+      "to": 200,
+      "moves": 1211
+     },
+     {
+      "from": 200,
+      "to": 300,
+      "moves": 540
+     },
+     {
+      "from": 300,
+      "to": 500,
+      "moves": 486
+     },
+     {
+      "from": 500,
+      "to": 1000,
+      "moves": 466
+     },
+     {
+      "from": 1000,
+      "to": null,
+      "moves": 158
+     }
+    ]
+   }
+  },
+  "piece_share": {
+   "phases": {
+    "opening": {
+     "pawn": 0.523,
+     "knight": 0.3115,
+     "bishop": 0.116,
+     "rook": 0.0,
+     "queen": 0.043,
+     "king": 0.0065
+    },
+    "middlegame": {
+     "pawn": 0.23991884352016232,
+     "knight": 0.22597007354805984,
+     "bishop": 0.2581790514836419,
+     "rook": 0.058077605883844786,
+     "queen": 0.1440527517118945,
+     "king": 0.07380167385239665
+    },
+    "endgame": {
+     "pawn": 0.22374296253154727,
+     "knight": 0.06785090273733256,
+     "bishop": 0.11327897495631917,
+     "rook": 0.21956901572510193,
+     "queen": 0.151426907396622,
+     "king": 0.22413123665307708
+    }
+   },
+   "all_phases": {
+    "pawn": 0.26451215758694985,
+    "knight": 0.13622653124038164,
+    "bishop": 0.14878424130501694,
+    "rook": 0.1533394890735611,
+    "queen": 0.1362880886426593,
+    "king": 0.1608494921514312
+   }
+  },
+  "capture_taken_rate": {
+   "phases": {
+    "opening": {
+     "positions_with_a_capture": 829,
+     "captures_played": 329,
+     "rate": 0.3968636911942099
+    },
+    "middlegame": {
+     "positions_with_a_capture": 3446,
+     "captures_played": 1166,
+     "rate": 0.3383633197910621
+    },
+    "endgame": {
+     "positions_with_a_capture": 6132,
+     "captures_played": 2480,
+     "rate": 0.4044357469015003
+    }
+   },
+   "all_phases": {
+    "positions_with_a_capture": 10407,
+    "captures_played": 3975,
+    "rate": 0.3819544537330643
+   }
+  },
+  "queen_trade_before_move_20": {
+   "games": 400,
+   "games_with_a_queen_trade": 93,
+   "rate": 0.2325
+  },
+  "material_at_move_30": {
+   "games": 400,
+   "games_reaching_move_30": 269,
+   "mean": 32.174721189591075,
+   "percentiles": {
+    "25": 24,
+    "50": 31,
+    "75": 39
+   }
+  },
+  "castling": {
+   "games": 400,
+   "kingside": 0.5925,
+   "queenside": 0.15,
+   "never": 0.2575
+  }
+ },
+ "camille_training_games": {
+  "games": 816,
+  "moves": 23768,
+  "centipawn_loss": {
+   "phases": {
+    "opening": {
+     "moves": 4075,
+     "mean": 26.047852760736195,
+     "percentiles": {
+      "50": 2,
+      "75": 27,
+      "90": 63,
+      "95": 108,
+      "99": 315
+     },
+     "histogram": [
+      {
+       "from": 0,
+       "to": 1,
+       "moves": 1962
+      },
+      {
+       "from": 1,
+       "to": 10,
+       "moves": 407
+      },
+      {
+       "from": 10,
+       "to": 25,
+       "moves": 583
+      },
+      {
+       "from": 25,
+       "to": 50,
+       "moves": 596
+      },
+      {
+       "from": 50,
+       "to": 100,
+       "moves": 296
+      },
+      {
+       "from": 100,
+       "to": 200,
+       "moves": 164
+      },
+      {
+       "from": 200,
+       "to": 300,
+       "moves": 24
+      },
+      {
+       "from": 300,
+       "to": 500,
+       "moves": 20
+      },
+      {
+       "from": 500,
+       "to": 1000,
+       "moves": 19
+      },
+      {
+       "from": 1000,
+       "to": null,
+       "moves": 4
+      }
+     ]
+    },
+    "middlegame": {
+     "moves": 7635,
+     "mean": 102.59279633267846,
+     "percentiles": {
+      "50": 25,
+      "75": 113,
+      "90": 311,
+      "95": 524,
+      "99": 889
+     },
+     "histogram": [
+      {
+       "from": 0,
+       "to": 1,
+       "moves": 2964
+      },
+      {
+       "from": 1,
+       "to": 10,
+       "moves": 316
+      },
+      {
+       "from": 10,
+       "to": 25,
+       "moves": 512
+      },
+      {
+       "from": 25,
+       "to": 50,
+       "moves": 777
+      },
+      {
+       "from": 50,
+       "to": 100,
+       "moves": 973
+      },
+      {
+       "from": 100,
+       "to": 200,
+       "moves": 909
+      },
+      {
+       "from": 200,
+       "to": 300,
+       "moves": 380
+      },
+      {
+       "from": 300,
+       "to": 500,
+       "moves": 397
+      },
+      {
+       "from": 500,
+       "to": 1000,
+       "moves": 357
+      },
+      {
+       "from": 1000,
+       "to": null,
+       "moves": 50
+      }
+     ]
+    },
+    "endgame": {
+     "moves": 12058,
+     "mean": 104.07389285121911,
+     "percentiles": {
+      "50": 0,
+      "75": 94,
+      "90": 319,
+      "95": 556,
+      "99": 1162
+     },
+     "histogram": [
+      {
+       "from": 0,
+       "to": 1,
+       "moves": 6285
+      },
+      {
+       "from": 1,
+       "to": 10,
+       "moves": 340
+      },
+      {
+       "from": 10,
+       "to": 25,
+       "moves": 572
+      },
+      {
+       "from": 25,
+       "to": 50,
+       "moves": 841
+      },
+      {
+       "from": 50,
+       "to": 100,
+       "moves": 1109
+      },
+      {
+       "from": 100,
+       "to": 200,
+       "moves": 1051
+      },
+      {
+       "from": 200,
+       "to": 300,
+       "moves": 574
+      },
+      {
+       "from": 300,
+       "to": 500,
+       "moves": 584
+      },
+      {
+       "from": 500,
+       "to": 1000,
+       "moves": 495
+      },
+      {
+       "from": 1000,
+       "to": null,
+       "moves": 207
+      }
+     ]
+    }
+   },
+   "all_phases": {
+    "moves": 23768,
+    "mean": 90.22063278357456,
+    "percentiles": {
+     "50": 7,
+     "75": 80,
+     "90": 270,
+     "95": 485,
+     "99": 1000
+    },
+    "histogram": [
+     {
+      "from": 0,
+      "to": 1,
+      "moves": 11211
+     },
+     {
+      "from": 1,
+      "to": 10,
+      "moves": 1063
+     },
+     {
+      "from": 10,
+      "to": 25,
+      "moves": 1667
+     },
+     {
+      "from": 25,
+      "to": 50,
+      "moves": 2214
+     },
+     {
+      "from": 50,
+      "to": 100,
+      "moves": 2378
+     },
+     {
+      "from": 100,
+      "to": 200,
+      "moves": 2124
+     },
+     {
+      "from": 200,
+      "to": 300,
+      "moves": 978
+     },
+     {
+      "from": 300,
+      "to": 500,
+      "moves": 1001
+     },
+     {
+      "from": 500,
+      "to": 1000,
+      "moves": 871
+     },
+     {
+      "from": 1000,
+      "to": null,
+      "moves": 261
+     }
+    ]
+   }
+  },
+  "piece_share": {
+   "phases": {
+    "opening": {
+     "pawn": 0.5268711656441718,
+     "knight": 0.2557055214723926,
+     "bishop": 0.15263803680981594,
+     "rook": 0.00049079754601227,
+     "queen": 0.059386503067484664,
+     "king": 0.0049079754601227
+    },
+    "middlegame": {
+     "pawn": 0.2692861820563196,
+     "knight": 0.22711198428290766,
+     "bishop": 0.24649639816633923,
+     "rook": 0.04610347085789129,
+     "queen": 0.13359528487229863,
+     "king": 0.07740667976424362
+    },
+    "endgame": {
+     "pawn": 0.219439376347653,
+     "knight": 0.1073146458782551,
+     "bishop": 0.12937468900315144,
+     "rook": 0.22648863824846574,
+     "queen": 0.1556642892685354,
+     "king": 0.1617183612539393
+    }
+   },
+   "all_phases": {
+    "pawn": 0.2881605520026927,
+    "knight": 0.17123864018848872,
+    "bishop": 0.1709861999326826,
+    "rook": 0.1297963648603164,
+    "queen": 0.13206832716257152,
+    "king": 0.10774991585324807
+   }
+  },
+  "capture_taken_rate": {
+   "phases": {
+    "opening": {
+     "positions_with_a_capture": 1978,
+     "captures_played": 589,
+     "rate": 0.29777553083923153
+    },
+    "middlegame": {
+     "positions_with_a_capture": 6754,
+     "captures_played": 2042,
+     "rate": 0.3023393544566183
+    },
+    "endgame": {
+     "positions_with_a_capture": 8904,
+     "captures_played": 3287,
+     "rate": 0.3691599281221923
+    }
+   },
+   "all_phases": {
+    "positions_with_a_capture": 17636,
+    "captures_played": 5918,
+    "rate": 0.3355636198684509
+   }
+  },
+  "queen_trade_before_move_20": {
+   "games": 816,
+   "games_with_a_queen_trade": 150,
+   "rate": 0.18382352941176472
+  },
+  "material_at_move_30": {
+   "games": 816,
+   "games_reaching_move_30": 330,
+   "mean": 37.196969696969695,
+   "percentiles": {
+    "25": 28,
+    "50": 36,
+    "75": 45
+   }
+  },
+  "castling": {
+   "games": 816,
+   "kingside": 0.5220588235294118,
+   "queenside": 0.15073529411764705,
+   "never": 0.3272058823529412
+  }
+ },
+ "camille_test_set": {
+  "games": 230,
+  "moves": 7092,
+  "centipawn_loss": {
+   "phases": {
+    "opening": {
+     "moves": 1150,
+     "mean": 24.46608695652174,
+     "percentiles": {
+      "50": 0,
+      "75": 27,
+      "90": 58,
+      "95": 86,
+      "99": 399
+     },
+     "histogram": [
+      {
+       "from": 0,
+       "to": 1,
+       "moves": 596
+      },
+      {
+       "from": 1,
+       "to": 10,
+       "moves": 104
+      },
+      {
+       "from": 10,
+       "to": 25,
+       "moves": 151
+      },
+      {
+       "from": 25,
+       "to": 50,
+       "moves": 167
+      },
+      {
+       "from": 50,
+       "to": 100,
+       "moves": 82
+      },
+      {
+       "from": 100,
+       "to": 200,
+       "moves": 27
+      },
+      {
+       "from": 200,
+       "to": 300,
+       "moves": 10
+      },
+      {
+       "from": 300,
+       "to": 500,
+       "moves": 5
+      },
+      {
+       "from": 500,
+       "to": 1000,
+       "moves": 8
+      },
+      {
+       "from": 1000,
+       "to": null,
+       "moves": 0
+      }
+     ]
+    },
+    "middlegame": {
+     "moves": 2187,
+     "mean": 105.03109282121628,
+     "percentiles": {
+      "50": 21,
+      "75": 122,
+      "90": 323,
+      "95": 528,
+      "99": 852
+     },
+     "histogram": [
+      {
+       "from": 0,
+       "to": 1,
+       "moves": 868
+      },
+      {
+       "from": 1,
+       "to": 10,
+       "moves": 77
+      },
+      {
+       "from": 10,
+       "to": 25,
+       "moves": 180
+      },
+      {
+       "from": 25,
+       "to": 50,
+       "moves": 190
+      },
+      {
+       "from": 50,
+       "to": 100,
+       "moves": 249
+      },
+      {
+       "from": 100,
+       "to": 200,
+       "moves": 249
+      },
+      {
+       "from": 200,
+       "to": 300,
+       "moves": 133
+      },
+      {
+       "from": 300,
+       "to": 500,
+       "moves": 117
+      },
+      {
+       "from": 500,
+       "to": 1000,
+       "moves": 110
+      },
+      {
+       "from": 1000,
+       "to": null,
+       "moves": 14
+      }
+     ]
+    },
+    "endgame": {
+     "moves": 3755,
+     "mean": 105.66711051930758,
+     "percentiles": {
+      "50": 0,
+      "75": 99,
+      "90": 326,
+      "95": 568,
+      "99": 1268
+     },
+     "histogram": [
+      {
+       "from": 0,
+       "to": 1,
+       "moves": 1976
+      },
+      {
+       "from": 1,
+       "to": 10,
+       "moves": 120
+      },
+      {
+       "from": 10,
+       "to": 25,
+       "moves": 151
+      },
+      {
+       "from": 25,
+       "to": 50,
+       "moves": 253
+      },
+      {
+       "from": 50,
+       "to": 100,
+       "moves": 317
+      },
+      {
+       "from": 100,
+       "to": 200,
+       "moves": 358
+      },
+      {
+       "from": 200,
+       "to": 300,
+       "moves": 178
+      },
+      {
+       "from": 300,
+       "to": 500,
+       "moves": 182
+      },
+      {
+       "from": 500,
+       "to": 1000,
+       "moves": 155
+      },
+      {
+       "from": 1000,
+       "to": null,
+       "moves": 65
+      }
+     ]
+    }
+   },
+   "all_phases": {
+    "moves": 7092,
+    "mean": 92.30386350817822,
+    "percentiles": {
+     "50": 4,
+     "75": 82,
+     "90": 278,
+     "95": 498,
+     "99": 1042
+    },
+    "histogram": [
+     {
+      "from": 0,
+      "to": 1,
+      "moves": 3440
+     },
+     {
+      "from": 1,
+      "to": 10,
+      "moves": 301
+     },
+     {
+      "from": 10,
+      "to": 25,
+      "moves": 482
+     },
+     {
+      "from": 25,
+      "to": 50,
+      "moves": 610
+     },
+     {
+      "from": 50,
+      "to": 100,
+      "moves": 648
+     },
+     {
+      "from": 100,
+      "to": 200,
+      "moves": 634
+     },
+     {
+      "from": 200,
+      "to": 300,
+      "moves": 321
+     },
+     {
+      "from": 300,
+      "to": 500,
+      "moves": 304
+     },
+     {
+      "from": 500,
+      "to": 1000,
+      "moves": 273
+     },
+     {
+      "from": 1000,
+      "to": null,
+      "moves": 79
+     }
+    ]
+   }
+  },
+  "piece_share": {
+   "phases": {
+    "opening": {
+     "pawn": 0.5330434782608696,
+     "knight": 0.2565217391304348,
+     "bishop": 0.15304347826086956,
+     "rook": 0.0008695652173913044,
+     "queen": 0.05304347826086957,
+     "king": 0.0034782608695652175
+    },
+    "middlegame": {
+     "pawn": 0.26566072245084593,
+     "knight": 0.2135345221764975,
+     "bishop": 0.25102880658436216,
+     "rook": 0.05258344764517604,
+     "queen": 0.13077274805669867,
+     "king": 0.08641975308641975
+    },
+    "endgame": {
+     "pawn": 0.20532623169107855,
+     "knight": 0.13075898801597868,
+     "bishop": 0.12250332889480692,
+     "rook": 0.21065246338215712,
+     "queen": 0.15872170439414116,
+     "king": 0.17203728362183754
+    }
+   },
+   "all_phases": {
+    "pawn": 0.27707275803722503,
+    "knight": 0.17667794698251552,
+    "bishop": 0.16708967851099832,
+    "rook": 0.1278905809362662,
+    "queen": 0.13296672306824592,
+    "king": 0.11830231246474901
+   }
+  },
+  "capture_taken_rate": {
+   "phases": {
+    "opening": {
+     "positions_with_a_capture": 542,
+     "captures_played": 163,
+     "rate": 0.3007380073800738
+    },
+    "middlegame": {
+     "positions_with_a_capture": 1946,
+     "captures_played": 570,
+     "rate": 0.29290853031860226
+    },
+    "endgame": {
+     "positions_with_a_capture": 2782,
+     "captures_played": 1024,
+     "rate": 0.3680805176132279
+    }
+   },
+   "all_phases": {
+    "positions_with_a_capture": 5270,
+    "captures_played": 1757,
+    "rate": 0.3333965844402277
+   }
+  },
+  "queen_trade_before_move_20": {
+   "games": 230,
+   "games_with_a_queen_trade": 51,
+   "rate": 0.2217391304347826
+  },
+  "material_at_move_30": {
+   "games": 230,
+   "games_reaching_move_30": 114,
+   "mean": 38.25438596491228,
+   "percentiles": {
+    "25": 29,
+    "50": 39,
+    "75": 47
+   }
+  },
+  "castling": {
+   "games": 230,
+   "kingside": 0.5826086956521739,
+   "queenside": 0.1565217391304348,
+   "never": 0.2608695652173913
+  }
+ }
+}
