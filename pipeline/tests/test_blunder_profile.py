@@ -34,7 +34,7 @@ def test_a_position_is_already_decided_when_the_best_and_the_played_move_both_sc
 def losses(phase: str, centipawn_losses: list[int]) -> list[MoveLoss]:
     moves = []
     for index, loss in enumerate(centipawn_losses):
-        moves.append(MoveLoss(game_id=f"lichess:{index}", ply=index + 1, phase=phase, centipawn_loss=loss))
+        moves.append(MoveLoss(game_id=f"lichess:{index}", ply=index + 1, phase=phase, centipawn_loss=loss, open_position=True))
     return moves
 
 

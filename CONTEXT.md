@@ -34,6 +34,16 @@ The measured distribution of Camille's own evaluation losses, sliced by game
 phase. A yardstick the Bot is compared against, not a mechanism applied to it.
 _Avoid_: error model, mistake rate
 
+**Open Position**:
+A position in which the move played could still be a mistake: the best move and
+the move played do not both score ten pawns or more for the same side. Beyond
+ten pawns the game is decided and the Blunder Profile reads every move as losing
+nothing, so Level is compared on the moves made in Open Positions, for Camille
+and the Bot alike. This leaves out play after a game is won or lost, where the
+Bot's games, played on to mate, spend far more moves than his, which often end
+in a resignation. It still counts the mistake that throws a won game away.
+_Avoid_: undecided position, live position
+
 ### The system
 
 **Bot**:
