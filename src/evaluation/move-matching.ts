@@ -230,7 +230,7 @@ function report(outcomes: Outcome[]): MoveMatchingReport {
 }
 
 /** Positions and matches within one game. */
-interface GameTally {
+export interface GameTally {
   matched: number;
   positions: number;
 }
@@ -271,7 +271,7 @@ function score(outcomes: Outcome[]): MoveMatchingScore {
  * games, scaled by G / (G - 1) to correct for estimating the share from the
  * same games, gives the variance.
  */
-function clusteredStandardError(games: GameTally[], share: number): number {
+export function clusteredStandardError(games: GameTally[], share: number): number {
   const gameCount = games.length;
   if (gameCount < 2) {
     return Number.NaN;
