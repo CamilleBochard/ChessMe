@@ -11,4 +11,10 @@ describe('the evaluation a move lost', () => {
 
     expect(loss).toEqual({ centipawnLoss: 80, openPosition: true });
   });
+
+  it('is nothing when the played move, searched on its own, scores a little above the best', () => {
+    const loss = moveLoss({ best: { centipawns: 20 }, played: { centipawns: 24 } });
+
+    expect(loss.centipawnLoss).toBe(0);
+  });
 });

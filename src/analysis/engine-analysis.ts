@@ -28,7 +28,13 @@ export interface MoveLoss {
 export function moveLoss(analysis: Analysis): MoveLoss {
   const best = centipawnsOf(analysis.best);
   const played = centipawnsOf(analysis.played);
-  return { centipawnLoss: best - played, openPosition: true };
+  // The played move is searched on its own, so its score can come out a
+  // little above the best move's; it still lost nothing.
+  let centipawnLoss = best - played;
+  if (centipawnLoss < 0) {
+    centipawnLoss = 0;
+  }
+  return { centipawnLoss: centipawnLoss, openPosition: true };
 }
 
 function centipawnsOf(score: Score): number {
