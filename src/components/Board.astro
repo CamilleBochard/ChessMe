@@ -53,35 +53,49 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
     </div>
 
     <div class="buttons" data-setup>
-      <span class="buttons-label">Play as</span>
-      <button type="button" class="brand" data-play-as="white">White</button>
-      <button type="button" class="brand" data-play-as="black">Black</button>
+      <span class="buttons-label" data-text="playAs">Play as</span>
+      <button type="button" class="brand" data-play-as="white" data-text="white">White</button>
+      <button type="button" class="brand" data-play-as="black" data-text="black">Black</button>
     </div>
 
     <div class="buttons" data-controls hidden>
-      <button type="button" data-take-back>Take back</button>
-      <button type="button" data-resign>Resign</button>
-      <button type="button" data-new-game>New game</button>
+      <button type="button" data-take-back data-text="takeBack">Take back</button>
+      <button type="button" data-resign data-text="resign">Resign</button>
+      <button type="button" data-new-game data-text="newGame">New game</button>
     </div>
   </div>
 
   <div class="impression" data-impression hidden>
-    <p>Did the Bot feel like a real player of about {SERVED_MODEL_RATING} on Lichess?</p>
+    <p data-impression-question>Did the Bot feel like a real player of about {SERVED_MODEL_RATING} on Lichess?</p>
     <div class="buttons" data-impression-choices>
-      <button type="button" data-felt-real="yes">Yes</button>
-      <button type="button" data-felt-real="no">No</button>
+      <button type="button" data-felt-real="yes" data-text="yes">Yes</button>
+      <button type="button" data-felt-real="no" data-text="no">No</button>
     </div>
     <p class="impression-thanks" data-impression-thanks hidden></p>
   </div>
 
   <aside class="moves">
     <div class="moves-header">
-      <h2 id="moves-heading">Moves</h2>
+      <h2 id="moves-heading" data-text="moves">Moves</h2>
       <div class="browse">
-        <button type="button" data-view-back aria-label="Previous position" title="Previous position (←)">
+        <button
+          type="button"
+          data-view-back
+          aria-label="Previous position"
+          title="Previous position (←)"
+          data-text-label="previousPosition"
+          data-text-title="previousPositionShortcut"
+        >
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
         </button>
-        <button type="button" data-view-forward aria-label="Next position" title="Next position (→)">
+        <button
+          type="button"
+          data-view-forward
+          aria-label="Next position"
+          title="Next position (→)"
+          data-text-label="nextPosition"
+          data-text-title="nextPositionShortcut"
+        >
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
         </button>
       </div>
@@ -89,30 +103,33 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
     <ol class="move-list" data-move-list aria-labelledby="moves-heading"></ol>
 
     <section class="explanation" aria-labelledby="explanation-heading">
-      <h2 id="explanation-heading">Why the Bot played it</h2>
+      <h2 id="explanation-heading" data-text="whyTheBotPlayedIt">Why the Bot played it</h2>
       <div class="explained-move" data-move-explanation aria-live="polite"></div>
-      <h2>The game so far, against Camille's</h2>
+      <h2 data-text="theGameSoFar">The game so far, against Camille's</h2>
       <div class="game-comparison" data-game-comparison></div>
       <label class="analysis-switch">
         <input type="checkbox" data-analysis-switch />
-        Analysis mode
+        <span data-text="analysisMode">Analysis mode</span>
       </label>
       <p class="analysis-note">
-        Runs <a href="https://github.com/nmrugg/stockfish.js">Stockfish</a> (GPL-3.0) in your browser, a 1.8 MB
-        download, to show how much evaluation each of the Bot's moves lost. A game played with it on is recorded
-        as assisted.
+        <span data-text="analysisNoteBefore">Runs </span><a href="https://github.com/nmrugg/stockfish.js">Stockfish</a><span
+          data-text="analysisNoteAfter"
+          >{
+            " (GPL-3.0) in your browser, a 1.8 MB download, to show how much evaluation each of the Bot's moves lost. A game played with it on is recorded as assisted."
+          }</span
+        >
       </p>
     </section>
   </aside>
 
-  <dialog class="promotion" data-promotion aria-label="Choose a promotion piece">
+  <dialog class="promotion" data-promotion aria-label="Choose a promotion piece" data-text-label="choosePromotion">
     <form method="dialog">
-      <p>Promote to</p>
+      <p data-text="promoteTo">Promote to</p>
       <div class="promotion-choices">
-        <button value="queen">Queen</button>
-        <button value="rook">Rook</button>
-        <button value="bishop">Bishop</button>
-        <button value="knight">Knight</button>
+        <button value="queen" data-text="queen">Queen</button>
+        <button value="rook" data-text="rook">Rook</button>
+        <button value="bishop" data-text="bishop">Bishop</button>
+        <button value="knight" data-text="knight">Knight</button>
       </div>
     </form>
   </dialog>
@@ -140,7 +157,6 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
   import { connectBot, type Bot } from '../engine/bot-client';
   import type { BotStatus } from '../engine/bot-protocol';
   import type { BotMove } from '../engine/move-selection';
-  import type { DownloadProgress } from '../engine/model-download';
   import { clockFaces, createSessionGame, type ClockFace, type FinishedGame } from '../session/session-game';
   import { connectTelemetry, sessionGameReport } from '../telemetry/session-game';
   import { SESSION_GAMES_CHANGED } from '../telemetry/session-game-summary';
@@ -148,6 +164,7 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
   import { moveLoss } from '../analysis/engine-analysis';
   import { botMovesOf, moveKeyOf, replyKey, type ExplainedMove } from '../explanation/explained-moves';
   import { showPanel, type MoveEvaluation } from '../explanation/panel';
+  import { LANGUAGE_CHANGED, pageLanguage, pageTexts } from '../i18n/page-language';
 
   /**
    * Remembered once the model has reached the browser's cache, so that a
@@ -189,6 +206,9 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
     const impressionChoices = impression.querySelector<HTMLElement>('[data-impression-choices]')!;
     const impressionButtons = impressionChoices.querySelectorAll<HTMLButtonElement>('button');
     const impressionThanks = impression.querySelector<HTMLElement>('[data-impression-thanks]')!;
+    const impressionQuestion = impression.querySelector<HTMLElement>('[data-impression-question]')!;
+    // Whether the visitor's answer was recorded, once they have given one.
+    let impressionRecorded: boolean | null = null;
     const moveExplanation = frame.querySelector<HTMLElement>('[data-move-explanation]')!;
     const gameComparison = frame.querySelector<HTMLElement>('[data-game-comparison]')!;
     const analysisSwitch = frame.querySelector<HTMLInputElement>('[data-analysis-switch]')!;
@@ -240,6 +260,14 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
       },
     });
     showGame();
+    showImpressionText();
+    // A new language redraws every text the script writes; the fixed words
+    // were rewritten by the switch itself.
+    document.addEventListener(LANGUAGE_CHANGED, () => {
+      showImpressionText();
+      showModelStatus(modelStatus, botStatus);
+      showGame();
+    });
     // The clocks change every moment, not only when the game does. A few
     // redraws a second keep the seconds turning on time.
     setInterval(showClocks, 200);
@@ -342,6 +370,7 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
      * stored, since an answer needs a game to be attached to.
      */
     function askImpression(): void {
+      impressionRecorded = null;
       for (const button of impressionButtons) {
         button.disabled = false;
       }
@@ -362,11 +391,21 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
 
       impressionChoices.hidden = true;
       impressionThanks.hidden = false;
+      impressionRecorded = recorded;
+      showImpressionText();
       if (recorded) {
-        impressionThanks.textContent = 'Thank you, your answer has been recorded.';
         announceSessionGamesChanged();
-      } else {
-        impressionThanks.textContent = 'Your answer could not be recorded.';
+      }
+    }
+
+    /** The end-of-game question and, once answered, whether the answer was recorded, in the page's language. */
+    function showImpressionText(): void {
+      const texts = pageTexts();
+      impressionQuestion.textContent = texts.impressionQuestion(Number(frame.dataset.modelRating));
+      if (impressionRecorded === true) {
+        impressionThanks.textContent = texts.impressionRecorded;
+      } else if (impressionRecorded === false) {
+        impressionThanks.textContent = texts.impressionNotRecorded;
       }
     }
 
@@ -482,11 +521,12 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
         },
       });
 
-      let statusText = session.status();
+      const texts = pageTexts();
+      let statusText = session.status(pageLanguage());
       if (isOngoing && botFailed) {
-        statusText = 'The game cannot continue without the Bot.';
+        statusText = texts.cannotContinue;
       } else if (visitor !== null && isOngoing && !isVisitorsTurn && isModelLoading) {
-        statusText = 'The Bot will reply once its model has loaded.';
+        statusText = texts.botWaitsForModel;
       }
       statusElement.textContent = statusText;
 
@@ -516,6 +556,7 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
           botMoves: [],
           analysisOn: analysis !== null,
           evaluations: new Map(),
+          texts: pageTexts(),
         });
         return;
       }
@@ -539,6 +580,7 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
         botMoves: botMoves,
         analysisOn: analysis !== null,
         evaluations: evaluations,
+        texts: pageTexts(),
       });
     }
 
@@ -608,7 +650,7 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
 
     /** The visitor's clock under the board and the Bot's above it, the running one marked. */
     function showClocks(): void {
-      const faces = clockFaces(session.visitor());
+      const faces = clockFaces(session.visitor(), pageLanguage());
       showClock(topClock, faces.top);
       showClock(bottomClock, faces.bottom);
     }
@@ -637,7 +679,7 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
     // A worker that cannot even start, for instance on a browser without
     // WebAssembly, reports nothing through the Bot's own messages.
     worker.addEventListener('error', () => {
-      onStatus({ kind: 'failed', reason: 'the browser could not start it' });
+      onStatus({ kind: 'failed', reason: pageTexts().browserCouldNotStartIt });
     });
 
     // The worker resolves URLs against its own script, so it is given a full
@@ -658,6 +700,7 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
   function showModelStatus(container: HTMLElement, status: BotStatus): void {
     const progressBar = container.querySelector<HTMLProgressElement>('[data-model-progress]')!;
     const message = container.querySelector<HTMLElement>('[data-model-message]')!;
+    const texts = pageTexts();
 
     if (status.kind === 'ready') {
       container.hidden = true;
@@ -668,13 +711,13 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
     if (status.kind === 'failed') {
       progressBar.hidden = true;
       container.classList.add('failed');
-      message.textContent = `The Bot could not be loaded: ${status.reason}. Reload the page to try again.`;
+      message.textContent = texts.botFailed(status.reason);
       return;
     }
 
     if (status.kind === 'preparing') {
       progressBar.removeAttribute('value');
-      message.textContent = 'Preparing the Bot…';
+      message.textContent = texts.preparingTheBot;
       return;
     }
 
@@ -682,20 +725,16 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
     if (progress.totalBytes === undefined) {
       // Without a total the bar can only show that something is happening.
       progressBar.removeAttribute('value');
-      message.textContent = `Downloading the Bot's model: ${megabytes(progress.receivedBytes)} MB`;
+      message.textContent = texts.downloading(megabytes(progress.receivedBytes));
     } else {
       progressBar.max = progress.totalBytes;
       progressBar.value = progress.receivedBytes;
-      message.textContent = `Downloading the Bot's model: ${describeShare(progress)}`;
+      message.textContent = texts.downloadingOf(megabytes(progress.receivedBytes), megabytes(progress.totalBytes));
     }
   }
 
-  function describeShare(progress: DownloadProgress): string {
-    return `${megabytes(progress.receivedBytes)} of ${megabytes(progress.totalBytes!)} MB`;
-  }
-
   function megabytes(bytes: number): string {
-    return (bytes / 1_000_000).toFixed(1);
+    return pageTexts().decimal(bytes / 1_000_000, 1);
   }
 
   /**
@@ -754,8 +793,9 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
     let markedMove: HTMLSpanElement | null = null;
 
     for (const [rowIndex, row] of rows.entries()) {
-      const whiteMove = moveListCell('move', row.white ?? '…');
-      const blackMove = moveListCell('move', row.black ?? '');
+      const texts = pageTexts();
+      const whiteMove = moveListCell('move', texts.writeMove(row.white ?? '…'));
+      const blackMove = moveListCell('move', texts.writeMove(row.black ?? ''));
 
       const item = document.createElement('li');
       item.append(moveListCell('move-number', `${row.moveNumber}.`), whiteMove, blackMove);

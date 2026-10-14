@@ -5,7 +5,7 @@
 
 import type { Colour } from '../board/starting-position';
 import type { Phase } from '../evaluation/move-matching';
-import type { Language } from './language';
+import { notation, type Language } from './language';
 
 /** How a figure of the game so far compares with Camille's games. */
 export type Placement = 'inside' | 'below' | 'above';
@@ -46,6 +46,10 @@ export interface Texts {
   panel: PanelTexts;
   /** A share as a percentage with the given number of decimals, as the language writes it. */
   percent(share: number, decimals: number): string;
+  /** A number with the given number of decimals, as the language writes it. */
+  decimal(value: number, decimals: number): string;
+  /** A move in algebraic notation, with the language's letters for the pieces. */
+  writeMove(san: string): string;
 }
 
 /** The words of the panel beside the board. */
@@ -63,6 +67,8 @@ export interface PanelTexts {
   move: string;
   model: string;
   drawn: string;
+  /** How a screen reader names the row of the move played. */
+  playedMove: string;
   rank(rank: number): string;
   rarity(share: string, phase: Phase): string;
   rarityNone(phase: Phase): string;
@@ -79,6 +85,8 @@ export interface PanelTexts {
   improbableVerdict(improbable: number, moves: number, share: string, placement: Placement, range: string): string;
   lossVerdict(average: number, moves: number, placement: Placement, range: string): string;
   centipawnRange(low: number, high: number): string;
+  /** Two shares already written as percentages. */
+  percentRange(low: string, high: string): string;
   usualRange(movesForAVerdict: number, games: number): string;
   lossesSource(engine: string, depth: number, games: number): string;
 }
@@ -99,6 +107,8 @@ export type PageText =
   | 'moves'
   | 'previousPosition'
   | 'nextPosition'
+  | 'previousPositionShortcut'
+  | 'nextPositionShortcut'
   | 'choosePromotion'
   | 'promoteTo'
   | 'queen'
@@ -181,6 +191,8 @@ const ENGLISH: Texts = {
     moves: 'Moves',
     previousPosition: 'Previous position',
     nextPosition: 'Next position',
+    previousPositionShortcut: 'Previous position (←)',
+    nextPositionShortcut: 'Next position (→)',
     choosePromotion: 'Choose a promotion piece',
     promoteTo: 'Promote to',
     queen: 'Queen',
@@ -239,6 +251,8 @@ const ENGLISH: Texts = {
   losses: (count) => english(count, 'loss', 'losses'),
   answered: (feltReal, answered) => `${feltReal} of ${answered} who answered`,
   percent: (share, decimals) => `${(100 * share).toFixed(decimals)}%`,
+  decimal: (value, decimals) => value.toFixed(decimals),
+  writeMove: (san) => notation(san, 'en'),
   panel: {
     placeholder: "Each of the Bot's moves is explained here as the game goes.",
     phase: { opening: 'Opening (1-10)', middlegame: 'Middlegame (11-30)', endgame: 'Endgame (31+)' },
@@ -255,6 +269,7 @@ const ENGLISH: Texts = {
     move: 'Move',
     model: 'Model',
     drawn: 'Drawn',
+    playedMove: 'the move played',
     rank: (rank) => {
       if (rank === 1) {
         return "It was the model's most likely move.";
@@ -280,6 +295,7 @@ const ENGLISH: Texts = {
     lossVerdict: (average, moves, placement, range) =>
       `Average loss: ${average} cp over ${moves} moves, ${englishPlacement(placement)} (${range}).`,
     centipawnRange: (low, high) => `${low} to ${high} cp`,
+    percentRange: (low, high) => `${low} to ${high}`,
     usualRange: (movesForAVerdict, games) =>
       `His usual range is the middle 80% of his games, from ${movesForAVerdict} moves in a Phase up. ` +
       `Moves under 1%: the Base Model's own probabilities, on his ${games} games held back for testing.`,
@@ -322,6 +338,8 @@ const FRENCH: Texts = {
     moves: 'Coups',
     previousPosition: 'Position précédente',
     nextPosition: 'Position suivante',
+    previousPositionShortcut: 'Position précédente (←)',
+    nextPositionShortcut: 'Position suivante (→)',
     choosePromotion: 'Choisir la pièce de promotion',
     promoteTo: 'Promouvoir en',
     queen: 'Dame',
@@ -379,7 +397,9 @@ const FRENCH: Texts = {
   draws: (count) => french(count, 'nulle', 'nulles'),
   losses: (count) => french(count, 'défaite', 'défaites'),
   answered: (feltReal, answered) => `${feltReal} sur ${answered} ayant répondu`,
-  percent: (share, decimals) => `${(100 * share).toFixed(decimals).replace('.', ',')}${NO_BREAK}%`,
+  percent: (share, decimals) => `${FRENCH.decimal(100 * share, decimals)}${NO_BREAK}%`,
+  decimal: (value, decimals) => value.toFixed(decimals).replace('.', ','),
+  writeMove: (san) => notation(san, 'fr'),
   panel: {
     placeholder: 'Chaque coup du Bot est expliqué ici au fil de la partie.',
     phase: { opening: 'Ouverture (1-10)', middlegame: 'Milieu de partie (11-30)', endgame: 'Finale (31+)' },
@@ -394,12 +414,13 @@ const FRENCH: Texts = {
     bookWithoutCounts: `Tiré du livre d’ouvertures${NO_BREAK}: la réponse de Camille lui-même dans cette position.`,
     random: `Un coup légal tiré au hasard${NO_BREAK}: le modèle de base n’était pas disponible.`,
     fromModel: (legalMoves, temperature, among) =>
-      `Tiré du modèle de base, parmi ${legalMoves} coups légaux, à la température ${frenchNumber(temperature)} ${among}.`,
-    amongEveryMove: 'parmi tous les coups légaux',
+      `Tiré du modèle de base sur ${legalMoves} coups légaux, à la température ${frenchNumber(temperature)}, ${among}.`,
+    amongEveryMove: 'sans coupe',
     amongCut: (cutName) => `parmi les coups ${cutName} du modèle, la coupe avec laquelle le Bot joue son ouverture`,
     move: 'Coup',
     model: 'Modèle',
     drawn: 'Tirage',
+    playedMove: 'le coup joué',
     rank: (rank) => {
       if (rank === 1) {
         return 'C’était le coup le plus probable selon le modèle.';
@@ -433,6 +454,7 @@ const FRENCH: Texts = {
     lossVerdict: (average, moves, placement, range) =>
       `Perte moyenne${NO_BREAK}: ${average}${NO_BREAK}cp sur ${moves} coups, ${frenchPlacement(placement)} (${range}).`,
     centipawnRange: (low, high) => `de ${low} à ${high}${NO_BREAK}cp`,
+    percentRange: (low, high) => `de ${low} à ${high}`,
     usualRange: (movesForAVerdict, games) =>
       `Son intervalle habituel couvre les 80${NO_BREAK}% centraux de ses parties, à partir de ${movesForAVerdict} coups ` +
       `dans une phase. Coups sous 1${NO_BREAK}%${NO_BREAK}: les probabilités du modèle de base lui-même, ` +
