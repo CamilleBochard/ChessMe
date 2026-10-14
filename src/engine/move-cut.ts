@@ -64,6 +64,20 @@ function rescaled<Candidate extends Weighed>(kept: Candidate[]): Candidate[] {
   return kept.map((candidate) => ({ ...candidate, probability: candidate.probability / total }));
 }
 
+/** How a cut is named in a table: no cut, top-5, top-p 0.90, min-p 0.05. */
+export function cutName(cut: MoveCut): string {
+  if (cut.kind === 'none') {
+    return 'no cut';
+  }
+  if (cut.kind === 'top-k') {
+    return `top-${cut.k}`;
+  }
+  if (cut.kind === 'top-p') {
+    return `top-p ${cut.p.toFixed(2)}`;
+  }
+  return `min-p ${cut.fraction.toFixed(2)}`;
+}
+
 /**
  * A cut as a script's option names it: top-k=10, top-p=0.9 or min-p=0.05.
  * Refuses a value that would not cut as asked rather than run a measurement
