@@ -268,4 +268,17 @@ describe('the opening cut check', () => {
     expect(fallsTooFar.served).toBe(false);
     expect(fallsTwoErrors.served).toBe(true);
   });
+
+  it("reports the change in the Bot's share the cut brings, with a standard error clustered by game", () => {
+    // In game a the cut takes the Bot's share from 1% to 0%; in game b
+    // every move is likely and nothing changes. The change averages -0.5
+    // points, and each game strays 0.5 points from it, so the standard error
+    // is sqrt(2 x (0.005² + 0.005²)) / 2 = 0.005.
+    const camille = [placed('a', 'opening', tail, 1), placed('b', 'opening', [0.5, 0.5], 1)];
+
+    const check = checkOpeningCut(camille, topTwo, noMatchingCost);
+
+    expect(check.shareChange.change).toBeCloseTo(-0.005);
+    expect(check.shareChange.standardError).toBeCloseTo(0.005);
+  });
 });

@@ -336,28 +336,15 @@ export function cutGap(camilleMoves: PlacedMove[], cut: MoveCut): Record<Phase, 
     const inPhase = camilleMoves.filter((move) => move.phase === phase);
 
     // Each position scores the Bot's expected improbable share minus
-    // Camille's own, 1 or 0; a game tallies its positions' scores.
-    const games = new Map<string, GameTally>();
-    let total = 0;
-    for (const move of inPhase) {
+    // Camille's own, 1 or 0.
+    const difference = clusteredAverage(inPhase, (move) => {
       let camilleImprobable = 0;
       if (isImprobable(move)) {
         camilleImprobable = 1;
       }
-      const difference = positionUnderCut(move, cut).botBelow[ONE_PERCENT_INDEX] - camilleImprobable;
-
-      let game = games.get(move.game);
-      if (game === undefined) {
-        game = { matched: 0, positions: 0 };
-        games.set(move.game, game);
-      }
-      game.matched += difference;
-      game.positions += 1;
-      total += difference;
-    }
-
-    const gap = total / inPhase.length;
-    gaps[phase] = { gap: gap, standardError: clusteredStandardError([...games.values()], gap) };
+      return positionUnderCut(move, cut).botBelow[ONE_PERCENT_INDEX] - camilleImprobable;
+    });
+    gaps[phase] = { gap: difference.average, standardError: difference.standardError };
   }
   return gaps;
 }
@@ -398,6 +385,8 @@ export interface OpeningCutCheck {
   uncut: PhaseGap;
   /** The same with the cut. */
   cut: PhaseGap;
+  /** The Bot's share with the cut minus without it, position by position: negative when the cut removes improbable moves. */
+  shareChange: { change: number; standardError: number };
   /** Whether the cut lands the Bot's share closer to Camille's, in absolute value. */
   closer: boolean;
   /** What the cut changes in opening Move-Matching, on the drawn move with the Opening Book in front. */
@@ -420,15 +409,44 @@ export function checkOpeningCut(camilleMoves: PlacedMove[], cut: MoveCut, openin
   const withCutGap = cutGap(camilleMoves, cut).opening;
   const closer = Math.abs(withCutGap.gap) < Math.abs(uncutGap.gap);
 
+  const inOpening = camilleMoves.filter((move) => move.phase === 'opening');
+  const shareChange = clusteredAverage(inOpening, (move) => {
+    const withCut = positionUnderCut(move, cut).botBelow[ONE_PERCENT_INDEX];
+    const withoutCut = positionUnderCut(move, { kind: 'none' }).botBelow[ONE_PERCENT_INDEX];
+    return withCut - withoutCut;
+  });
+
   const largestAllowedFall = 2 * openingMatchingChange.standardError;
   const matchingHolds = openingMatchingChange.gain >= -largestAllowedFall;
 
   return {
     uncut: uncutGap,
     cut: withCutGap,
+    shareChange: { change: shareChange.average, standardError: shareChange.standardError },
     closer: closer,
     matchingChange: openingMatchingChange,
     matchingHolds: matchingHolds,
     served: closer && matchingHolds,
   };
+}
+
+/** The average of a score over the moves given, with its standard error clustered by game. */
+function clusteredAverage(moves: PlacedMove[], scoreOf: (move: PlacedMove) => number): { average: number; standardError: number } {
+  const games = new Map<string, GameTally>();
+  let total = 0;
+  for (const move of moves) {
+    const score = scoreOf(move);
+
+    let game = games.get(move.game);
+    if (game === undefined) {
+      game = { matched: 0, positions: 0 };
+      games.set(move.game, game);
+    }
+    game.matched += score;
+    game.positions += 1;
+    total += score;
+  }
+
+  const average = total / moves.length;
+  return { average: average, standardError: clusteredStandardError([...games.values()], average) };
 }
