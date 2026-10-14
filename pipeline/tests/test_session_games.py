@@ -1,3 +1,4 @@
+import sqlite3
 from datetime import date
 
 import pytest
@@ -425,3 +426,24 @@ def test_refuses_a_report_that_says_neither_yes_nor_no_about_analysis_mode(tmp_p
 
     with pytest.raises(RejectedGame):
         record_session_game(store, report, played_on=PLAYED_ON)
+
+
+def test_reads_the_games_of_a_store_made_before_analysis_mode_as_unassisted(tmp_path):
+    path = tmp_path / "session-games.sqlite"
+    older = sqlite3.connect(path)
+    older.executescript(
+        """
+        CREATE TABLE session_games (
+            id TEXT PRIMARY KEY, played_on TEXT NOT NULL, bot_colour TEXT NOT NULL,
+            result TEXT NOT NULL, pgn TEXT NOT NULL, felt_like_a_real_player INTEGER
+        );
+        INSERT INTO session_games VALUES ('older-game', '2026-10-05', 'black', '0-1', '', NULL);
+        """
+    )
+    older.close()
+
+    store = open_store(path)
+    record_session_game(store, fools_mate_reported_by_the_page(), played_on=PLAYED_ON)
+
+    assert session_game_counts(store, assisted=False)["games"] == 2
+    assert session_game_counts(store, assisted=True)["games"] == 0

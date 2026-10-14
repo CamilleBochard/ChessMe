@@ -77,7 +77,22 @@ def open_store(path: Path) -> sqlite3.Connection:
     """Opens the database at path, creating it and its tables if needed."""
     connection = sqlite3.connect(path)
     connection.executescript(SCHEMA)
+    add_assisted_column(connection)
     return connection
+
+
+def add_assisted_column(connection: sqlite3.Connection) -> None:
+    """
+    Gives a store made before analysis mode its assisted column. Creating the
+    tables leaves an existing one as it was, and every game it already holds
+    was played before the mode existed, so unassisted.
+    """
+    columns = connection.execute("PRAGMA table_info(session_games)").fetchall()
+    column_names = [column[1] for column in columns]
+    if "assisted" in column_names:
+        return
+    with connection:
+        connection.execute("ALTER TABLE session_games ADD COLUMN assisted INTEGER NOT NULL DEFAULT 0")
 
 
 def record_session_game(connection: sqlite3.Connection, report: dict, played_on: date) -> str:
