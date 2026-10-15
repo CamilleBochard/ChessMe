@@ -90,21 +90,27 @@ import BracketLabel from '../atoms/BracketLabel.astro';
     background: color-mix(in srgb, var(--ink) 12%, transparent);
   }
 
-  /* A piece that can be taken: four corners, 6% in from the square's edge.
-     The border draws the whole outline; the clip path keeps its corners. */
+  /* A piece that can be taken: four corners, 6% in from the square's edge,
+     and nothing between them. Each corner is two ink strokes, 2 px thick
+     and 28% of the mark long, one along each edge; each stroke is a
+     one-colour gradient sized and placed in that corner. */
   .cg-wrap cg-board square.oc.move-dest::after {
+    --stroke: linear-gradient(var(--ink), var(--ink));
     position: absolute;
     inset: 6%;
     width: auto;
     height: auto;
-    background: none;
-    border: 2px solid var(--ink);
-    clip-path: polygon(
-      0 0, 30% 0, 30% 8%, 8% 8%, 8% 30%, 0 30%,
-      0 70%, 8% 70%, 8% 92%, 30% 92%, 30% 100%, 0 100%,
-      100% 100%, 70% 100%, 70% 92%, 92% 92%, 92% 70%, 100% 70%,
-      100% 30%, 92% 30%, 92% 8%, 70% 8%, 70% 0, 100% 0
-    );
+    clip-path: none;
+    background:
+      var(--stroke) top left / 28% 2px,
+      var(--stroke) top left / 2px 28%,
+      var(--stroke) top right / 28% 2px,
+      var(--stroke) top right / 2px 28%,
+      var(--stroke) bottom left / 28% 2px,
+      var(--stroke) bottom left / 2px 28%,
+      var(--stroke) bottom right / 28% 2px,
+      var(--stroke) bottom right / 2px 28%;
+    background-repeat: no-repeat;
   }
 
   /* Coordinates inside the board, in the corner of the squares along its
