@@ -1,13 +1,13 @@
 ---
 // A game against the Bot: the board between the two clocks, with the status
 // under it, and beside it a column of the controls, the end-of-game question,
-// the moves, the panel explaining the Bot's moves and the choice of pieces. The page puts its title
-// in the header slot and what appears once a game has ended in the after-game
-// slot. The rules live in src/game/, the Bot's choice in src/engine/ and what
-// the visitor may do when in src/session/; the script below only translates
-// between them, chessground (which draws the board and handles dragging and
-// clicking) and the markup of the components, which it reaches through their
-// data attributes.
+// the moves, the panel explaining the Bot's moves and the choice of pieces.
+// The page puts its title in the header slot and what appears once a game has
+// ended in the after-game slot. The rules live in src/game/, the Bot's choice
+// in src/engine/ and what the visitor may do when in src/session/; the script
+// below only translates between them, chessground (which draws the board and
+// handles dragging and clicking) and the markup of the components, which it
+// reaches through their data attributes.
 import { readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { SERVED_MODEL_DIRECTORY, SERVED_MODEL_RATING } from '../../engine/served-model';
