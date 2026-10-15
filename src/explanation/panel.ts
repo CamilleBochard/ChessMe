@@ -223,10 +223,17 @@ function lossComparison(view: PanelView): HTMLElement[] {
     'Share of moves that lost at most so many centipawns, in positions still open. ' +
       'Higher and further left: fewer and smaller mistakes.',
   ];
+  const waiting = unevaluatedMoves(view);
   if (!view.analysisOn) {
     notes.push("The Bot's curve is drawn move by move in analysis mode, and for every game once it is over.");
-  } else if (bot.moves === 0) {
-    notes.push("Stockfish is evaluating the Bot's moves…");
+  } else if (waiting > 0) {
+    // Stockfish takes the moves one at a time, a few seconds each, so a
+    // game joined late in analysis mode takes a while to catch up.
+    notes.push(`Stockfish is evaluating the Bot's moves one at a time: ${waiting} still to come.`);
+  }
+  const failed = failedMoves(view);
+  if (failed > 0) {
+    notes.push(`Stockfish could not evaluate ${failed} of the Bot's ${moves(failed)}; the curve leaves them out.`);
   }
   notes.push(
     `Camille: all ${lossYardstick.games} of his games, ${lossYardstick.engine} at depth ${lossYardstick.depth}, ` +
@@ -242,6 +249,29 @@ function legendItem(who: 'camille' | 'bot' | 'band', text: string): HTMLLIElemen
   swatch.setAttribute('aria-hidden', 'true');
   item.append(swatch, text);
   return item;
+}
+
+/** How many of the Bot's moves Stockfish has yet to answer for. */
+function unevaluatedMoves(view: PanelView): number {
+  let waiting = 0;
+  for (const explained of view.botMoves) {
+    const evaluation = view.evaluations.get(moveKeyOf(explained));
+    if (evaluation === undefined || evaluation === 'pending') {
+      waiting += 1;
+    }
+  }
+  return waiting;
+}
+
+/** How many of the Bot's moves Stockfish failed to evaluate. */
+function failedMoves(view: PanelView): number {
+  let failed = 0;
+  for (const explained of view.botMoves) {
+    if (view.evaluations.get(moveKeyOf(explained)) === 'failed') {
+      failed += 1;
+    }
+  }
+  return failed;
 }
 
 /** The Bot's moves Stockfish has evaluated so far. */
