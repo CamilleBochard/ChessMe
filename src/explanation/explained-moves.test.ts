@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import type { BotMove } from '../engine/move-selection';
 import { currentFen, newGame, playMove, type Game, type MoveRequest } from '../game/game';
-import { botMovesOf, candidateRows, replyKey } from './explained-moves';
+import { botMovesOf, candidateRows, rankOf, replyKey } from './explained-moves';
 import type { Candidate } from '../engine/move-selection';
 
 function play(moves: MoveRequest[]): Game {
@@ -51,5 +51,33 @@ describe('the candidates the panel lists', () => {
 
     expect(amongTheFive).toEqual({ mostLikely: candidates.slice(0, 5), playedFurtherDown: null });
     expect(furtherDown).toEqual({ mostLikely: candidates.slice(0, 5), playedFurtherDown: candidates[6] });
+  });
+});
+
+describe("where the Bot's move stood", () => {
+  it("is its rank among the legal moves when the Base Model chose it, such as 1/22 for the model's favourite", () => {
+    const fromModel: BotMove = {
+      move: { from: 'e7', to: 'e5' },
+      source: 'base-model',
+      legalMoves: 22,
+      candidates: [],
+      rank: 1,
+      temperature: 1,
+      cut: { kind: 'none' },
+    };
+
+    expect(rankOf(fromModel)).toBe('1/22');
+  });
+
+  it("names the Opening Book, which plays Camille's own reply and ranks nothing", () => {
+    const fromBook: BotMove = { move: { from: 'c7', to: 'c5' }, source: 'opening-book', counts: undefined };
+
+    expect(rankOf(fromBook)).toBe('Book');
+  });
+
+  it('names a move picked at random, which ranks nothing either', () => {
+    const atRandom: BotMove = { move: { from: 'a7', to: 'a6' }, source: 'random' };
+
+    expect(rankOf(atRandom)).toBe('Random');
   });
 });
