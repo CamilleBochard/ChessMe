@@ -8,6 +8,8 @@ import {
   gameImprobability,
   gameLosses,
   improbabilityYardstick,
+  LOSS_PROFILE_EDGES,
+  lossProfile,
   lossYardstick,
   moveRarity,
   type LossMove,
@@ -169,6 +171,17 @@ describe("Camille's losses per game", () => {
 
     expect(yardstick.phases.middlegame.perGame).toEqual({ games: 10, low: 10, high: 90 });
   });
+
+  it('carries the profile of all his losses, whatever the Phase', () => {
+    const moves: LossMove[] = [
+      { game: 'game-1', phase: 'opening', centipawnLoss: 0, openPosition: true },
+      { game: 'game-1', phase: 'endgame', centipawnLoss: 300, openPosition: true },
+    ];
+
+    const yardstick = lossYardstick(moves);
+
+    expect(yardstick.profile).toEqual(lossProfile(moves));
+  });
 });
 
 describe("the Bot's losses so far against Camille's games", () => {
@@ -188,5 +201,30 @@ describe("the Bot's losses so far against Camille's games", () => {
     const verdicts = gameLosses(botMoves, yardstick);
 
     expect(verdicts.middlegame).toEqual({ kind: 'inside', moves: 8, figure: 50, spread: { games: 10, low: 10, high: 90 } });
+  });
+});
+
+describe('a profile of losses', () => {
+  it('gives, for each edge, the share of moves in open positions that lost no more', () => {
+    // Four open moves, and one made once the game was decided, which the
+    // profile leaves out whatever it lost.
+    const moves = [
+      { centipawnLoss: 0, openPosition: true },
+      { centipawnLoss: 20, openPosition: true },
+      { centipawnLoss: 150, openPosition: true },
+      { centipawnLoss: 600, openPosition: true },
+      { centipawnLoss: 0, openPosition: false },
+    ];
+
+    const profile = lossProfile(moves);
+
+    expect(LOSS_PROFILE_EDGES).toEqual([0, 10, 25, 50, 100, 200, 300, 500, 1000]);
+    expect(profile).toEqual({ moves: 4, atMost: [0.25, 0.25, 0.5, 0.5, 0.5, 0.75, 0.75, 0.75, 1] });
+  });
+
+  it('holds no shares while no move in an open position has been measured', () => {
+    const profile = lossProfile([{ centipawnLoss: 0, openPosition: false }]);
+
+    expect(profile).toEqual({ moves: 0, atMost: [] });
   });
 });

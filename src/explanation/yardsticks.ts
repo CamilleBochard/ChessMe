@@ -164,9 +164,11 @@ export interface LossMove extends BotLoss {
   game: string;
 }
 
-/** Per Phase, how far Camille's games spread in the evaluation his moves lost. */
+/** How far Camille's games spread in the evaluation his moves lost, per Phase, and how all his moves spread. */
 export interface LossYardstick {
   phases: Record<Phase, { perGame: Spread | null }>;
+  /** The profile of every one of his moves in open positions, whatever the Phase. */
+  profile: LossProfile;
 }
 
 /** The loss yardstick as scripts/yardsticks.ts writes it, with the engine that measured it. */
@@ -194,13 +196,45 @@ export function lossYardstick(moves: LossMove[]): LossYardstick {
     const inPhase = open.filter((move) => move.phase === phase);
     return { perGame: perGameSpread(inPhase, averageLoss) };
   });
-  return { phases: phases };
+  return { phases: phases, profile: lossProfile(moves) };
 }
 
 /** The average evaluation the moves lost, in centipawns. */
 function averageLoss(moves: { centipawnLoss: number }[]): number {
   const total = moves.reduce((sum, move) => sum + move.centipawnLoss, 0);
   return total / moves.length;
+}
+
+/**
+ * The losses, in centipawns, at which a profile of losses is read: from a
+ * move that lost nothing to one that lost ten pawns, closer together where
+ * most moves fall.
+ */
+export const LOSS_PROFILE_EDGES: readonly number[] = [0, 10, 25, 50, 100, 200, 300, 500, 1000];
+
+/** How a player's moves spread in the evaluation they lost. */
+export interface LossProfile {
+  /** How many moves in open positions it was read from. */
+  moves: number;
+  /** For each loss of LOSS_PROFILE_EDGES, the share of those moves that lost no more; empty without moves. */
+  atMost: number[];
+}
+
+/**
+ * The profile of the given moves' losses. Only moves made in open positions
+ * count: once a game is decided, every move reads as losing nothing.
+ */
+export function lossProfile(moves: MoveLoss[]): LossProfile {
+  const open = moves.filter((move) => move.openPosition);
+  if (open.length === 0) {
+    return { moves: 0, atMost: [] };
+  }
+  const atMost: number[] = [];
+  for (const edge of LOSS_PROFILE_EDGES) {
+    const noMore = open.filter((move) => move.centipawnLoss <= edge).length;
+    atMost.push(noMore / open.length);
+  }
+  return { moves: open.length, atMost: atMost };
 }
 
 /** How a figure of the game so far compares with Camille's games, in one Phase. */

@@ -24,6 +24,7 @@ import { readOpeningBook } from '../src/engine/opening-book';
 import { SERVED_MODEL_RATING, SERVED_MODEL_SOURCE } from '../src/engine/served-model';
 import {
   improbabilityYardstick,
+  LOSS_PROFILE_EDGES,
   lossYardstick,
   MOVES_FOR_A_VERDICT,
   type LossMove,
@@ -125,6 +126,14 @@ if (writesLosses) {
   for (const phase of PHASES) {
     const perGame = yardstick.phases[phase].perGame;
     console.log(`| ${PHASE_LABELS[phase]} | ${spreadGames(perGame)} | ${spreadRange(perGame, centipawns)} |`);
+  }
+  console.log('');
+  console.log(`His profile, ${yardstick.profile.moves} moves in open positions:`);
+  console.log('');
+  console.log('| Lost at most | Share of his moves |');
+  console.log('|---|---|');
+  for (const [index, edge] of LOSS_PROFILE_EDGES.entries()) {
+    console.log(`| ${edge} cp | ${percent(yardstick.profile.atMost[index])} |`);
   }
   console.log('');
   console.error(`Written to ${LOSS_YARDSTICK}`);
