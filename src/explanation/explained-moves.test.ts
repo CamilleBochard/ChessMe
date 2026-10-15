@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import type { BotMove } from '../engine/move-selection';
 import { currentFen, newGame, playMove, type Game, type MoveRequest } from '../game/game';
-import { botMovesOf, candidateRows, rankOf, replyKey } from './explained-moves';
+import { botMovesOf, candidateRows, movesOnTheChart, rankOf, replyKey } from './explained-moves';
 import type { Candidate } from '../engine/move-selection';
 
 function play(moves: MoveRequest[]): Game {
@@ -79,5 +79,23 @@ describe("where the Bot's move stood", () => {
     const atRandom: BotMove = { move: { from: 'a7', to: 'a6' }, source: 'random' };
 
     expect(rankOf(atRandom)).toBe('Random');
+  });
+});
+
+describe("the Bot's moves the chart may show", () => {
+  it('leave out its last three while the game goes on, so the chart never tells where it just went wrong', () => {
+    const botMoves = ['first', 'second', 'third', 'fourth', 'fifth'];
+
+    expect(movesOnTheChart(botMoves, { revealed: false })).toEqual(['first', 'second']);
+  });
+
+  it('are all of them once the evaluations are revealed, in analysis mode or once the game is over', () => {
+    const botMoves = ['first', 'second', 'third', 'fourth', 'fifth'];
+
+    expect(movesOnTheChart(botMoves, { revealed: true })).toEqual(botMoves);
+  });
+
+  it('are none while the Bot has played no more than three', () => {
+    expect(movesOnTheChart(['first', 'second'], { revealed: false })).toEqual([]);
   });
 });
