@@ -78,3 +78,22 @@ html[data-piece-set='candy'] {
   --piece-bN: url('/pieces/candy/bN.svg');
   --piece-bP: url('/pieces/candy/bP.svg');
 }
+
+/* Mech, pixel-art robots drawn for ChessMe; see
+   public/pieces/mech/LICENSE.txt. Drawn to the edge of their grid, so
+   shrunk like the Lichess sets. */
+html[data-piece-set='mech'] {
+  --piece-size: 82%;
+  --piece-wK: url('/pieces/mech/wK.svg');
+  --piece-wQ: url('/pieces/mech/wQ.svg');
+  --piece-wR: url('/pieces/mech/wR.svg');
+  --piece-wB: url('/pieces/mech/wB.svg');
+  --piece-wN: url('/pieces/mech/wN.svg');
+  --piece-wP: url('/pieces/mech/wP.svg');
+  --piece-bK: url('/pieces/mech/bK.svg');
+  --piece-bQ: url('/pieces/mech/bQ.svg');
+  --piece-bR: url('/pieces/mech/bR.svg');
+  --piece-bB: url('/pieces/mech/bB.svg');
+  --piece-bN: url('/pieces/mech/bN.svg');
+  --piece-bP: url('/pieces/mech/bP.svg');
+}
