@@ -4,9 +4,9 @@
 // A colour typed into a component would drift from the rest of the page the
 // day the palette changes; this test fails first. It reads the style rules for
 // colour literals, hex values and the colour functions; colour keywords such as
-// white are not looked for. The piece images in public/pieces/ carry the paper
-// and ink values in their own files, since a background image cannot read the
-// page's variables: a new palette means generating them again.
+// white are not looked for. The piece images in public/pieces/classic/ carry the
+// paper and ink values in their own files, since a background image cannot read
+// the page's variables: a new palette means generating them again.
 
 import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';

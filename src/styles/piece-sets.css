@@ -1,0 +1,25 @@
+/* The sets of pieces the board can be drawn with. Each set names its twelve
+   images and how much of a square they fill; the board and the promotion
+   dialog only read these variables. The classic set is the default, and the
+   visitor's choice of another is marked on the html element, so that one
+   attribute changes every piece on the page. The paths are absolute because
+   a relative url() in a variable would resolve against whichever stylesheet
+   reads it. */
+:root {
+  /* Filled glyphs from DejaVu Sans, White in light paper outlined in ink,
+     Black in ink; see public/pieces/classic/LICENSE-DejaVu.txt. Their
+     margins are in the images, which fill the whole square. */
+  --piece-size: 100%;
+  --piece-wK: url('/pieces/classic/wK.svg');
+  --piece-wQ: url('/pieces/classic/wQ.svg');
+  --piece-wR: url('/pieces/classic/wR.svg');
+  --piece-wB: url('/pieces/classic/wB.svg');
+  --piece-wN: url('/pieces/classic/wN.svg');
+  --piece-wP: url('/pieces/classic/wP.svg');
+  --piece-bK: url('/pieces/classic/bK.svg');
+  --piece-bQ: url('/pieces/classic/bQ.svg');
+  --piece-bR: url('/pieces/classic/bR.svg');
+  --piece-bB: url('/pieces/classic/bB.svg');
+  --piece-bN: url('/pieces/classic/bN.svg');
+  --piece-bP: url('/pieces/classic/bP.svg');
+}
