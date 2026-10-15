@@ -15,10 +15,9 @@
   --ink-faint: color-mix(in srgb, var(--ink) 26%, transparent);
   --accent: #ff3d1f;
 
-  /* The board: orange light squares, a shade softer than the accent of the
-     buttons, and dark squares in the darker paper. */
-  --square-light: #f7462a;
-  --square-dark: var(--paper-deep);
+  /* The board: candy pink light squares and black dark squares. */
+  --square-light: #f9429e;
+  --square-dark: var(--ink);
 
   --line: 1px solid var(--ink);
 

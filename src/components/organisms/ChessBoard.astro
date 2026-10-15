@@ -30,11 +30,10 @@ import BracketLabel from '../atoms/BracketLabel.astro';
 <style is:global>
   @import '@lichess-org/chessground/assets/chessground.base.css';
 
-  /* Orange light squares, and dark squares in darker paper under fine ink
-     hatching. Chessground draws no element per square, so the pattern is the
-     board's background, in three layers from the top: a checkerboard that
-     covers the light squares, the hatching, then the dark paper showing
-     through. The hatching keeps a 6 px step whatever the board's size. The
+  /* Pink light squares, and black dark squares under fine light hatching.
+     Chessground draws no element per square, so the pattern is the board's
+     background, in three layers from the top: a checkerboard that covers the
+     light squares, the hatching, then the black showing through. The hatching keeps a 6 px step whatever the board's size. The
      top-left square of a board is light from either side. */
   .cg-wrap cg-board {
     background:
@@ -47,20 +46,24 @@ import BracketLabel from '../atoms/BracketLabel.astro';
         0 0 / 25% 25%,
       repeating-linear-gradient(
         -45deg,
-        color-mix(in srgb, var(--ink) 9%, transparent) 0 1px,
+        color-mix(in srgb, var(--paper-light) 9%, transparent) 0 1px,
         transparent 1px 6px
       ),
       var(--square-dark);
   }
 
-  /* The marks drawn on squares are in ink: the accent would barely show on
-     the orange squares. */
+  /* The marks drawn on squares are in light paper, which shows on the black
+     squares as on the pink ones, where ink would vanish on the black. */
+  .cg-wrap {
+    --mark: var(--paper-light);
+  }
+
   .cg-wrap cg-board square.last-move {
-    background-color: color-mix(in srgb, var(--ink) 22%, transparent);
+    background-color: color-mix(in srgb, var(--mark) 30%, transparent);
   }
 
   .cg-wrap cg-board square.selected {
-    box-shadow: inset 0 0 0 3px var(--ink);
+    box-shadow: inset 0 0 0 3px var(--mark);
   }
 
   /* The king in check keeps the accent hatching, on light paper so that it
@@ -82,12 +85,12 @@ import BracketLabel from '../atoms/BracketLabel.astro';
     content: '';
     width: 18%;
     height: 18%;
-    background: var(--ink);
+    background: var(--mark);
     clip-path: var(--octagon);
   }
 
   .cg-wrap cg-board square.move-dest:hover {
-    background: color-mix(in srgb, var(--ink) 12%, transparent);
+    background: color-mix(in srgb, var(--mark) 20%, transparent);
   }
 
   /* A piece that can be taken: four corners, 6% in from the square's edge,
@@ -95,7 +98,7 @@ import BracketLabel from '../atoms/BracketLabel.astro';
      and 28% of the mark long, one along each edge; each stroke is a
      one-colour gradient sized and placed in that corner. */
   .cg-wrap cg-board square.oc.move-dest::after {
-    --stroke: linear-gradient(var(--ink), var(--ink));
+    --stroke: linear-gradient(var(--mark), var(--mark));
     position: absolute;
     inset: 6%;
     width: auto;
@@ -121,7 +124,7 @@ import BracketLabel from '../atoms/BracketLabel.astro';
     font-family: var(--font-mono);
     font-size: 10px;
     line-height: 1;
-    color: var(--ink-soft);
+    color: var(--mark);
     opacity: 1;
   }
 
@@ -166,6 +169,17 @@ import BracketLabel from '../atoms/BracketLabel.astro';
   .cg-wrap piece.rook.black { background-image: url('/pieces/bR.svg'); }
   .cg-wrap piece.queen.black { background-image: url('/pieces/bQ.svg'); }
   .cg-wrap piece.king.black { background-image: url('/pieces/bK.svg'); }
+
+  /* The black pieces are filled in ink with no outline of their own, which
+     would vanish on the black squares: four one-pixel shadows draw a light
+     outline around them. */
+  .cg-wrap piece.black {
+    filter:
+      drop-shadow(1px 0 0 var(--paper-light))
+      drop-shadow(-1px 0 0 var(--paper-light))
+      drop-shadow(0 1px 0 var(--paper-light))
+      drop-shadow(0 -1px 0 var(--paper-light));
+  }
 
   /* The first-visit entrance, started by the game's script: the board fades
      in, then the white pieces and the black ones drop onto their squares.
