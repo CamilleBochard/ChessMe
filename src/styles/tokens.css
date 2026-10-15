@@ -16,10 +16,9 @@
   --accent: #ff3d1f;
 
   /* The board: orange light squares, a shade softer than the accent of the
-     buttons, and dark squares a grey deep enough that the light pieces
-     stand out on them as much as the dark ones do on the orange. */
+     buttons, and dark squares in the darker paper. */
   --square-light: #f7462a;
-  --square-dark: color-mix(in srgb, var(--ink) 45%, var(--paper-deep));
+  --square-dark: var(--paper-deep);
 
   --line: 1px solid var(--ink);
 

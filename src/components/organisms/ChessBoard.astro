@@ -30,12 +30,12 @@ import BracketLabel from '../atoms/BracketLabel.astro';
 <style is:global>
   @import '@lichess-org/chessground/assets/chessground.base.css';
 
-  /* Orange light squares, and grey dark squares under fine ink hatching.
-     Chessground draws no element per square, so the pattern is the board's
-     background, in three layers from the top: a checkerboard that covers the
-     light squares, the hatching, then the dark grey showing through. The
-     hatching keeps a 6 px step whatever the board's size. The top-left
-     square of a board is light from either side. */
+  /* Orange light squares, and dark squares in darker paper under fine ink
+     hatching. Chessground draws no element per square, so the pattern is the
+     board's background, in three layers from the top: a checkerboard that
+     covers the light squares, the hatching, then the dark paper showing
+     through. The hatching keeps a 6 px step whatever the board's size. The
+     top-left square of a board is light from either side. */
   .cg-wrap cg-board {
     background:
       conic-gradient(
@@ -47,7 +47,7 @@ import BracketLabel from '../atoms/BracketLabel.astro';
         0 0 / 25% 25%,
       repeating-linear-gradient(
         -45deg,
-        color-mix(in srgb, var(--ink) 12%, transparent) 0 1px,
+        color-mix(in srgb, var(--ink) 9%, transparent) 0 1px,
         transparent 1px 6px
       ),
       var(--square-dark);
