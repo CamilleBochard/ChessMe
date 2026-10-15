@@ -23,3 +23,40 @@
   --piece-bN: url('/pieces/classic/bN.svg');
   --piece-bP: url('/pieces/classic/bP.svg');
 }
+
+/* Pixel art by therealqtpi, from Lichess, under the AGPL-3.0 or later; see
+   public/pieces/pixel/LICENSE.txt. Drawn to the edge of their images, so
+   they are shrunk to leave the square's marks room around them. */
+html[data-piece-set='pixel'] {
+  --piece-size: 82%;
+  --piece-wK: url('/pieces/pixel/wK.svg');
+  --piece-wQ: url('/pieces/pixel/wQ.svg');
+  --piece-wR: url('/pieces/pixel/wR.svg');
+  --piece-wB: url('/pieces/pixel/wB.svg');
+  --piece-wN: url('/pieces/pixel/wN.svg');
+  --piece-wP: url('/pieces/pixel/wP.svg');
+  --piece-bK: url('/pieces/pixel/bK.svg');
+  --piece-bQ: url('/pieces/pixel/bQ.svg');
+  --piece-bR: url('/pieces/pixel/bR.svg');
+  --piece-bB: url('/pieces/pixel/bB.svg');
+  --piece-bN: url('/pieces/pixel/bN.svg');
+  --piece-bP: url('/pieces/pixel/bP.svg');
+}
+
+/* Kiwen Suwi by neverRare, from Lichess, under CC BY 4.0; see
+   public/pieces/kiwen-suwi/LICENSE.txt. Shrunk like the pixel set. */
+html[data-piece-set='kiwen-suwi'] {
+  --piece-size: 82%;
+  --piece-wK: url('/pieces/kiwen-suwi/wK.svg');
+  --piece-wQ: url('/pieces/kiwen-suwi/wQ.svg');
+  --piece-wR: url('/pieces/kiwen-suwi/wR.svg');
+  --piece-wB: url('/pieces/kiwen-suwi/wB.svg');
+  --piece-wN: url('/pieces/kiwen-suwi/wN.svg');
+  --piece-wP: url('/pieces/kiwen-suwi/wP.svg');
+  --piece-bK: url('/pieces/kiwen-suwi/bK.svg');
+  --piece-bQ: url('/pieces/kiwen-suwi/bQ.svg');
+  --piece-bR: url('/pieces/kiwen-suwi/bR.svg');
+  --piece-bB: url('/pieces/kiwen-suwi/bB.svg');
+  --piece-bN: url('/pieces/kiwen-suwi/bN.svg');
+  --piece-bP: url('/pieces/kiwen-suwi/bP.svg');
+}

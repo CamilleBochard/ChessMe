@@ -1,0 +1,10 @@
+Pixel chess pieces
+
+Author: therealqtpi
+Source: https://github.com/lichess-org/lila/tree/master/public/piece/pixel
+License: GNU Affero General Public License, version 3 or any later version,
+as listed in https://github.com/lichess-org/lila/blob/master/COPYING.md.
+The full text of the licence is in the LICENSE file at the root of this
+repository.
+
+The twelve images are used unmodified.

@@ -1,7 +1,7 @@
 ---
 // A game against the Bot: the board between the two clocks, with the status
 // under it, and beside it a column of the controls, the end-of-game question,
-// the moves and the panel explaining the Bot's moves. The page puts its title
+// the moves, the panel explaining the Bot's moves and the choice of pieces. The page puts its title
 // in the header slot and what appears once a game has ended in the after-game
 // slot. The rules live in src/game/, the Bot's choice in src/engine/ and what
 // the visitor may do when in src/session/; the script below only translates
@@ -21,6 +21,7 @@ import EndOfGameQuestion from './EndOfGameQuestion.astro';
 import ExplanationPanel from './ExplanationPanel.astro';
 import GameControls from './GameControls.astro';
 import MoveList from './MoveList.astro';
+import PieceSetChoice from './PieceSetChoice.astro';
 
 // The model the page downloads, found where scripts/stage-model.ts put it. Its
 // size is read here, at build time, because the server sends it compressed and
@@ -75,6 +76,9 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
     </section>
     <section class="side-section">
       <ExplanationPanel />
+    </section>
+    <section class="side-section">
+      <PieceSetChoice />
     </section>
   </div>
 </div>

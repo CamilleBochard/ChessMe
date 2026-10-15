@@ -1,0 +1,99 @@
+---
+// The visitor's choice of the set the pieces are drawn with, and the credit
+// the sets from other authors ask for. Choosing a set marks it on the html
+// element, which src/styles/piece-sets.css reads; the choice is remembered in
+// the browser, so a returning visitor finds the set they left. The game itself
+// is not involved: the board only ever reads the set's variables.
+import BracketLabel from '../atoms/BracketLabel.astro';
+import TickBox from '../molecules/TickBox.astro';
+---
+
+<fieldset class="piece-sets">
+  <legend><BracketLabel text="Pieces" /></legend>
+  <div class="choices">
+    <TickBox type="radio" name="piece-set" value="classic" data-piece-set-choice checked>Classic</TickBox>
+    <TickBox type="radio" name="piece-set" value="pixel" data-piece-set-choice>Pixel</TickBox>
+    <TickBox type="radio" name="piece-set" value="kiwen-suwi" data-piece-set-choice>Kiwen Suwi</TickBox>
+  </div>
+  <p class="credits">
+    Pixel by therealqtpi (AGPL-3.0). Kiwen Suwi by <a href="https://github.com/neverRare">neverRare</a>
+    (<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>). Both from
+    <a href="https://github.com/lichess-org/lila">Lichess</a>, unmodified.
+  </p>
+</fieldset>
+
+<script>
+  /** Where the browser keeps the visitor's set between visits. */
+  const PIECE_SET_KEY = 'chessme.piece-set';
+
+  const choices = document.querySelectorAll<HTMLInputElement>('[data-piece-set-choice]');
+
+  // A remembered set the page no longer offers is ignored, and the classic
+  // set, ticked in the markup, stays.
+  const remembered = rememberedPieceSet();
+  for (const choice of choices) {
+    if (choice.value === remembered) {
+      choice.checked = true;
+      usePieceSet(choice.value);
+    }
+  }
+
+  for (const choice of choices) {
+    choice.addEventListener('change', () => {
+      if (choice.checked) {
+        usePieceSet(choice.value);
+        rememberPieceSet(choice.value);
+      }
+    });
+  }
+
+  function usePieceSet(name: string): void {
+    document.documentElement.dataset.pieceSet = name;
+  }
+
+  /**
+   * The set chosen on an earlier visit, or null. Storage can be refused, in
+   * which case the page simply opens on the classic set.
+   */
+  function rememberedPieceSet(): string | null {
+    try {
+      return window.localStorage.getItem(PIECE_SET_KEY);
+    } catch {
+      return null;
+    }
+  }
+
+  function rememberPieceSet(name: string): void {
+    try {
+      window.localStorage.setItem(PIECE_SET_KEY, name);
+    } catch {
+      // Nothing to do: the choice holds for this visit only.
+    }
+  }
+</script>
+
+<style>
+  .piece-sets {
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .piece-sets legend {
+    margin-bottom: 10px;
+    padding: 0;
+  }
+
+  .choices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 20px;
+  }
+
+  .credits {
+    margin: 10px 0 0;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-soft);
+  }
+</style>
