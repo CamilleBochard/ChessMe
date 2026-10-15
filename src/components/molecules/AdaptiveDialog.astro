@@ -1,0 +1,93 @@
+---
+// A dialog that src/components/adaptive-dialog.ts shows in place on a wide
+// screen and opens over the board on a phone. In place it takes no frame of
+// its own and reads as part of the column it sits in; over the board it is a
+// light box bordered in ink, with its title and a button that closes it. Any
+// other attribute, such as the data attribute a script finds it by, is passed
+// on to the dialog itself.
+import type { HTMLAttributes } from 'astro/types';
+import BracketLabel from '../atoms/BracketLabel.astro';
+
+interface Props extends HTMLAttributes<'dialog'> {
+  /** The title shown on a phone, where the dialog stands alone over the board. */
+  title: string;
+}
+
+const { title, class: className, ...attributes } = Astro.props;
+---
+
+<dialog class:list={['adaptive-dialog', className]} aria-label={title} {...attributes}>
+  <div class="dialog-head">
+    <BracketLabel as="p" text={title} />
+    <button type="button" class="dialog-close" data-dialog-close aria-label="Close">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+    </button>
+  </div>
+  <slot />
+</dialog>
+
+<style>
+  /* In place: no box, no margin, the column's own colours. */
+  .adaptive-dialog:not(:modal) {
+    position: static;
+    width: auto;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+  }
+
+  .adaptive-dialog:not(:modal) .dialog-head {
+    display: none;
+  }
+
+  /* Over the board: a light box across the phone's width. */
+  .adaptive-dialog:modal {
+    width: min(360px, calc(100vw - 32px));
+    max-width: none;
+    padding: 16px;
+    border: var(--line);
+    border-radius: 0;
+    background: var(--paper-light);
+    color: var(--ink);
+  }
+
+  .adaptive-dialog::backdrop {
+    background: color-mix(in srgb, var(--paper) 86%, transparent);
+  }
+
+  .dialog-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+
+  .dialog-close {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: var(--line);
+    background: var(--paper);
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  .dialog-close svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+  }
+
+  .dialog-close:hover,
+  .dialog-close:focus-visible {
+    background: var(--accent);
+    outline: none;
+  }
+</style>

@@ -1,33 +1,47 @@
 ---
 // The visitor's choice of the set the pieces are drawn with, and the credit
-// the sets from other authors ask for. Choosing a set marks it on the html
-// element, which src/styles/piece-sets.css reads; the choice is remembered in
-// the browser, so a returning visitor finds the set they left. The game itself
-// is not involved: the board only ever reads the set's variables.
+// the sets from other authors ask for, in a dialog: in place on a wide
+// screen, over the board on a phone, where any button marked data-open-pieces
+// opens it. Choosing a set marks it on the html element, which
+// src/styles/piece-sets.css reads; the choice is remembered in the browser,
+// so a returning visitor finds the set they left. The game itself is not
+// involved: the board only ever reads the set's variables.
 import BracketLabel from '../atoms/BracketLabel.astro';
+import AdaptiveDialog from '../molecules/AdaptiveDialog.astro';
 import TickBox from '../molecules/TickBox.astro';
 ---
 
-<fieldset class="piece-sets">
-  <legend><BracketLabel text="Pieces" /></legend>
-  <div class="choices">
-    <TickBox type="radio" name="piece-set" value="anarcandy" data-piece-set-choice checked>Anarcandy</TickBox>
-    <TickBox type="radio" name="piece-set" value="classic" data-piece-set-choice>Classic</TickBox>
-    <TickBox type="radio" name="piece-set" value="candy" data-piece-set-choice>Candy</TickBox>
-    <TickBox type="radio" name="piece-set" value="mech" data-piece-set-choice>Mech</TickBox>
-  </div>
-  <p class="credits">
-    Anarcandy by <a href="https://github.com/caderek">caderek</a>,
-    from <a href="https://github.com/lichess-org/lila/tree/master/public/piece/anarcandy">Lichess</a>,
-    used unmodified under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>.
-  </p>
-</fieldset>
+<AdaptiveDialog title="Pieces" data-pieces-dialog>
+  <fieldset class="piece-sets">
+    <legend><BracketLabel text="Pieces" /></legend>
+    <div class="choices">
+      <TickBox type="radio" name="piece-set" value="anarcandy" data-piece-set-choice checked>Anarcandy</TickBox>
+      <TickBox type="radio" name="piece-set" value="classic" data-piece-set-choice>Classic</TickBox>
+      <TickBox type="radio" name="piece-set" value="candy" data-piece-set-choice>Candy</TickBox>
+      <TickBox type="radio" name="piece-set" value="mech" data-piece-set-choice>Mech</TickBox>
+    </div>
+    <p class="credits">
+      Anarcandy by <a href="https://github.com/caderek">caderek</a>,
+      from <a href="https://github.com/lichess-org/lila/tree/master/public/piece/anarcandy">Lichess</a>,
+      used unmodified under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>.
+    </p>
+  </fieldset>
+</AdaptiveDialog>
 
 <script>
+  import { adaptiveDialog } from '../adaptive-dialog';
+
   /** Where the browser keeps the visitor's set between visits. */
   const PIECE_SET_KEY = 'chessme.piece-set';
 
   const choices = document.querySelectorAll<HTMLInputElement>('[data-piece-set-choice]');
+  const dialog = adaptiveDialog(document.querySelector<HTMLDialogElement>('[data-pieces-dialog]')!, true);
+
+  for (const opener of document.querySelectorAll<HTMLButtonElement>('[data-open-pieces]')) {
+    opener.addEventListener('click', () => {
+      dialog.openOnPhone();
+    });
+  }
 
   // A remembered set the page no longer offers is ignored, and Anarcandy,
   // ticked in the markup, stays.
@@ -44,6 +58,8 @@ import TickBox from '../molecules/TickBox.astro';
       if (choice.checked) {
         usePieceSet(choice.value);
         rememberPieceSet(choice.value);
+        // On a phone the dialog hides the board; closing it shows the set.
+        dialog.closeOnPhone();
       }
     });
   }
@@ -74,6 +90,16 @@ import TickBox from '../molecules/TickBox.astro';
 </script>
 
 <style>
+  /* Over the board the dialog's own title names the choice already. */
+  :global(.adaptive-dialog:modal) .piece-sets legend {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
   .piece-sets {
     margin: 0;
     padding: 0;

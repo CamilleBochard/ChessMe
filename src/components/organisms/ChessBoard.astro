@@ -208,12 +208,12 @@ import BracketLabel from '../atoms/BracketLabel.astro';
 </style>
 
 <style>
-  /* The board's side: as large as fits beside the side column and above the
-     clocks and status on a wide screen, the screen's width less a margin on
-     a phone. Chessground sizes itself to its element. The 460 px kept free
-     across the screen are the game's 340 px side column and 120 px of room
-     around the board; the 220 px kept free down it hold the title, the two
-     clocks and the status. */
+  /* The board's side: as large as fits between the two side columns and
+     above the clocks and status on a wide screen, the screen's width less a
+     margin on a phone. Chessground sizes itself to its element. The 670 px
+     kept free across the screen are the game's 230 px and 320 px side
+     columns and 120 px of room around the board; the 220 px kept free down
+     it hold the title, the two clocks and the status. */
   .board-surround {
     --board-size: min(640px, calc(100vw - 48px));
     position: relative;
@@ -224,7 +224,7 @@ import BracketLabel from '../atoms/BracketLabel.astro';
 
   @media (min-width: 960px) {
     .board-surround {
-      --board-size: min(640px, calc(100vw - 460px), calc(100vh - 220px));
+      --board-size: min(640px, calc(100vw - 670px), calc(100vh - 220px));
       padding: 10px;
     }
   }

@@ -1,9 +1,12 @@
 ---
-// A game against the Bot: the board between the two clocks, with the status
-// under it, and beside it a column of the controls, the end-of-game question,
-// the moves, the panel explaining the Bot's moves and the choice of pieces.
-// The page puts its title in the header slot and what appears once a game has
-// ended in the after-game slot. The rules live in src/game/, the Bot's choice
+// A game against the Bot, in three columns on a wide screen: on the left the
+// settings of a game, its controls and the choice of pieces; in the middle
+// the board between the two clocks, with the status under it; on the right
+// the moves, always in view, the end-of-game question and the panel
+// explaining the Bot's moves. On a phone the board comes first, the settings
+// and the pieces open over it from two buttons under it, and the moves follow
+// right below. The page puts its title in the header slot and what appears
+// once a game has ended in the after-game slot. The rules live in src/game/, the Bot's choice
 // in src/engine/ and what the visitor may do when in src/session/; the script
 // below only translates between them, chessground (which draws the board and
 // handles dragging and clicking) and the markup of the components, which it
@@ -16,6 +19,7 @@ import CornerMarks from '../atoms/CornerMarks.astro';
 import HatchBlock from '../atoms/HatchBlock.astro';
 import Clock from '../molecules/Clock.astro';
 import ModelStatus from '../molecules/ModelStatus.astro';
+import PhoneTools from '../molecules/PhoneTools.astro';
 import ChessBoard from './ChessBoard.astro';
 import EndOfGameQuestion from './EndOfGameQuestion.astro';
 import ExplanationPanel from './ExplanationPanel.astro';
@@ -48,6 +52,16 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
   data-base-model={baseModelName}
   data-engine-path={enginePath}
 >
+  <aside class="settings" aria-label="Game settings">
+    <section class="side-section controls">
+      <CornerMarks />
+      <GameControls />
+    </section>
+    <section class="side-section pieces">
+      <PieceSetChoice />
+    </section>
+  </aside>
+
   <div class="stage">
     <div class="stage-head">
       <slot name="header" />
@@ -58,27 +72,21 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
     <div class="stage-foot">
       <p class="status" data-status aria-live="polite"></p>
       <HatchBlock class="foot-band" />
+      <PhoneTools />
     </div>
     <ModelStatus />
   </div>
 
-  <div class="side">
-    <section class="side-section controls">
-      <CornerMarks />
-      <GameControls />
+  <div class="record">
+    <section class="side-section moves">
+      <MoveList />
     </section>
     <section class="side-section after-game">
       <EndOfGameQuestion />
       <slot name="after-game" />
     </section>
     <section class="side-section">
-      <MoveList />
-    </section>
-    <section class="side-section">
       <ExplanationPanel />
-    </section>
-    <section class="side-section">
-      <PieceSetChoice />
     </section>
   </div>
 </div>
@@ -113,6 +121,7 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
   import { moveLoss } from '../../analysis/engine-analysis';
   import { botMovesOf, moveKeyOf, replyKey, type ExplainedMove } from '../../explanation/explained-moves';
   import { showPanel, type MoveEvaluation } from '../../explanation/panel';
+  import { adaptiveDialog } from '../adaptive-dialog';
 
   /**
    * Remembered once the model has reached the browser's cache, so that a
@@ -141,7 +150,8 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
     const boardElement = frame.querySelector<HTMLElement>('[data-board]')!;
     const statusElement = frame.querySelector<HTMLElement>('[data-status]')!;
     const modelStatus = frame.querySelector<HTMLElement>('[data-model-status]')!;
-    const setupElement = frame.querySelector<HTMLElement>('[data-setup]')!;
+    const setup = adaptiveDialog(frame.querySelector<HTMLDialogElement>('[data-setup-dialog]')!, true);
+    const setupOpeners = frame.querySelectorAll<HTMLButtonElement>('[data-open-setup]');
     const controlsElement = frame.querySelector<HTMLElement>('[data-controls]')!;
     const takeBackButton = frame.querySelector<HTMLButtonElement>('[data-take-back]')!;
     const resignButton = frame.querySelector<HTMLButtonElement>('[data-resign]')!;
@@ -206,6 +216,8 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
       },
     });
     showGame();
+    // A phone opens on the settings of a game, over the board.
+    setup.openOnPhone();
     // The clocks change every moment, not only when the game does. A few
     // redraws a second keep the seconds turning on time.
     setInterval(showClocks, 200);
@@ -214,6 +226,7 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
       button.addEventListener('click', () => {
         const colour = button.dataset.playAs as Colour;
         board.set({ orientation: colour });
+        setup.closeOnPhone();
         forgetEndedGame();
         const started = session.start(colour, { timed: isClockChosen() });
         // A game started with analysis mode on is assisted from its first
@@ -258,7 +271,16 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
     newGameButton.addEventListener('click', () => {
       forgetEndedGame();
       session.startOver();
+      setup.openOnPhone();
     });
+
+    // On a phone, the settings of a new game open from under the board at
+    // any time; the game in progress goes on until a side is picked there.
+    for (const opener of setupOpeners) {
+      opener.addEventListener('click', () => {
+        setup.openOnPhone();
+      });
+    }
 
     for (const button of impressionButtons) {
       button.addEventListener('click', () => {
@@ -285,8 +307,9 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
 
     // The arrow keys step through positions too, as on Lichess and Chess.com.
     // Left alone while the promotion dialog is open, where they belong to it.
+    // Left alone too on a form control, where they move between the choices.
     document.addEventListener('keydown', (event) => {
-      if (promotionDialog.open) {
+      if (promotionDialog.open || event.target instanceof HTMLInputElement) {
         return;
       }
       if (event.key === 'ArrowLeft') {
@@ -473,7 +496,7 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
       statusElement.textContent = statusText;
 
       const hasStarted = visitor !== null;
-      setupElement.hidden = hasStarted;
+      setup.showOnWideScreen(!hasStarted);
       controlsElement.hidden = !hasStarted;
       takeBackButton.disabled = !session.canTakeBack();
       resignButton.disabled = !session.canResign();
@@ -836,15 +859,33 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
 
 <style>
   /* On a phone everything stacks: the title, the board between the two
-     clocks, the status, then the side column's sections. From 960px the side
-     column stands on the right of the board at the portfolio's 340px, and
-     the board is centred in the rest of the screen. */
+     clocks, the status with the two buttons that open the settings and the
+     pieces, the buttons of a game in progress, then the moves and the
+     panel. From 960px three columns: the settings on the left at 230px, the
+     moves and the panel on the right at 320px, and the board centred
+     between them. */
+  .game {
+    display: flex;
+    flex-direction: column;
+  }
+
   .stage {
+    order: 1;
     display: grid;
     grid-template-columns: min-content;
     justify-content: center;
     gap: 12px;
-    padding: 20px 16px 28px;
+    padding: 20px 16px 16px;
+  }
+
+  .settings {
+    order: 2;
+  }
+
+  .record {
+    order: 3;
+    border-top: var(--line);
+    background: var(--paper);
   }
 
   .stage-head {
@@ -871,11 +912,6 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
     opacity: 0.8;
   }
 
-  .side {
-    border-top: var(--line);
-    background: var(--paper);
-  }
-
   .side-section {
     padding: 18px 20px;
     border-bottom: var(--line);
@@ -883,6 +919,21 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
 
   .side-section:last-child {
     border-bottom: 0;
+  }
+
+  /* On a phone the settings and the pieces are dialogs over the board, and
+     only the buttons of a game in progress show here, under the board. */
+  .settings .side-section {
+    padding: 0 16px;
+    border-bottom: 0;
+  }
+
+  .settings .controls:has([data-controls]:not([hidden])) {
+    padding-bottom: 16px;
+  }
+
+  .settings :global(.corner-marks) {
+    display: none;
   }
 
   /* The section that runs the game carries the registration marks, as the
@@ -906,8 +957,14 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
   @media (min-width: 960px) {
     .game {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 340px;
+      grid-template-columns: 230px minmax(0, 1fr) 320px;
       height: 100dvh;
+    }
+
+    .stage,
+    .settings,
+    .record {
+      order: 0;
     }
 
     .stage {
@@ -916,10 +973,34 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
       overflow-y: auto;
     }
 
-    .side {
+    .settings {
+      border-right: var(--line);
+      background: var(--paper);
+      overflow-y: auto;
+    }
+
+    .settings .side-section {
+      padding: 18px 20px;
+      border-bottom: var(--line);
+    }
+
+    .settings :global(.corner-marks) {
+      display: block;
+    }
+
+    .record {
       border-top: 0;
       border-left: var(--line);
       overflow-y: auto;
+    }
+
+    /* The moves stay at the top of their column while the panel scrolls
+       under them, so the history can always be walked. */
+    .moves {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: var(--paper);
     }
   }
 </style>

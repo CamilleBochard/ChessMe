@@ -1,0 +1,64 @@
+---
+// The two buttons a phone shows under the board, since its narrow screen has
+// no room for the settings column: one opens the settings of a new game, the
+// other the choice of pieces. The game's script and the piece choice find
+// them by data-open-setup and data-open-pieces. A wide screen hides them: the
+// settings are in view on the left.
+---
+
+<div class="phone-tools">
+  <button type="button" data-open-setup aria-label="Game settings" title="Game settings">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 7h9M17 7h3M4 17h3M11 17h9"></path>
+      <circle cx="15" cy="7" r="2"></circle>
+      <circle cx="9" cy="17" r="2"></circle>
+    </svg>
+  </button>
+  <button type="button" data-open-pieces aria-label="Pieces" title="Pieces">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="6.5" r="2.5"></circle>
+      <path d="M9.5 10.5h5l1.5 7h-8z"></path>
+      <path d="M6.5 17.5h11v2.5h-11z"></path>
+    </svg>
+  </button>
+</div>
+
+<style>
+  .phone-tools {
+    display: flex;
+    gap: 6px;
+  }
+
+  button {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 34px;
+    padding: 0;
+    border: var(--line);
+    background: var(--paper-light);
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  button:hover,
+  button:focus-visible {
+    background: var(--accent);
+    outline: none;
+  }
+
+  svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linejoin: round;
+  }
+
+  @media (min-width: 960px) {
+    .phone-tools {
+      display: none;
+    }
+  }
+</style>
