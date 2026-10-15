@@ -1,5 +1,6 @@
 /* The design tokens of Camille's portfolio: paper in three
-   shades, ink in three strengths, and a single accent colour. Every colour on
+   shades, ink in three strengths, a single accent colour, and the two colours
+   of the board's squares. Every colour on
    the game page comes from these variables; a shade a component needs, such as
    a tint of the accent, is mixed from them where it is used rather than
    written out again. */
@@ -13,6 +14,12 @@
   --ink-soft: color-mix(in srgb, var(--ink) 62%, transparent);
   --ink-faint: color-mix(in srgb, var(--ink) 26%, transparent);
   --accent: #ff3d1f;
+
+  /* The board: orange light squares, and dark squares a grey deep enough
+     that the light pieces stand out on them as much as the dark ones do on
+     the orange. */
+  --square-light: #f2a057;
+  --square-dark: color-mix(in srgb, var(--ink) 45%, var(--paper-deep));
 
   --line: 1px solid var(--ink);
 

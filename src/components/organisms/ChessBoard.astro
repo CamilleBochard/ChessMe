@@ -30,37 +30,41 @@ import BracketLabel from '../atoms/BracketLabel.astro';
 <style is:global>
   @import '@lichess-org/chessground/assets/chessground.base.css';
 
-  /* Light squares in light paper, dark squares in darker paper under fine ink
-     hatching. Chessground draws no element per square, so the pattern is the
-     board's background, in three layers from the top: a checkerboard that
-     covers the light squares, the hatching, then the dark paper showing
-     through. The hatching keeps a 6 px step whatever the board's size. The
-     top-left square of a board is light from either side. */
+  /* Orange light squares, and grey dark squares under fine ink hatching.
+     Chessground draws no element per square, so the pattern is the board's
+     background, in three layers from the top: a checkerboard that covers the
+     light squares, the hatching, then the dark grey showing through. The
+     hatching keeps a 6 px step whatever the board's size. The top-left
+     square of a board is light from either side. */
   .cg-wrap cg-board {
     background:
       conic-gradient(
           transparent 0 25%,
-          var(--paper-light) 0 50%,
+          var(--square-light) 0 50%,
           transparent 0 75%,
-          var(--paper-light) 0
+          var(--square-light) 0
         )
         0 0 / 25% 25%,
       repeating-linear-gradient(
         -45deg,
-        color-mix(in srgb, var(--ink) 9%, transparent) 0 1px,
+        color-mix(in srgb, var(--ink) 12%, transparent) 0 1px,
         transparent 1px 6px
       ),
-      var(--paper-deep);
+      var(--square-dark);
   }
 
+  /* The marks drawn on squares are in ink: the accent would barely show on
+     the orange squares. */
   .cg-wrap cg-board square.last-move {
-    background-color: color-mix(in srgb, var(--accent) 16%, transparent);
+    background-color: color-mix(in srgb, var(--ink) 22%, transparent);
   }
 
   .cg-wrap cg-board square.selected {
-    box-shadow: inset 0 0 0 3px var(--accent);
+    box-shadow: inset 0 0 0 3px var(--ink);
   }
 
+  /* The king in check keeps the accent hatching, on light paper so that it
+     reads on either colour of square. */
   .cg-wrap cg-board square.check {
     background:
       repeating-linear-gradient(-45deg, var(--accent) 0 2px, transparent 2px 6px),
@@ -78,12 +82,12 @@ import BracketLabel from '../atoms/BracketLabel.astro';
     content: '';
     width: 18%;
     height: 18%;
-    background: var(--accent);
+    background: var(--ink);
     clip-path: var(--octagon);
   }
 
   .cg-wrap cg-board square.move-dest:hover {
-    background: color-mix(in srgb, var(--accent) 8%, transparent);
+    background: color-mix(in srgb, var(--ink) 12%, transparent);
   }
 
   /* A piece that can be taken: four corners, 6% in from the square's edge.
@@ -94,7 +98,7 @@ import BracketLabel from '../atoms/BracketLabel.astro';
     width: auto;
     height: auto;
     background: none;
-    border: 2px solid var(--accent);
+    border: 2px solid var(--ink);
     clip-path: polygon(
       0 0, 30% 0, 30% 8%, 8% 8%, 8% 30%, 0 30%,
       0 70%, 8% 70%, 8% 92%, 30% 92%, 30% 100%, 0 100%,
