@@ -1,5 +1,6 @@
-// The panel beside the board: why the Bot played the move on display, and how
-// the game so far compares with Camille's own games. It only draws what the
+// The panel beside the board: why the Bot played the move on display, with
+// where it stood among the legal moves in large, and a chart of the Bot's
+// losses this game drawn over Camille's. It only draws what the
 // Move-Selection Engine reported with each move and what the tested functions
 // of ./explained-moves.ts and ./yardsticks.ts conclude.
 
@@ -7,21 +8,19 @@ import type { MoveLoss } from '../analysis/engine-analysis';
 import { cutName } from '../engine/move-cut';
 import type { BotMove, Candidate } from '../engine/move-selection';
 import { playMove, type Game } from '../game/game';
-import { candidateRows, moveKeyOf, type ExplainedMove } from './explained-moves';
-import { LAST_OPENING_PLY } from '../engine/move-selection';
-import { PHASE_LABELS, PHASES, type Phase } from '../evaluation/move-matching';
+import { candidateRows, moveKeyOf, rankOf, type ExplainedMove } from './explained-moves';
+import type { Phase } from '../evaluation/move-matching';
 import improbabilityFile from './improbability-yardstick.json';
+import { lossChart } from './loss-chart';
 import lossFile from './loss-yardstick.json';
 import {
-  gameImprobability,
-  gameLosses,
-  MOVES_FOR_A_VERDICT,
+  chanceBand,
+  lossProfile,
   moveRarity,
+  type Band,
   type BotLoss,
-  type BotWeighedMove,
   type ShippedImprobabilityYardstick,
   type ShippedLossYardstick,
-  type Verdict,
 } from './yardsticks';
 
 const improbabilityYardstick = improbabilityFile as ShippedImprobabilityYardstick;
@@ -38,15 +37,16 @@ export interface PanelView {
   focus: ExplainedMove | null;
   /** Every move the Bot has played in the game so far, oldest first. */
   botMoves: ExplainedMove[];
+  /** True while Stockfish evaluates the Bot's moves: in analysis mode, and once a game is over. */
   analysisOn: boolean;
-  /** What analysis mode knows of each move, filed as moveKeyOf files it. */
+  /** What Stockfish knows of each move, filed as moveKeyOf files it. */
   evaluations: Map<string, MoveEvaluation>;
 }
 
 /** Draws the panel into its two containers. */
-export function showPanel(moveElement: HTMLElement, gameElement: HTMLElement, view: PanelView): void {
+export function showPanel(moveElement: HTMLElement, chartElement: HTMLElement, view: PanelView): void {
   moveElement.replaceChildren(...moveExplanation(view));
-  gameElement.replaceChildren(...gameComparison(view));
+  chartElement.replaceChildren(...lossComparison(view));
 }
 
 function moveExplanation(view: PanelView): HTMLElement[] {
@@ -56,8 +56,8 @@ function moveExplanation(view: PanelView): HTMLElement[] {
   }
 
   const heading = paragraph(`${moveNumber(explained.ply)} ${explained.san}`, 'move-heading');
-  const parts: HTMLElement[] = [heading];
   const botMove = explained.botMove;
+  const parts: HTMLElement[] = [rankBlock(botMove), heading];
 
   if (botMove.source === 'opening-book') {
     parts.push(bookExplanation(explained.san, botMove.counts));
@@ -92,14 +92,36 @@ function baseModelExplanation(explained: ExplainedMove, botMove: ModelMove): HTM
     `From the Base Model, out of ${botMove.legalMoves} legal moves, drawn at temperature ${botMove.temperature} ${drawnAmong}.`,
   );
 
-  let rankText = `It was the model's most likely move.`;
-  if (botMove.rank > 1) {
-    rankText = `It was the model's ${ordinal(botMove.rank)} most likely move.`;
-  }
-
   const table = candidateTable(explained.before, botMove);
   const rarity = rarityLine(explained.phase, playedCandidate(botMove));
-  return [how, table, paragraph(rankText), rarity];
+  return [how, table, rarity];
+}
+
+/** Where the move stood, in large, and what the figure means beside it. */
+function rankBlock(botMove: BotMove): HTMLElement {
+  const block = document.createElement('p');
+  block.className = 'move-rank';
+  const figure = document.createElement('span');
+  figure.className = 'rank-figure';
+  figure.textContent = rankOf(botMove);
+  const meaning = document.createElement('span');
+  meaning.className = 'rank-meaning';
+  meaning.textContent = rankMeaning(botMove);
+  block.append(figure, meaning);
+  return block;
+}
+
+function rankMeaning(botMove: BotMove): string {
+  if (botMove.source === 'opening-book') {
+    return "Camille's own reply, from the Opening Book";
+  }
+  if (botMove.source === 'random') {
+    return 'Picked at random: the Base Model was not available';
+  }
+  if (botMove.rank === 1) {
+    return `The model's most likely of ${botMove.legalMoves} legal moves`;
+  }
+  return `The model's ${ordinal(botMove.rank)} most likely of ${botMove.legalMoves} legal moves`;
 }
 
 /** The candidate the Bot played, among those the model weighed. */
@@ -172,53 +194,57 @@ function lossLine(evaluation: MoveEvaluation | undefined): HTMLElement {
   return paragraph(`Stockfish: the move lost ${evaluation.centipawnLoss} centipawns against the best move.`, 'loss');
 }
 
-/** Per Phase, the game's share of improbable moves and, in analysis mode, its average loss, against Camille's games. */
-function gameComparison(view: PanelView): HTMLElement[] {
-  const fromModel: BotWeighedMove[] = [];
-  for (const explained of view.botMoves) {
-    const botMove = explained.botMove;
-    if (botMove.source !== 'base-model') {
-      continue;
-    }
-    const played = playedCandidate(botMove);
-    fromModel.push({ phase: explained.phase, probability: played.modelProbability });
-  }
-  const improbability = gameImprobability(fromModel, improbabilityYardstick);
-
-  let losses: Record<Phase, Verdict> | null = null;
-  if (view.analysisOn) {
-    losses = gameLosses(evaluatedLosses(view), lossYardstick);
+/**
+ * The chart of the Bot's losses this game over Camille's, with a legend
+ * naming how many moves each curve is read from and a line saying when the
+ * Bot's curve is drawn.
+ */
+function lossComparison(view: PanelView): HTMLElement[] {
+  const camille = lossYardstick.profile;
+  const bot = lossProfile(evaluatedLosses(view));
+  let band: Band | null = null;
+  if (bot.moves > 0) {
+    band = chanceBand(camille, bot.moves);
   }
 
-  const list = document.createElement('dl');
-  list.className = 'phases';
-  for (const phase of PHASES) {
-    const term = document.createElement('dt');
-    term.textContent = PHASE_LABELS[phase];
-    const improbable = document.createElement('dd');
-    improbable.textContent = improbabilityText(phase, improbability[phase]);
-    list.append(term, improbable);
-    if (losses !== null) {
-      const loss = document.createElement('dd');
-      loss.textContent = lossText(phase, losses[phase]);
-      list.append(loss);
-    }
+  const legend = document.createElement('ul');
+  legend.className = 'chart-legend';
+  legend.append(legendItem('camille', `Camille, ${camille.moves.toLocaleString('en')} moves`));
+  if (bot.moves > 0) {
+    legend.append(legendItem('bot', `The Bot this game, ${bot.moves} ${moves(bot.moves)}`));
+    legend.append(legendItem('band', `Where chance alone puts Camille on ${bot.moves} ${moves(bot.moves)}`));
   }
 
-  const sources = [
-    `His usual range is the middle 80% of his games, from ${MOVES_FOR_A_VERDICT} moves in a Phase up. ` +
-      `Moves under 1%: the Base Model's own probabilities, on his ${improbabilityYardstick.games} games held back for testing.`,
+  const figure = document.createElement('div');
+  figure.className = 'chart';
+  figure.append(lossChart(camille, bot, band));
+
+  const notes = [
+    'Share of moves that lost at most so many centipawns, in positions still open. ' +
+      'Higher and further left: fewer and smaller mistakes.',
   ];
-  if (view.analysisOn) {
-    sources.push(
-      `Losses: ${lossYardstick.engine} at depth ${lossYardstick.depth}, the settings used here, on all ${lossYardstick.games} of his games, ` +
-        `counting only the moves made in open positions.`,
-    );
+  if (!view.analysisOn) {
+    notes.push("The Bot's curve is drawn move by move in analysis mode, and for every game once it is over.");
+  } else if (bot.moves === 0) {
+    notes.push("Stockfish is evaluating the Bot's moves…");
   }
-  return [list, paragraph(sources.join(' '), 'sources')];
+  notes.push(
+    `Camille: all ${lossYardstick.games} of his games, ${lossYardstick.engine} at depth ${lossYardstick.depth}, ` +
+      'the settings used here.',
+  );
+  return [legend, figure, paragraph(notes.join(' '), 'sources')];
 }
 
-/** The Bot's moves analysis mode has evaluated so far. */
+function legendItem(who: 'camille' | 'bot' | 'band', text: string): HTMLLIElement {
+  const item = document.createElement('li');
+  const swatch = document.createElement('span');
+  swatch.className = `swatch ${who}`;
+  swatch.setAttribute('aria-hidden', 'true');
+  item.append(swatch, text);
+  return item;
+}
+
+/** The Bot's moves Stockfish has evaluated so far. */
 function evaluatedLosses(view: PanelView): BotLoss[] {
   const losses: BotLoss[] = [];
   for (const explained of view.botMoves) {
@@ -229,46 +255,6 @@ function evaluatedLosses(view: PanelView): BotLoss[] {
     losses.push({ phase: explained.phase, ...evaluation });
   }
   return losses;
-}
-
-function improbabilityText(phase: Phase, verdict: Verdict): string {
-  if (verdict.kind === 'too-few-moves') {
-    return tooFewText('Moves under 1%', phase, `${verdict.moves} Base Model ${moves(verdict.moves)} so far`);
-  }
-  const improbableMoves = Math.round(verdict.figure * verdict.moves);
-  const range = `${percent(verdict.spread.low)} to ${percent(verdict.spread.high)}`;
-  return `Moves under 1%: ${improbableMoves} of ${verdict.moves} (${percent(verdict.figure)}), ${placement(verdict)} (${range}).`;
-}
-
-function lossText(phase: Phase, verdict: Verdict): string {
-  if (verdict.kind === 'too-few-moves') {
-    const evaluated = `${verdict.moves} ${moves(verdict.moves)} in open positions evaluated so far`;
-    return tooFewText('Average loss', phase, evaluated);
-  }
-  const range = `${Math.round(verdict.spread.low)} to ${Math.round(verdict.spread.high)} cp`;
-  return `Average loss: ${Math.round(verdict.figure)} cp over ${verdict.moves} moves, ${placement(verdict)} (${range}).`;
-}
-
-/**
- * Why a Phase has no verdict yet. The opening is never long enough: it
- * holds at most five of a player's moves, below the eight a verdict needs.
- */
-function tooFewText(figure: string, phase: Phase, counted: string): string {
-  if (phase === 'opening') {
-    const botMovesInOpening = LAST_OPENING_PLY / 2;
-    return `${figure}: the opening holds at most ${botMovesInOpening} of the Bot's moves, too few to tell from one game.`;
-  }
-  return `${figure}: ${counted}, too few to tell (${MOVES_FOR_A_VERDICT} needed).`;
-}
-
-function placement(verdict: Extract<Verdict, { kind: 'inside' | 'below' | 'above' }>): string {
-  if (verdict.kind === 'below') {
-    return 'below his usual range';
-  }
-  if (verdict.kind === 'above') {
-    return 'above his usual range';
-  }
-  return 'inside his usual range';
 }
 
 /** "12." for White's twelfth move, "12…" for Black's. */

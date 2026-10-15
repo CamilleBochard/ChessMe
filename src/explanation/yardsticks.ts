@@ -1,6 +1,7 @@
 // Camille's yardsticks, against which the panel beside the board sets each of
 // the Bot's moves and the game so far: how often he plays a move the Base
-// Model finds this unlikely, and the range his own games cover.
+// Model finds this unlikely, the range his own games cover, and the profile
+// of his losses the Bot's are drawn over.
 // Built under Node by scripts/yardsticks.ts and shipped with the site as JSON.
 // Free of anything DOM or Node.
 
@@ -264,54 +265,4 @@ export function chanceBand(camille: LossProfile, moves: number): Band {
     high.push(Math.min(1, highest));
   }
   return { low: low, high: high };
-}
-
-/** How a figure of the game so far compares with Camille's games, in one Phase. */
-export type Verdict =
-  /** Fewer moves than MOVES_FOR_A_VERDICT: one game this short cannot be told apart from his. */
-  | { kind: 'too-few-moves'; moves: number }
-  /** Inside the range the middle 80% of his games cover, or below or above it. */
-  | { kind: 'inside' | 'below' | 'above'; moves: number; figure: number; spread: Spread };
-
-/**
- * Per Phase, the share of the Bot's Base Model moves so far the model gave
- * less than 1%, set against the spread of the same share across Camille's
- * games.
- */
-export function gameImprobability(botMoves: BotWeighedMove[], yardstick: ImprobabilityYardstick): Record<Phase, Verdict> {
-  return perPhase((phase) => {
-    const inPhase = botMoves.filter((move) => move.phase === phase);
-    return againstSpread(inPhase, shareImprobable, yardstick.phases[phase].perGame);
-  });
-}
-
-/** The game's figure in one Phase, read from its moves there, against the spread of Camille's games. */
-function againstSpread<Move>(moves: Move[], figureOf: (moves: Move[]) => number, spread: Spread | null): Verdict {
-  // Without a spread, none of his games had enough moves in the Phase
-  // either, so the game has too few for a verdict as well.
-  if (moves.length < MOVES_FOR_A_VERDICT || spread === null) {
-    return { kind: 'too-few-moves', moves: moves.length };
-  }
-  const figure = figureOf(moves);
-  if (figure < spread.low) {
-    return { kind: 'below', moves: moves.length, figure: figure, spread: spread };
-  }
-  if (figure > spread.high) {
-    return { kind: 'above', moves: moves.length, figure: figure, spread: spread };
-  }
-  return { kind: 'inside', moves: moves.length, figure: figure, spread: spread };
-}
-
-/**
- * Per Phase, the Bot's average loss so far over its moves in open positions,
- * set against the spread of the same average across Camille's games. Every
- * move counts, the Opening Book's too, as every one of his moves counts in
- * his.
- */
-export function gameLosses(botMoves: BotLoss[], yardstick: LossYardstick): Record<Phase, Verdict> {
-  const open = botMoves.filter((move) => move.openPosition);
-  return perPhase((phase) => {
-    const inPhase = open.filter((move) => move.phase === phase);
-    return againstSpread(inPhase, averageLoss, yardstick.phases[phase].perGame);
-  });
 }
