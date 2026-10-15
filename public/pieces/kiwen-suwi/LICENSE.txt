@@ -1,9 +1,0 @@
-Kiwen Suwi chess pieces
-
-Author: neverRare (https://github.com/neverRare)
-Source: https://github.com/lichess-org/lila/tree/master/public/piece/kiwen-suwi
-License: Creative Commons Attribution 4.0 International (CC BY 4.0),
-https://creativecommons.org/licenses/by/4.0/
-as listed in https://github.com/lichess-org/lila/blob/master/COPYING.md.
-
-The twelve images are used unmodified.

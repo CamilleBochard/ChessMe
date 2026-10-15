@@ -11,16 +11,15 @@ import TickBox from '../molecules/TickBox.astro';
 <fieldset class="piece-sets">
   <legend><BracketLabel text="Pieces" /></legend>
   <div class="choices">
-    <TickBox type="radio" name="piece-set" value="classic" data-piece-set-choice checked>Classic</TickBox>
-    <TickBox type="radio" name="piece-set" value="pixel" data-piece-set-choice>Pixel</TickBox>
-    <TickBox type="radio" name="piece-set" value="kiwen-suwi" data-piece-set-choice>Kiwen Suwi</TickBox>
+    <TickBox type="radio" name="piece-set" value="anarcandy" data-piece-set-choice checked>Anarcandy</TickBox>
+    <TickBox type="radio" name="piece-set" value="classic" data-piece-set-choice>Classic</TickBox>
     <TickBox type="radio" name="piece-set" value="candy" data-piece-set-choice>Candy</TickBox>
     <TickBox type="radio" name="piece-set" value="mech" data-piece-set-choice>Mech</TickBox>
   </div>
   <p class="credits">
-    Pixel by therealqtpi (AGPL-3.0). Kiwen Suwi by <a href="https://github.com/neverRare">neverRare</a>
-    (<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>). Both from
-    <a href="https://github.com/lichess-org/lila">Lichess</a>, unmodified.
+    Anarcandy by <a href="https://github.com/caderek">caderek</a>,
+    from <a href="https://github.com/lichess-org/lila/tree/master/public/piece/anarcandy">Lichess</a>,
+    used unmodified under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>.
   </p>
 </fieldset>
 
@@ -30,8 +29,8 @@ import TickBox from '../molecules/TickBox.astro';
 
   const choices = document.querySelectorAll<HTMLInputElement>('[data-piece-set-choice]');
 
-  // A remembered set the page no longer offers is ignored, and the classic
-  // set, ticked in the markup, stays.
+  // A remembered set the page no longer offers is ignored, and Anarcandy,
+  // ticked in the markup, stays.
   const remembered = rememberedPieceSet();
   for (const choice of choices) {
     if (choice.value === remembered) {
@@ -55,7 +54,7 @@ import TickBox from '../molecules/TickBox.astro';
 
   /**
    * The set chosen on an earlier visit, or null. Storage can be refused, in
-   * which case the page simply opens on the classic set.
+   * which case the page simply opens on Anarcandy.
    */
   function rememberedPieceSet(): string | null {
     try {

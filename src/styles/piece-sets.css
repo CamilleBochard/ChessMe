@@ -1,14 +1,34 @@
 /* The sets of pieces the board can be drawn with. Each set names its twelve
    images and how much of a square they fill; the board and the promotion
-   dialog only read these variables. The classic set is the default, and the
+   dialog only read these variables. Anarcandy is the default, and the
    visitor's choice of another is marked on the html element, so that one
    attribute changes every piece on the page. The paths are absolute because
    a relative url() in a variable would resolve against whichever stylesheet
    reads it. */
+
+/* Anarcandy by caderek, from Lichess, under CC BY-NC-SA 4.0; see
+   public/pieces/anarcandy/LICENSE.txt. Drawn to the edge of their images, so
+   they are shrunk to leave the square's marks room around them. */
 :root {
-  /* Filled glyphs from DejaVu Sans, White in light paper outlined in ink,
-     Black in ink; see public/pieces/classic/LICENSE-DejaVu.txt. Their
-     margins are in the images, which fill the whole square. */
+  --piece-size: 86%;
+  --piece-wK: url('/pieces/anarcandy/wK.svg');
+  --piece-wQ: url('/pieces/anarcandy/wQ.svg');
+  --piece-wR: url('/pieces/anarcandy/wR.svg');
+  --piece-wB: url('/pieces/anarcandy/wB.svg');
+  --piece-wN: url('/pieces/anarcandy/wN.svg');
+  --piece-wP: url('/pieces/anarcandy/wP.svg');
+  --piece-bK: url('/pieces/anarcandy/bK.svg');
+  --piece-bQ: url('/pieces/anarcandy/bQ.svg');
+  --piece-bR: url('/pieces/anarcandy/bR.svg');
+  --piece-bB: url('/pieces/anarcandy/bB.svg');
+  --piece-bN: url('/pieces/anarcandy/bN.svg');
+  --piece-bP: url('/pieces/anarcandy/bP.svg');
+}
+
+/* Filled glyphs from DejaVu Sans, White in light paper outlined in ink,
+   Black in ink; see public/pieces/classic/LICENSE-DejaVu.txt. Their
+   margins are in the images, which fill the whole square. */
+html[data-piece-set='classic'] {
   --piece-size: 100%;
   --piece-wK: url('/pieces/classic/wK.svg');
   --piece-wQ: url('/pieces/classic/wQ.svg');
@@ -22,43 +42,6 @@
   --piece-bB: url('/pieces/classic/bB.svg');
   --piece-bN: url('/pieces/classic/bN.svg');
   --piece-bP: url('/pieces/classic/bP.svg');
-}
-
-/* Pixel art by therealqtpi, from Lichess, under the AGPL-3.0 or later; see
-   public/pieces/pixel/LICENSE.txt. Drawn to the edge of their images, so
-   they are shrunk to leave the square's marks room around them. */
-html[data-piece-set='pixel'] {
-  --piece-size: 82%;
-  --piece-wK: url('/pieces/pixel/wK.svg');
-  --piece-wQ: url('/pieces/pixel/wQ.svg');
-  --piece-wR: url('/pieces/pixel/wR.svg');
-  --piece-wB: url('/pieces/pixel/wB.svg');
-  --piece-wN: url('/pieces/pixel/wN.svg');
-  --piece-wP: url('/pieces/pixel/wP.svg');
-  --piece-bK: url('/pieces/pixel/bK.svg');
-  --piece-bQ: url('/pieces/pixel/bQ.svg');
-  --piece-bR: url('/pieces/pixel/bR.svg');
-  --piece-bB: url('/pieces/pixel/bB.svg');
-  --piece-bN: url('/pieces/pixel/bN.svg');
-  --piece-bP: url('/pieces/pixel/bP.svg');
-}
-
-/* Kiwen Suwi by neverRare, from Lichess, under CC BY 4.0; see
-   public/pieces/kiwen-suwi/LICENSE.txt. Shrunk like the pixel set. */
-html[data-piece-set='kiwen-suwi'] {
-  --piece-size: 82%;
-  --piece-wK: url('/pieces/kiwen-suwi/wK.svg');
-  --piece-wQ: url('/pieces/kiwen-suwi/wQ.svg');
-  --piece-wR: url('/pieces/kiwen-suwi/wR.svg');
-  --piece-wB: url('/pieces/kiwen-suwi/wB.svg');
-  --piece-wN: url('/pieces/kiwen-suwi/wN.svg');
-  --piece-wP: url('/pieces/kiwen-suwi/wP.svg');
-  --piece-bK: url('/pieces/kiwen-suwi/bK.svg');
-  --piece-bQ: url('/pieces/kiwen-suwi/bQ.svg');
-  --piece-bR: url('/pieces/kiwen-suwi/bR.svg');
-  --piece-bB: url('/pieces/kiwen-suwi/bB.svg');
-  --piece-bN: url('/pieces/kiwen-suwi/bN.svg');
-  --piece-bP: url('/pieces/kiwen-suwi/bP.svg');
 }
 
 /* Candy, drawn for ChessMe in pink and navy; see
@@ -81,7 +64,7 @@ html[data-piece-set='candy'] {
 
 /* Mech, pixel-art robots drawn for ChessMe; see
    public/pieces/mech/LICENSE.txt. Drawn to the edge of their grid, so
-   shrunk like the Lichess sets. */
+   shrunk like Anarcandy. */
 html[data-piece-set='mech'] {
   --piece-size: 82%;
   --piece-wK: url('/pieces/mech/wK.svg');
