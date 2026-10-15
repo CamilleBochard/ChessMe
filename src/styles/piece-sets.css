@@ -60,3 +60,21 @@ html[data-piece-set='kiwen-suwi'] {
   --piece-bN: url('/pieces/kiwen-suwi/bN.svg');
   --piece-bP: url('/pieces/kiwen-suwi/bP.svg');
 }
+
+/* Candy, drawn for ChessMe in pink and navy; see
+   public/pieces/candy/LICENSE.txt. Its images keep a margin of their own. */
+html[data-piece-set='candy'] {
+  --piece-size: 92%;
+  --piece-wK: url('/pieces/candy/wK.svg');
+  --piece-wQ: url('/pieces/candy/wQ.svg');
+  --piece-wR: url('/pieces/candy/wR.svg');
+  --piece-wB: url('/pieces/candy/wB.svg');
+  --piece-wN: url('/pieces/candy/wN.svg');
+  --piece-wP: url('/pieces/candy/wP.svg');
+  --piece-bK: url('/pieces/candy/bK.svg');
+  --piece-bQ: url('/pieces/candy/bQ.svg');
+  --piece-bR: url('/pieces/candy/bR.svg');
+  --piece-bB: url('/pieces/candy/bB.svg');
+  --piece-bN: url('/pieces/candy/bN.svg');
+  --piece-bP: url('/pieces/candy/bP.svg');
+}
