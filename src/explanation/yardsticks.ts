@@ -237,6 +237,35 @@ export function lossProfile(moves: MoveLoss[]): LossProfile {
   return { moves: open.length, atMost: atMost };
 }
 
+/** How many standard errors cover the middle 80% of a normal distribution. */
+const MIDDLE_80_PERCENT = 1.2816;
+
+/** For each edge of a profile, the lowest and highest share chance alone would read. */
+export interface Band {
+  low: number[];
+  high: number[];
+}
+
+/**
+ * The band in which Camille's own profile would fall eight times in ten if
+ * it were read from only as many moves as the Bot has played. A curve of the
+ * Bot inside it cannot be told apart from his on so few moves. Each share is
+ * spread as a proportion read from that many independent moves; a game's
+ * moves are not quite independent, so the true band is somewhat wider.
+ */
+export function chanceBand(camille: LossProfile, moves: number): Band {
+  const low: number[] = [];
+  const high: number[] = [];
+  for (const share of camille.atMost) {
+    const standardError = Math.sqrt((share * (1 - share)) / moves);
+    const lowest = share - MIDDLE_80_PERCENT * standardError;
+    const highest = share + MIDDLE_80_PERCENT * standardError;
+    low.push(Math.max(0, lowest));
+    high.push(Math.min(1, highest));
+  }
+  return { low: low, high: high };
+}
+
 /** How a figure of the game so far compares with Camille's games, in one Phase. */
 export type Verdict =
   /** Fewer moves than MOVES_FOR_A_VERDICT: one game this short cannot be told apart from his. */

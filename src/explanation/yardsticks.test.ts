@@ -8,6 +8,7 @@ import {
   gameImprobability,
   gameLosses,
   improbabilityYardstick,
+  chanceBand,
   LOSS_PROFILE_EDGES,
   lossProfile,
   lossYardstick,
@@ -226,5 +227,27 @@ describe('a profile of losses', () => {
     const profile = lossProfile([{ centipawnLoss: 0, openPosition: false }]);
 
     expect(profile).toEqual({ moves: 0, atMost: [] });
+  });
+});
+
+describe('the band chance alone leaves around his profile', () => {
+  it('spreads each share by the 80% range of a sample as small as the Bot\'s', () => {
+    // A share of a half read on 100 moves strays by 1.2816 standard errors,
+    // 0.05 each, eight times in ten.
+    const camille = { moves: 28000, atMost: [0.5] };
+
+    const band = chanceBand(camille, 100);
+
+    expect(band.low[0]).toBeCloseTo(0.5 - 0.06408, 4);
+    expect(band.high[0]).toBeCloseTo(0.5 + 0.06408, 4);
+  });
+
+  it('stays between no move and every move', () => {
+    const camille = { moves: 28000, atMost: [0.02, 0.99] };
+
+    const band = chanceBand(camille, 4);
+
+    expect(band.low[0]).toBe(0);
+    expect(band.high[1]).toBe(1);
   });
 });
