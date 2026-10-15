@@ -3,6 +3,8 @@
 // The game's script fills both in, finds the clock by its position above or
 // below the board, and marks the clock that is running, which turns to ink
 // with an accent square so the eye finds whose time is going without reading.
+// In a game without a clock the script marks it untimed: the name stays and
+// the time is hidden.
 interface Props {
   position: 'top' | 'bottom';
 }
@@ -37,6 +39,12 @@ const { position } = Astro.props;
     font-size: 16px;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Hidden but still taking its room, so the board does not move when the
+     visitor switches the clock on or off. */
+  .clock.untimed .clock-time {
+    visibility: hidden;
   }
 
   .clock.running {

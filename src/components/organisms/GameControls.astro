@@ -1,13 +1,21 @@
 ---
-// The buttons that run a game: before it starts, the choice of a side; once
-// it has, take back, resign and start over. The game's script shows one group
-// or the other and enables only what the Session Game allows right now.
+// The controls that run a game: before it starts, whether to play with a
+// clock and then the choice of a side, which starts the game; once it has,
+// take back, resign and start over. The game's script shows one group or the
+// other, reads the clock choice through data-clock-choice, and enables only
+// what the Session Game allows right now.
 import BracketLabel from '../atoms/BracketLabel.astro';
 import GameButton from '../molecules/GameButton.astro';
+import TickBox from '../molecules/TickBox.astro';
 ---
 
 <div class="game-controls">
   <div class="choices" data-setup>
+    <fieldset class="clock-choice">
+      <legend><BracketLabel text="Clock" /></legend>
+      <TickBox type="radio" name="clock" value="timed" data-clock-choice checked>10 minutes</TickBox>
+      <TickBox type="radio" name="clock" value="untimed" data-clock-choice>No clock</TickBox>
+    </fieldset>
     <BracketLabel text="Play as" />
     <div class="buttons">
       <GameButton accent data-play-as="white">White</GameButton>
@@ -28,6 +36,21 @@ import GameButton from '../molecules/GameButton.astro';
   .buttons:not([hidden]) {
     display: grid;
     gap: 10px;
+  }
+
+  .clock-choice {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 20px;
+    margin: 0 0 8px;
+    padding: 0;
+    border: 0;
+  }
+
+  .clock-choice legend {
+    width: 100%;
+    margin-bottom: 10px;
+    padding: 0;
   }
 
   .buttons :global(.game-button) {

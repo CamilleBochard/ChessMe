@@ -142,6 +142,7 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
     const takeBackButton = frame.querySelector<HTMLButtonElement>('[data-take-back]')!;
     const resignButton = frame.querySelector<HTMLButtonElement>('[data-resign]')!;
     const newGameButton = frame.querySelector<HTMLButtonElement>('[data-new-game]')!;
+    const clockChoices = frame.querySelectorAll<HTMLInputElement>('[data-clock-choice]');
     const moveListElement = frame.querySelector<HTMLOListElement>('[data-move-list]')!;
     const viewBackButton = frame.querySelector<HTMLButtonElement>('[data-view-back]')!;
     const viewForwardButton = frame.querySelector<HTMLButtonElement>('[data-view-forward]')!;
@@ -210,7 +211,7 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
         const colour = button.dataset.playAs as Colour;
         board.set({ orientation: colour });
         forgetEndedGame();
-        const started = session.start(colour);
+        const started = session.start(colour, { timed: isClockChosen() });
         // A game started with analysis mode on is assisted from its first move.
         if (analysis !== null) {
           session.markAssisted();
@@ -221,6 +222,11 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
           showGame();
         });
       });
+    }
+
+    // Before a game starts, the clocks follow the choice of a clock as it is made.
+    for (const choice of clockChoices) {
+      choice.addEventListener('change', showClocks);
     }
 
     takeBackButton.addEventListener('click', () => {
@@ -567,14 +573,33 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
       }
     }
 
-    /** The visitor's clock under the board and the Bot's above it, the running one marked. */
-    function showClocks(): void {
-      const faces = clockFaces(session.visitor());
-      showClock(topClock, faces.top);
-      showClock(bottomClock, faces.bottom);
+    /** True when the visitor has chosen, or left chosen, to play with a clock. */
+    function isClockChosen(): boolean {
+      for (const choice of clockChoices) {
+        if (choice.checked) {
+          return choice.value === 'timed';
+        }
+      }
+      return true;
     }
 
-    function showClock(element: HTMLElement, face: ClockFace): void {
+    /**
+     * The visitor's clock under the board and the Bot's above it, the running
+     * one marked. Without a clock they keep the players' names and show no
+     * time: the game's own setting once it has started, the visitor's choice
+     * before.
+     */
+    function showClocks(): void {
+      const faces = clockFaces(session.visitor());
+      let showsTime = isClockChosen();
+      if (session.visitor() !== null) {
+        showsTime = session.isTimed();
+      }
+      showClock(topClock, faces.top, showsTime);
+      showClock(bottomClock, faces.bottom, showsTime);
+    }
+
+    function showClock(element: HTMLElement, face: ClockFace, showsTime: boolean): void {
       const nameElement = element.querySelector<HTMLElement>('[data-clock-name]')!;
       const timeElement = element.querySelector<HTMLElement>('[data-clock-time]')!;
       const timeLeft = session.timeLeft(face.side);
@@ -582,6 +607,7 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
 
       nameElement.textContent = face.name;
       timeElement.textContent = formatClockTime(timeLeft);
+      element.classList.toggle('untimed', !showsTime);
       element.classList.toggle('running', isRunning);
     }
   }
