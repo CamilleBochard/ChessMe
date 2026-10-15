@@ -15,10 +15,10 @@
   --ink-faint: color-mix(in srgb, var(--ink) 26%, transparent);
   --accent: #ff3d1f;
 
-  /* The board: pale orange light squares, and dark squares in the darker
-     paper. */
-  --square-light: #f2a057;
-  --square-dark: var(--paper-deep);
+  /* The board: light squares in the darker paper, and pale orange dark
+     squares. */
+  --square-light: var(--paper-deep);
+  --square-dark: #f2a057;
 
   --line: 1px solid var(--ink);
 
