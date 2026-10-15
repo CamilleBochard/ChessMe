@@ -655,6 +655,59 @@ describe('the clock', () => {
   });
 });
 
+describe('a game without a clock', () => {
+  const TEN_MINUTES = 10 * 60 * 1000;
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('never ends on time, however long the visitor thinks', async () => {
+    const session = createSessionGame({ chooseMove: scriptedBot([{ from: 'e7', to: 'e5' }]) });
+    await session.start('white', { timed: false });
+    await session.playVisitorMove({ from: 'e2', to: 'e4' });
+
+    vi.advanceTimersByTime(3 * TEN_MINUTES);
+
+    expect(gameStatus(session.game())).toEqual({ kind: 'ongoing' });
+  });
+
+  it('keeps the clock stopped after taking back a move that lost to checkmate', async () => {
+    const session = createSessionGame({
+      chooseMove: scriptedBot([
+        { from: 'e7', to: 'e5' },
+        { from: 'd8', to: 'h4' },
+      ]),
+    });
+    await session.start('white', { timed: false });
+    await session.playVisitorMove({ from: 'f2', to: 'f3' });
+    await session.playVisitorMove({ from: 'g2', to: 'g4' });
+
+    session.takeBack();
+    vi.advanceTimersByTime(3 * TEN_MINUTES);
+
+    expect(session.runningClock()).toBeNull();
+    expect(gameStatus(session.game())).toEqual({ kind: 'ongoing' });
+  });
+
+  it('says whether the game in progress is timed, for the page to show the clocks or not', async () => {
+    const session = createSessionGame({ chooseMove: scriptedBot([]) });
+
+    await session.start('white', { timed: false });
+    const untimedGame = session.isTimed();
+    await session.start('white', { timed: true });
+    const timedGame = session.isTimed();
+
+    expect(untimedGame).toBe(false);
+    expect(timedGame).toBe(true);
+  });
+});
+
 describe('the clock faces', () => {
   it('puts the visitor under the board as You and the Bot above it', () => {
     expect(clockFaces('black')).toEqual({

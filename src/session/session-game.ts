@@ -64,6 +64,12 @@ export interface SessionGameOptions {
   onGameEnd?: (finished: FinishedGame) => void;
 }
 
+/** How a game is played, chosen by the visitor before it starts. */
+export interface GameSettings {
+  /** True for ten minutes a side, false for a game with no clock at all. */
+  timed: boolean;
+}
+
 export interface SessionGame {
   /** The game as it stands now. */
   game(): Game;
@@ -73,13 +79,19 @@ export interface SessionGame {
   status(): string;
   /** The time the side has left on its clock right now, in milliseconds. */
   timeLeft(side: Colour): number;
-  /** The side whose clock is running, or null before the first move and once the game has ended. */
-  runningClock(): Colour | null;
   /**
-   * Starts a fresh game with the visitor on the given side. Resolves once the
-   * Bot has played its opening move, if it has the first move.
+   * The side whose clock is running, or null before the first move, once
+   * the game has ended, and throughout an untimed game.
    */
-  start(visitor: Colour): Promise<void>;
+  runningClock(): Colour | null;
+  /** True when the game in progress is played against the clock. */
+  isTimed(): boolean;
+  /**
+   * Starts a fresh game with the visitor on the given side, timed unless the
+   * settings say otherwise. Resolves once the Bot has played its opening
+   * move, if it has the first move.
+   */
+  start(visitor: Colour, settings?: GameSettings): Promise<void>;
   /**
    * Plays the visitor's move and then the Bot's reply, if the game goes on.
    * Resolves to false when the move is refused, which is the board's signal to
@@ -150,6 +162,9 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
   // ply replaces it, and only the plies of the game as it stands are read.
   const botMoveSources = new Map<number, MoveSource>();
   let clock: Clock = newClock();
+  // Whether the game in progress is played against the clock. An untimed
+  // game never starts it, so neither side's time ever runs.
+  let timed = true;
   // Wakes the session when the running clock reaches zero, since a flag can
   // fall while nobody moves.
   let flagTimer: ReturnType<typeof setTimeout> | undefined = undefined;
@@ -214,9 +229,11 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
     });
   }
 
-  /** Plays a move on the game and passes the turn on the clock. */
+  /** Plays a move on the game and, in a timed game, passes the turn on the clock. */
   function playOnBoard(next: Game): void {
-    clock = startTurn(clock, sideToMove(next), Date.now());
+    if (timed) {
+      clock = startTurn(clock, sideToMove(next), Date.now());
+    }
     setGame(next);
     watchForFlag();
   }
@@ -364,8 +381,11 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
 
     runningClock: () => clock.running,
 
-    async start(side: Colour): Promise<void> {
+    isTimed: () => timed,
+
+    async start(side: Colour, settings: GameSettings = { timed: true }): Promise<void> {
       visitor = side;
+      timed = settings.timed;
       assisted = false;
       resetBothClocks();
       setGame(newGame());
@@ -415,7 +435,7 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
       // Taking back a move that ended the game, a checkmate or a draw,
       // reopens it, and the clock that stopped with it runs again for the
       // side to move. No time comes back.
-      if (clock.running === null && gameStatus(game).kind === 'ongoing') {
+      if (timed && clock.running === null && gameStatus(game).kind === 'ongoing') {
         clock = startTurn(clock, sideToMove(game), Date.now());
         watchForFlag();
       }
