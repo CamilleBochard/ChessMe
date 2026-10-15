@@ -1,6 +1,6 @@
 // The panel beside the board: why the Bot played the move on display, with
 // where it stood among the legal moves in large, and a chart of the Bot's
-// losses this game drawn over Camille's. It only draws what the
+// losses this game drawn over Camille's, live but a few moves behind. It only draws what the
 // Move-Selection Engine reported with each move and what the tested functions
 // of ./explained-moves.ts and ./yardsticks.ts conclude.
 
@@ -8,7 +8,7 @@ import type { MoveLoss } from '../analysis/engine-analysis';
 import { cutName } from '../engine/move-cut';
 import type { BotMove, Candidate } from '../engine/move-selection';
 import { playMove, type Game } from '../game/game';
-import { candidateRows, moveKeyOf, rankOf, type ExplainedMove } from './explained-moves';
+import { candidateRows, CHART_LAG, moveKeyOf, movesOnTheChart, rankOf, type ExplainedMove } from './explained-moves';
 import type { Phase } from '../evaluation/move-matching';
 import improbabilityFile from './improbability-yardstick.json';
 import { lossChart } from './loss-chart';
@@ -37,8 +37,12 @@ export interface PanelView {
   focus: ExplainedMove | null;
   /** Every move the Bot has played in the game so far, oldest first. */
   botMoves: ExplainedMove[];
-  /** True while Stockfish evaluates the Bot's moves: in analysis mode, and once a game is over. */
-  analysisOn: boolean;
+  /**
+   * True in analysis mode and once the game is over, when every evaluation
+   * may be shown. Otherwise the chart leaves out the Bot's latest moves and
+   * no move's loss is given.
+   */
+  revealed: boolean;
   /** What Stockfish knows of each move, filed as moveKeyOf files it. */
   evaluations: Map<string, MoveEvaluation>;
 }
@@ -67,7 +71,7 @@ function moveExplanation(view: PanelView): HTMLElement[] {
     parts.push(paragraph('A legal move picked at random: the Base Model was not available.'));
   }
 
-  if (view.analysisOn) {
+  if (view.revealed) {
     parts.push(lossLine(view.evaluations.get(moveKeyOf(explained))));
   }
   return parts;
@@ -201,7 +205,8 @@ function lossLine(evaluation: MoveEvaluation | undefined): HTMLElement {
  */
 function lossComparison(view: PanelView): HTMLElement[] {
   const camille = lossYardstick.profile;
-  const bot = lossProfile(evaluatedLosses(view));
+  const charted = movesOnTheChart(view.botMoves, view);
+  const bot = lossProfile(evaluatedLosses(charted, view.evaluations));
   let band: Band | null = null;
   if (bot.moves > 0) {
     band = chanceBand(camille, bot.moves);
@@ -223,15 +228,19 @@ function lossComparison(view: PanelView): HTMLElement[] {
     'Share of moves that lost at most so many centipawns, in positions still open. ' +
       'Higher and further left: fewer and smaller mistakes.',
   ];
-  const waiting = unevaluatedMoves(view);
-  if (!view.analysisOn) {
-    notes.push("The Bot's curve is drawn move by move in analysis mode, and for every game once it is over.");
-  } else if (waiting > 0) {
+  if (!view.revealed) {
+    notes.push(
+      `While the game goes on the Bot's curve leaves out its last ${CHART_LAG} moves, so it never shows where ` +
+        'the Bot has just gone wrong. Analysis mode, and the end of the game, show them all.',
+    );
+  }
+  const waiting = unevaluatedMoves(charted, view.evaluations);
+  if (waiting > 0) {
     // Stockfish takes the moves one at a time, a few seconds each, so a
     // game joined late in analysis mode takes a while to catch up.
     notes.push(`Stockfish is evaluating the Bot's moves one at a time: ${waiting} still to come.`);
   }
-  const failed = failedMoves(view);
+  const failed = failedMoves(charted, view.evaluations);
   if (failed > 0) {
     notes.push(`Stockfish could not evaluate ${failed} of the Bot's ${moves(failed)}; the curve leaves them out.`);
   }
@@ -252,10 +261,10 @@ function legendItem(who: 'camille' | 'bot' | 'band', text: string): HTMLLIElemen
 }
 
 /** How many of the Bot's moves Stockfish has yet to answer for. */
-function unevaluatedMoves(view: PanelView): number {
+function unevaluatedMoves(botMoves: ExplainedMove[], evaluations: Map<string, MoveEvaluation>): number {
   let waiting = 0;
-  for (const explained of view.botMoves) {
-    const evaluation = view.evaluations.get(moveKeyOf(explained));
+  for (const explained of botMoves) {
+    const evaluation = evaluations.get(moveKeyOf(explained));
     if (evaluation === undefined || evaluation === 'pending') {
       waiting += 1;
     }
@@ -264,21 +273,21 @@ function unevaluatedMoves(view: PanelView): number {
 }
 
 /** How many of the Bot's moves Stockfish failed to evaluate. */
-function failedMoves(view: PanelView): number {
+function failedMoves(botMoves: ExplainedMove[], evaluations: Map<string, MoveEvaluation>): number {
   let failed = 0;
-  for (const explained of view.botMoves) {
-    if (view.evaluations.get(moveKeyOf(explained)) === 'failed') {
+  for (const explained of botMoves) {
+    if (evaluations.get(moveKeyOf(explained)) === 'failed') {
       failed += 1;
     }
   }
   return failed;
 }
 
-/** The Bot's moves Stockfish has evaluated so far. */
-function evaluatedLosses(view: PanelView): BotLoss[] {
+/** The losses of the given moves Stockfish has evaluated so far. */
+function evaluatedLosses(botMoves: ExplainedMove[], evaluations: Map<string, MoveEvaluation>): BotLoss[] {
   const losses: BotLoss[] = [];
-  for (const explained of view.botMoves) {
-    const evaluation = view.evaluations.get(moveKeyOf(explained));
+  for (const explained of botMoves) {
+    const evaluation = evaluations.get(moveKeyOf(explained));
     if (evaluation === undefined || evaluation === 'pending' || evaluation === 'failed') {
       continue;
     }

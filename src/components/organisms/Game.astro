@@ -182,8 +182,8 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
     // Every reply of the Bot, filed by the position and the move, for the
     // panel to explain the moves on the board with.
     const replies = new Map<string, BotMove>();
-    // Stockfish while it runs, in analysis mode and once a game is over, and
-    // what it has found, filed like the replies.
+    // Stockfish while it runs, from the start of a game and in analysis
+    // mode, and what it has found, filed like the replies.
     let analysis: BrowserAnalyser | null = null;
     const evaluations = new Map<string, MoveEvaluation>();
 
@@ -252,14 +252,13 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
       // A takeback after the end resumes the game; the stored game stays
       // stored, but the question about it is no longer asked.
       const wasOver = gameStatus(session.game()).kind !== 'ongoing';
-      const sawEvaluations = analysis !== null;
       forgetEndedGame();
       session.takeBack();
-      // Once a game is over Stockfish evaluates the Bot's moves for the
-      // chart. A game reopened after the visitor could see them is assisted
+      // Once a game is over the panel reveals every evaluation of the Bot's
+      // moves. A game reopened after the visitor could see them is assisted
       // from here on, as if analysis mode had been on.
       const isReopened = gameStatus(session.game()).kind === 'ongoing';
-      if (wasOver && sawEvaluations && isReopened) {
+      if (wasOver && isReopened) {
         session.markAssisted();
       }
     });
@@ -510,8 +509,9 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
 
     /**
      * Draws the panel: the Bot's last move up to the position on display, and
-     * the game so far against Camille's. In analysis mode every Bot move not
-     * yet evaluated is sent to Stockfish.
+     * the chart of its losses against Camille's. Every Bot move not yet
+     * evaluated is sent to Stockfish; the panel reveals the evaluations in
+     * full only in analysis mode and once the game is over.
      */
     function showExplanation(): void {
       keepStockfishInStep();
@@ -520,7 +520,7 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
         showPanel(moveExplanation, lossChartElement, {
           focus: null,
           botMoves: [],
-          analysisOn: analysis !== null,
+          revealed: analysisSwitch.checked,
           evaluations: new Map(),
         });
         return;
@@ -540,23 +540,22 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
       if (analysis !== null) {
         evaluateMissing(botMoves);
       }
+      const isOver = gameStatus(session.game()).kind !== 'ongoing';
       showPanel(moveExplanation, lossChartElement, {
         focus: focus,
         botMoves: botMoves,
-        analysisOn: analysis !== null,
+        revealed: analysisSwitch.checked || isOver,
         evaluations: evaluations,
       });
     }
 
     /**
-     * Runs Stockfish while analysis mode is on, and once a game is over, so
-     * that the chart draws the Bot's curve for every finished game; stops it
-     * otherwise.
+     * Runs Stockfish from the moment a game starts, so the chart follows it
+     * live, and while analysis mode is on; stops it otherwise.
      */
     function keepStockfishInStep(): void {
       const hasStarted = session.visitor() !== null;
-      const isOver = hasStarted && gameStatus(session.game()).kind !== 'ongoing';
-      const isWanted = analysisSwitch.checked || isOver;
+      const isWanted = analysisSwitch.checked || hasStarted;
       if (isWanted && analysis === null) {
         startStockfish();
       } else if (!isWanted && analysis !== null) {
