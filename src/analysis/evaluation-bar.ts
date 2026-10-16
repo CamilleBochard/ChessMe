@@ -2,6 +2,7 @@
 // White's, from Stockfish's score of the position on display.
 // Free of anything DOM.
 
+import type { Colour } from '../board/starting-position';
 import { EVALUATION_CAP, type Score } from './engine-analysis';
 
 /**
@@ -35,4 +36,18 @@ export function whiteShare(score: Score): number {
   }
   const winningChances = 2 / (1 + Math.exp(-STEEPNESS * centipawns)) - 1;
   return 0.5 + winningChances / 2;
+}
+
+/**
+ * A score Stockfish gave from the side it searched for, read from White's
+ * side as the bar reads every score.
+ */
+export function fromWhitesSide(score: Score, side: Colour): Score {
+  if (side === 'white') {
+    return score;
+  }
+  if ('mateIn' in score) {
+    return { mateIn: -score.mateIn };
+  }
+  return { centipawns: -score.centipawns };
 }

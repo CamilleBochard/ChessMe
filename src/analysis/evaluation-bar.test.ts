@@ -2,7 +2,7 @@
 // how the score is written on it.
 
 import { describe, expect, it } from 'vitest';
-import { whiteShare } from './evaluation-bar';
+import { fromWhitesSide, whiteShare } from './evaluation-bar';
 
 describe("White's share of the evaluation bar", () => {
   it('is half the bar in a level position', () => {
@@ -30,5 +30,16 @@ describe("White's share of the evaluation bar", () => {
   it('is the whole bar when White mates, and none of it when Black does', () => {
     expect(whiteShare({ mateIn: 3 })).toBe(1);
     expect(whiteShare({ mateIn: -2 })).toBe(0);
+  });
+});
+
+describe("a score read from White's side", () => {
+  it("changes sign when it was Black's", () => {
+    expect(fromWhitesSide({ centipawns: 40 }, 'black')).toEqual({ centipawns: -40 });
+    expect(fromWhitesSide({ mateIn: 2 }, 'black')).toEqual({ mateIn: -2 });
+  });
+
+  it("stays as it is when it was White's", () => {
+    expect(fromWhitesSide({ centipawns: 40 }, 'white')).toEqual({ centipawns: 40 });
   });
 });
