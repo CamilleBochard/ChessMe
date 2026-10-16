@@ -121,7 +121,8 @@ const english = TEXTS.en.page;
   import { connectTelemetry, sessionGameReport } from '../../telemetry/session-game';
   import { SESSION_GAMES_CHANGED } from '../../telemetry/session-game-summary';
   import { startBrowserAnalyser, type BrowserAnalyser } from '../../analysis/browser-analyser';
-  import { moveLoss } from '../../analysis/engine-analysis';
+  import { moveLoss, type Score } from '../../analysis/engine-analysis';
+  import { barReading, positionScores } from '../../analysis/evaluation-bar';
   import { botMovesOf, moveKeyOf, replyKey, type ExplainedMove } from '../../explanation/explained-moves';
   import { showPanel, type MoveEvaluation } from '../../explanation/panel';
   import { LANGUAGE_CHANGED, pageLanguage, pageTexts } from '../../i18n/page-language';
@@ -176,6 +177,7 @@ const english = TEXTS.en.page;
     const lossChartElement = frame.querySelector<HTMLElement>('[data-loss-chart]')!;
     const analysisSwitch = frame.querySelector<HTMLInputElement>('[data-analysis-switch]')!;
     const analysisDialog = frame.querySelector<HTMLDialogElement>('[data-analysis-dialog]')!;
+    const evaluationBar = frame.querySelector<HTMLElement>('[data-evaluation-bar]')!;
     const topClock = frame.querySelector<HTMLElement>('[data-clock="top"]')!;
     const bottomClock = frame.querySelector<HTMLElement>('[data-clock="bottom"]')!;
 
@@ -194,6 +196,9 @@ const english = TEXTS.en.page;
     // mode, and what it has found, filed like the replies.
     let analysis: BrowserAnalyser | null = null;
     const evaluations = new Map<string, MoveEvaluation>();
+    // Stockfish's score of every position next to one of the Bot's moves,
+    // from White's side and filed by FEN, for the evaluation bar.
+    const scores = new Map<string, Score>();
 
     if (isFirstVisit()) {
       playEntrance(frame);
@@ -565,6 +570,35 @@ const english = TEXTS.en.page;
     }
 
     /**
+     * Draws the evaluation bar for the position on display, in analysis mode
+     * and once a game has started, turned with the board so the visitor's
+     * colour is at the bottom.
+     */
+    function showEvaluationBar(): void {
+      const visitor = session.visitor();
+      const isShown = analysisSwitch.checked && visitor !== null;
+      evaluationBar.hidden = !isShown;
+      if (!isShown) {
+        return;
+      }
+
+      const texts = pageTexts();
+      const reading = barReading(session.viewedGame(), scores, texts.decimal);
+      const scoreElement = evaluationBar.querySelector<HTMLElement>('[data-evaluation-score]')!;
+      evaluationBar.classList.toggle('black-below', visitor === 'black');
+      evaluationBar.classList.toggle('unknown', reading === null);
+      if (reading === null) {
+        evaluationBar.style.setProperty('--white-share', '0.5');
+        scoreElement.textContent = '…';
+        evaluationBar.setAttribute('aria-label', texts.evaluationUnknown);
+        return;
+      }
+      evaluationBar.style.setProperty('--white-share', String(reading.whiteShare));
+      scoreElement.textContent = reading.label;
+      evaluationBar.setAttribute('aria-label', texts.evaluation(reading.label));
+    }
+
+    /**
      * Draws the panel: the Bot's last move up to the position on display, and
      * the chart of its losses against Camille's. Every Bot move not yet
      * evaluated is sent to Stockfish; the panel reveals the evaluations in
@@ -572,6 +606,8 @@ const english = TEXTS.en.page;
      */
     function showExplanation(): void {
       keepStockfishInStep();
+      // The bar reads the same analyses as the panel, so it is redrawn with it.
+      showEvaluationBar();
       const visitor = session.visitor();
       if (visitor === null) {
         showPanel(moveExplanation, lossChartElement, {
@@ -667,6 +703,9 @@ const english = TEXTS.en.page;
           .analyse(fen, move)
           .then((found) => {
             evaluations.set(key, moveLoss(found));
+            for (const positionScore of positionScores(explained.before, explained.botMove.move, found)) {
+              scores.set(positionScore.fen, positionScore.score);
+            }
           })
           .catch(() => {
             evaluations.set(key, 'failed');

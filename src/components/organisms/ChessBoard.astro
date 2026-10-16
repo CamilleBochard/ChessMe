@@ -1,5 +1,6 @@
 ---
 import BracketLabel from '../atoms/BracketLabel.astro';
+import EvaluationBar from '../molecules/EvaluationBar.astro';
 import { TEXTS } from '../../i18n/texts';
 
 // The board itself: the element Chessground draws into, the frame around it,
@@ -13,6 +14,7 @@ const english = TEXTS.en.page;
 ---
 
 <div class="board-surround">
+  <EvaluationBar />
   <div class="board" data-board></div>
 </div>
 
@@ -217,9 +219,15 @@ const english = TEXTS.en.page;
      kept free across the screen are the game's 230 px and 320 px side
      columns and 120 px of room around the board; the 220 px kept free down
      it hold the title, the two clocks and the status. */
+  /* In analysis mode the evaluation bar takes its width from the board's,
+     so the frame keeps its width and the clocks above and below theirs. */
   .board-surround {
     --board-size: min(640px, calc(100vw - 48px));
+    --evaluation-bar-width: 10px;
+    --bar-space: 0px;
     position: relative;
+    display: flex;
+    gap: 6px;
     padding: 6px;
     border: var(--line);
     background: var(--paper);
@@ -228,7 +236,19 @@ const english = TEXTS.en.page;
   @media (min-width: 960px) {
     .board-surround {
       --board-size: min(640px, calc(100vw - 670px), calc(100vh - 220px));
+      --evaluation-bar-width: 16px;
+      gap: 10px;
       padding: 10px;
+    }
+  }
+
+  .board-surround:has(:global(.evaluation-bar:not([hidden]))) {
+    --bar-space: calc(var(--evaluation-bar-width) + 6px);
+  }
+
+  @media (min-width: 960px) {
+    .board-surround:has(:global(.evaluation-bar:not([hidden]))) {
+      --bar-space: calc(var(--evaluation-bar-width) + 10px);
     }
   }
 
@@ -242,8 +262,8 @@ const english = TEXTS.en.page;
   }
 
   .board {
-    width: var(--board-size);
-    height: var(--board-size);
+    width: calc(var(--board-size) - var(--bar-space));
+    height: calc(var(--board-size) - var(--bar-space));
     border: var(--line);
   }
 
