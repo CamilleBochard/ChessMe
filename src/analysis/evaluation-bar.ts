@@ -4,6 +4,7 @@
 
 import type { Colour } from '../board/starting-position';
 import { currentFen, playMove, sideToMove, type Game, type MoveRequest } from '../game/game';
+import { gameStatus } from '../game/game-status';
 import { EVALUATION_CAP, type Analysis, type Score } from './engine-analysis';
 
 /** A position, by its FEN, and Stockfish's score of it from White's side. */
@@ -98,4 +99,45 @@ export function positionScores(before: Game, move: MoveRequest, analysis: Analys
     { fen: currentFen(before), score: fromWhitesSide(analysis.best, mover) },
     { fen: currentFen(after), score: fromWhitesSide(analysis.played, mover) },
   ];
+}
+
+/**
+ * The draws the position itself decides. A game drawn on time, or lost on
+ * time or by resignation, ends on a position still worth scoring.
+ */
+const BOARD_DRAWS: string[] = ['stalemate', 'insufficient-material', 'fifty-move-rule', 'threefold-repetition'];
+
+/** What the bar shows: how much of it is White's, and what is written on it. */
+export interface BarReading {
+  whiteShare: number;
+  label: string;
+}
+
+/**
+ * What the bar shows for the position given, from the scores Stockfish has
+ * given so far, or null for a position it has not scored yet.
+ */
+export function barReading(
+  game: Game,
+  scores: Map<string, Score>,
+  decimal: (value: number, decimals: number) => string,
+): BarReading | null {
+  // A position the board has already decided has no move after it for
+  // Stockfish to score, and needs none: the bar gives the result.
+  const status = gameStatus(game);
+  if (status.kind === 'checkmate') {
+    if (status.winner === 'white') {
+      return { whiteShare: 1, label: '1-0' };
+    }
+    return { whiteShare: 0, label: '0-1' };
+  }
+  if (BOARD_DRAWS.includes(status.kind)) {
+    return { whiteShare: 0.5, label: '½-½' };
+  }
+
+  const score = scores.get(currentFen(game));
+  if (score === undefined) {
+    return null;
+  }
+  return { whiteShare: whiteShare(score), label: scoreLabel(score, decimal) };
 }
