@@ -9,26 +9,56 @@ import io
 import chess
 import chess.pgn
 
+# How many openings the record lists with each colour.
+OPENINGS_LISTED = 5
+
 # The result a PGN writes for a win of each side, and for a draw.
 WINNING_RESULT = {chess.WHITE: "1-0", chess.BLACK: "0-1"}
 DRAW_RESULT = "1/2-1/2"
 
 
-def player_record(games: list[chess.pgn.Game], player: str) -> dict:
-    """The record of player over games, as the page reads it."""
+def player_record(games: list[chess.pgn.Game], player: str, table: dict[str, str]) -> dict:
+    """The record of player over games, as the page reads it, with openings named from table."""
     white_games = [game for game in games if game.headers["White"].lower() == player.lower()]
     black_games = [game for game in games if game.headers["Black"].lower() == player.lower()]
-    white = _colour_record(white_games, chess.WHITE)
-    black = _colour_record(black_games, chess.BLACK)
+    white = _colour_record(white_games, chess.WHITE, table)
+    black = _colour_record(black_games, chess.BLACK, table)
     results = {}
     for outcome in white["results"]:
         results[outcome] = white["results"][outcome] + black["results"][outcome]
     return {"games": len(games), "results": results, "white": white, "black": black}
 
 
-def _colour_record(games: list[chess.pgn.Game], colour: chess.Color) -> dict:
+def _colour_record(games: list[chess.pgn.Game], colour: chess.Color, table: dict[str, str]) -> dict:
     """What the player's games with one colour add up to."""
-    return {"games": len(games), "results": _results(games, colour)}
+    return {
+        "games": len(games),
+        "results": _results(games, colour),
+        "openings": _openings(games, colour, table),
+    }
+
+
+def _openings(games: list[chess.pgn.Game], colour: chess.Color, table: dict[str, str]) -> list[dict]:
+    """The opening families played most in games, most played first, each with the player's results in it.
+
+    A family is the name before the colon: Sicilian Defense for every
+    variation of it, as a player speaks of their repertoire. A game that
+    reaches no line of the table counts under none.
+    """
+    games_by_family: dict[str, list[chess.pgn.Game]] = {}
+    for game in games:
+        name = opening_of(game, table)
+        if name is None:
+            continue
+        family = name.split(":")[0]
+        games_by_family.setdefault(family, []).append(game)
+
+    openings = []
+    for family, family_games in games_by_family.items():
+        openings.append({"name": family, "games": len(family_games), "results": _results(family_games, colour)})
+    # Python's sort is stable: openings played as often stay in the order first met.
+    openings.sort(key=lambda opening: opening["games"], reverse=True)
+    return openings[:OPENINGS_LISTED]
 
 
 def _results(games: list[chess.pgn.Game], colour: chess.Color) -> dict:

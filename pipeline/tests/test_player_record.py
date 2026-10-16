@@ -25,7 +25,7 @@ def test_counts_the_games_with_each_colour():
         game("someone", PLAYER, "1/2-1/2", ["e4"]),
     ]
 
-    record = player_record(games, PLAYER)
+    record = player_record(games, PLAYER, table={})
 
     assert record["games"] == 3
     assert record["white"]["games"] == 2
@@ -40,7 +40,7 @@ def test_counts_wins_draws_and_losses_from_the_players_side_with_each_colour():
         game("someone", PLAYER, "1/2-1/2", ["e4"]),
     ]
 
-    record = player_record(games, PLAYER)
+    record = player_record(games, PLAYER, table={})
 
     assert record["white"]["results"] == {"wins": 1, "draws": 0, "losses": 1}
     assert record["black"]["results"] == {"wins": 1, "draws": 1, "losses": 0}
@@ -53,7 +53,7 @@ def test_adds_up_the_results_of_both_colours():
         game("someone", PLAYER, "1/2-1/2", ["e4"]),
     ]
 
-    record = player_record(games, PLAYER)
+    record = player_record(games, PLAYER, table={})
 
     assert record["results"] == {"wins": 2, "draws": 1, "losses": 0}
 
@@ -80,3 +80,29 @@ def test_recognises_an_opening_reached_in_another_move_order():
     transposed = game(PLAYER, "someone", "1-0", ["c4", "e6", "d4", "d5", "Nc3"])
 
     assert opening_of(transposed, table) == "Queen's Gambit Declined"
+
+
+def test_lists_the_openings_played_most_with_each_colour_by_family_with_the_results():
+    table = opening_table(TABLE_LINES)
+    games = [
+        game(PLAYER, "someone", "1-0", ["e4", "c5", "c3"]),
+        game(PLAYER, "someone", "0-1", ["e4", "c5", "Nf3"]),
+        game(PLAYER, "someone", "1-0", ["e4", "e5"]),
+    ]
+
+    record = player_record(games, PLAYER, table)
+
+    assert record["white"]["openings"] == [
+        {"name": "Sicilian Defense", "games": 2, "results": {"wins": 1, "draws": 0, "losses": 1}},
+        {"name": "King's Pawn Game", "games": 1, "results": {"wins": 1, "draws": 0, "losses": 0}},
+    ]
+
+
+def test_lists_no_more_than_five_openings_with_a_colour():
+    first_moves = ["e4", "d4", "c4", "Nf3", "g3", "b3"]
+    table = opening_table([(f"Opening {san}", f"1. {san}") for san in first_moves])
+    games = [game(PLAYER, "someone", "1-0", [san]) for san in first_moves]
+
+    record = player_record(games, PLAYER, table)
+
+    assert len(record["white"]["openings"]) == 5
