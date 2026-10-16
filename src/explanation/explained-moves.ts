@@ -87,19 +87,13 @@ export function candidateRows(candidates: Candidate[], rank: number): CandidateR
 
 
 /**
- * Where the Bot's move stood, as the panel shows it in large: its rank among
- * the position's legal moves when the Base Model chose it, such as 1/22 for
- * the model's favourite out of 22. The Opening Book's reply and a move
- * picked at random rank nothing, and are named instead.
+ * Where a move the Base Model chose stood, as the panel shows it in large:
+ * its rank among the position's legal moves, such as 1/22 for the model's
+ * favourite out of 22. The Opening Book's reply and a move picked at random
+ * rank nothing; the panel names them in the page's language instead.
  */
-export function rankOf(botMove: BotMove): string {
-  if (botMove.source === 'base-model') {
-    return `${botMove.rank}/${botMove.legalMoves}`;
-  }
-  if (botMove.source === 'opening-book') {
-    return 'Book';
-  }
-  return 'Random';
+export function rankOf(botMove: Extract<BotMove, { source: 'base-model' }>): string {
+  return `${botMove.rank}/${botMove.legalMoves}`;
 }
 
 /** How many of the Bot's latest moves the chart leaves out while the game goes on. */
