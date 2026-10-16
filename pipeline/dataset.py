@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
@@ -40,7 +41,22 @@ def build_dataset(pgn_paths: list[Path], player: str, test_fraction: float) -> D
     """
     train = []
     test = []
-    # New games arrive as further exports, which may overlap the earlier ones.
+    for game, game_id in kept_games(pgn_paths):
+        positions = _player_positions(game, game_id, player)
+        if is_held_back(game_id, test_fraction):
+            test.extend(positions)
+        else:
+            train.extend(positions)
+    return Dataset(train=train, test=test)
+
+
+def kept_games(pgn_paths: list[Path]) -> Iterator[tuple[chess.pgn.Game, str]]:
+    """The games of pgn_paths the Bot is built from, each with its id.
+
+    Standard chess at ten minutes, played since FIRST_DAY_KEPT, each game
+    once: new games arrive as further exports, which may overlap the
+    earlier ones.
+    """
     seen_game_ids = set()
     for path in pgn_paths:
         with open(path, encoding="utf-8") as pgn_file:
@@ -55,13 +71,7 @@ def build_dataset(pgn_paths: list[Path], player: str, test_fraction: float) -> D
                 if game_id in seen_game_ids:
                     continue
                 seen_game_ids.add(game_id)
-
-                positions = _player_positions(game, game_id, player)
-                if is_held_back(game_id, test_fraction):
-                    test.extend(positions)
-                else:
-                    train.extend(positions)
-    return Dataset(train=train, test=test)
+                yield game, game_id
 
 
 def read_dataset(dataset_dir: Path) -> Dataset:
