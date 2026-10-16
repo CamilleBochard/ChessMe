@@ -1,11 +1,12 @@
 ---
 // The panel beside the moves: why the Bot played the move on display, with
 // where it stood among the legal moves in large, the chart of the Bot's
-// losses this game over Camille's, and the switch for analysis mode. Its two
-// containers are filled by src/explanation/panel.ts and the switch is wired
-// by the game's script.
+// losses this game over Camille's, and the switch for analysis mode, which
+// asks before turning it on. Its two containers are filled by
+// src/explanation/panel.ts and the switch is wired by the game's script.
 import PanelHeader from '../molecules/PanelHeader.astro';
 import TickBox from '../molecules/TickBox.astro';
+import AnalysisModeDialog from './AnalysisModeDialog.astro';
 import { TEXTS } from '../../i18n/texts';
 
 const english = TEXTS.en.page;
@@ -24,6 +25,7 @@ const english = TEXTS.en.page;
       href="https://github.com/nmrugg/stockfish.js">Stockfish</a
     ><span data-text="analysisNoteAfter">{english.analysisNoteAfter}</span>
   </p>
+  <AnalysisModeDialog />
 </section>
 
 <style>

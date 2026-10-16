@@ -126,6 +126,11 @@ export type PageText =
   | 'analysisMode'
   | 'analysisNoteBefore'
   | 'analysisNoteAfter'
+  | 'analysisExampleLoss'
+  | 'analysisShows'
+  | 'analysisWarning'
+  | 'turnOn'
+  | 'cancel'
   | 'pieces'
   | 'classic'
   | 'creditBy'
@@ -218,10 +223,14 @@ const ENGLISH: Texts = {
     whyTheBotPlayedIt: 'Why the Bot played it',
     mistakesChart: 'Mistakes, the Bot against Camille',
     analysisMode: 'Analysis mode',
-    analysisNoteBefore: 'The chart runs ',
-    analysisNoteAfter:
-      " (GPL-3.0) in your browser, a 1.8 MB download. Analysis mode shows how much evaluation each of the Bot's " +
-      'moves lost, and the chart up to the last move, as the game goes. A game played with it on is recorded as assisted.',
+    analysisNoteBefore: 'Chart by ',
+    analysisNoteAfter: ' (GPL-3.0), in your browser.',
+    analysisExampleLoss: 'Stockfish: the move lost 85 centipawns against the best move.',
+    analysisShows: "Shows how much evaluation each of the Bot's moves lost, and its whole curve on the chart, as the game goes.",
+    analysisWarning:
+      'Turned on during a game, it shows you where the Bot goes wrong: an advantage. The game is then recorded as assisted.',
+    turnOn: 'Turn on',
+    cancel: 'Cancel',
     pieces: 'Pieces',
     classic: 'Classic',
     creditBy: 'Anarcandy by ',
@@ -365,11 +374,16 @@ const FRENCH: Texts = {
     whyTheBotPlayedIt: "Pourquoi le Bot l'a joué",
     mistakesChart: 'Les erreurs, le Bot face à Camille',
     analysisMode: 'Mode analyse',
-    analysisNoteBefore: 'Le graphique lance ',
-    analysisNoteAfter:
-      ` (GPL-3.0) dans votre navigateur, un téléchargement de 1,8${NO_BREAK}Mo. Le mode analyse montre combien ` +
-      'chaque coup du Bot a perdu à l’évaluation, et le graphique jusqu’au dernier coup, au fil de la partie. ' +
-      'Une partie jouée avec ce mode activé est enregistrée comme assistée.',
+    analysisNoteBefore: 'Graphique calculé par ',
+    analysisNoteAfter: ' (GPL-3.0), dans votre navigateur.',
+    analysisExampleLoss: `Stockfish${NO_BREAK}: le coup a perdu 85 centipions par rapport au meilleur coup.`,
+    analysisShows:
+      'Montre combien chaque coup du Bot a perdu à l’évaluation, et toute sa courbe sur le graphique, au fil de la partie.',
+    analysisWarning:
+      `Activé pendant une partie, il vous montre où le Bot se trompe${NO_BREAK}: un avantage. ` +
+      'La partie est alors enregistrée comme assistée.',
+    turnOn: 'Activer',
+    cancel: 'Annuler',
     pieces: 'Pièces',
     classic: 'Classique',
     creditBy: 'Anarcandy par ',

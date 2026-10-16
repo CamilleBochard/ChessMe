@@ -175,6 +175,7 @@ const english = TEXTS.en.page;
     const moveExplanation = frame.querySelector<HTMLElement>('[data-move-explanation]')!;
     const lossChartElement = frame.querySelector<HTMLElement>('[data-loss-chart]')!;
     const analysisSwitch = frame.querySelector<HTMLInputElement>('[data-analysis-switch]')!;
+    const analysisDialog = frame.querySelector<HTMLDialogElement>('[data-analysis-dialog]')!;
     const topClock = frame.querySelector<HTMLElement>('[data-clock="top"]')!;
     const bottomClock = frame.querySelector<HTMLElement>('[data-clock="bottom"]')!;
 
@@ -302,14 +303,18 @@ const english = TEXTS.en.page;
       });
     }
 
-    analysisSwitch.addEventListener('change', () => {
-      // The visitor can now see where the Bot goes wrong: the game in
-      // progress is assisted, whatever happens to the switch later.
+    // Turning analysis mode on is asked first, since during a game it shows
+    // where the Bot goes wrong. The click that would tick the switch is held
+    // back, and the switch is ticked only if the visitor confirms. Turning it
+    // off needs no question.
+    analysisSwitch.addEventListener('click', (event) => {
       if (analysisSwitch.checked) {
-        session.markAssisted();
+        event.preventDefault();
+        askAnalysisMode();
       }
-      showGame();
     });
+
+    analysisSwitch.addEventListener('change', onAnalysisSwitched);
 
     viewBackButton.addEventListener('click', () => {
       session.viewBack();
@@ -323,7 +328,7 @@ const english = TEXTS.en.page;
     // Left alone while the promotion dialog is open, where they belong to it.
     // Left alone too on a form control, where they move between the choices.
     document.addEventListener('keydown', (event) => {
-      if (promotionDialog.open || event.target instanceof HTMLInputElement) {
+      if (promotionDialog.open || analysisDialog.open || event.target instanceof HTMLInputElement) {
         return;
       }
       if (event.key === 'ArrowLeft') {
@@ -334,6 +339,31 @@ const english = TEXTS.en.page;
         session.viewForward();
       }
     });
+
+    /** Opens the question about analysis mode, and turns it on if the visitor confirms. */
+    function askAnalysisMode(): void {
+      analysisDialog.returnValue = '';
+      analysisDialog.addEventListener(
+        'close',
+        () => {
+          if (analysisDialog.returnValue === 'on') {
+            analysisSwitch.checked = true;
+            onAnalysisSwitched();
+          }
+        },
+        { once: true },
+      );
+      analysisDialog.showModal();
+    }
+
+    function onAnalysisSwitched(): void {
+      // The visitor can now see where the Bot goes wrong: the game in
+      // progress is assisted, whatever happens to the switch later.
+      if (analysisSwitch.checked) {
+        session.markAssisted();
+      }
+      showGame();
+    }
 
     /**
      * Reports the finished game and, once it is stored, asks the visitor what
