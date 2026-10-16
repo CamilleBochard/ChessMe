@@ -1,7 +1,7 @@
 import chess
 import chess.pgn
 
-from pipeline.player_record import player_record
+from pipeline.player_record import opening_of, opening_table, player_record
 
 PLAYER = "punkycam"
 
@@ -56,3 +56,27 @@ def test_adds_up_the_results_of_both_colours():
     record = player_record(games, PLAYER)
 
     assert record["results"] == {"wins": 2, "draws": 1, "losses": 0}
+
+
+# A few lines of Lichess's openings table, as (name, moves).
+TABLE_LINES = [
+    ("King's Pawn Game", "1. e4"),
+    ("Sicilian Defense", "1. e4 c5"),
+    ("Sicilian Defense: Alapin Variation", "1. e4 c5 2. c3"),
+    ("Queen's Gambit Declined", "1. d4 d5 2. c4 e6"),
+]
+
+
+def test_names_a_game_after_the_deepest_line_of_the_table_it_reaches():
+    table = opening_table(TABLE_LINES)
+    alapin = game(PLAYER, "someone", "1-0", ["e4", "c5", "c3", "d5", "exd5"])
+
+    assert opening_of(alapin, table) == "Sicilian Defense: Alapin Variation"
+
+
+def test_recognises_an_opening_reached_in_another_move_order():
+    table = opening_table(TABLE_LINES)
+    # 1. c4 e6 2. d4 d5 reaches the Queen's Gambit Declined by the English.
+    transposed = game(PLAYER, "someone", "1-0", ["c4", "e6", "d4", "d5", "Nc3"])
+
+    assert opening_of(transposed, table) == "Queen's Gambit Declined"

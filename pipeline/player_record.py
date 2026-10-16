@@ -4,6 +4,8 @@ with each colour, how they went, and the openings he plays most.
 The page shows it as it is; every figure is worked out here.
 """
 
+import io
+
 import chess
 import chess.pgn
 
@@ -41,3 +43,31 @@ def _results(games: list[chess.pgn.Game], colour: chess.Color) -> dict:
         else:
             results["losses"] += 1
     return results
+
+
+def opening_table(lines: list[tuple[str, str]]) -> dict[str, str]:
+    """The openings table, from (name, moves) lines, keyed by the position each line ends on.
+
+    Keyed by position rather than by moves, so a game that reaches a line in
+    another order is still named after it. The position is an EPD: the
+    board, the side to move, castling and en passant, without the move
+    counters, which differ between move orders.
+    """
+    table = {}
+    for name, moves in lines:
+        line = chess.pgn.read_game(io.StringIO(moves))
+        board = line.end().board()
+        table[board.epd()] = name
+    return table
+
+
+def opening_of(game: chess.pgn.Game, table: dict[str, str]) -> str | None:
+    """The name of the deepest line of the table the game reaches, or None if it reaches none."""
+    name = None
+    board = game.board()
+    for move in game.mainline_moves():
+        board.push(move)
+        reached = table.get(board.epd())
+        if reached is not None:
+            name = reached
+    return name
