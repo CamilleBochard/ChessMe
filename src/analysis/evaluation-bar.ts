@@ -51,3 +51,28 @@ export function fromWhitesSide(score: Score, side: Colour): Score {
   }
   return { centipawns: -score.centipawns };
 }
+
+/**
+ * The score as the bar writes it, from White's side: in pawns to one
+ * decimal, with a plus for White ahead, or M and the moves to mate. The
+ * language's own way of writing a decimal is passed in.
+ */
+export function scoreLabel(score: Score, decimal: (value: number, decimals: number) => string): string {
+  if ('mateIn' in score) {
+    if (score.mateIn > 0) {
+      return `M${score.mateIn}`;
+    }
+    return `-M${-score.mateIn}`;
+  }
+  // Rounded first, so a position a few centipawns off level reads 0.0
+  // rather than -0.0.
+  const tenthsOfAPawn = Math.round(score.centipawns / 10);
+  const pawns = Math.abs(tenthsOfAPawn) / 10;
+  if (tenthsOfAPawn > 0) {
+    return `+${decimal(pawns, 1)}`;
+  }
+  if (tenthsOfAPawn < 0) {
+    return `-${decimal(pawns, 1)}`;
+  }
+  return decimal(0, 1);
+}

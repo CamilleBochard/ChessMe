@@ -2,7 +2,7 @@
 // how the score is written on it.
 
 import { describe, expect, it } from 'vitest';
-import { fromWhitesSide, whiteShare } from './evaluation-bar';
+import { fromWhitesSide, scoreLabel, whiteShare } from './evaluation-bar';
 
 describe("White's share of the evaluation bar", () => {
   it('is half the bar in a level position', () => {
@@ -41,5 +41,25 @@ describe("a score read from White's side", () => {
 
   it("stays as it is when it was White's", () => {
     expect(fromWhitesSide({ centipawns: 40 }, 'white')).toEqual({ centipawns: 40 });
+  });
+});
+
+describe('the score written on the bar', () => {
+  /** Numbers as English writes them; the page passes the language's own way. */
+  const decimal = (value: number, decimals: number): string => value.toFixed(decimals);
+
+  it("is in pawns, to one decimal, signed for the side ahead", () => {
+    expect(scoreLabel({ centipawns: 40 }, decimal)).toBe('+0.4');
+    expect(scoreLabel({ centipawns: -120 }, decimal)).toBe('-1.2');
+  });
+
+  it('has no sign in a level position, nor in one that rounds to level', () => {
+    expect(scoreLabel({ centipawns: 0 }, decimal)).toBe('0.0');
+    expect(scoreLabel({ centipawns: -3 }, decimal)).toBe('0.0');
+  });
+
+  it('is M and the moves to mate, with a minus when Black mates', () => {
+    expect(scoreLabel({ mateIn: 3 }, decimal)).toBe('M3');
+    expect(scoreLabel({ mateIn: -2 }, decimal)).toBe('-M2');
   });
 });
