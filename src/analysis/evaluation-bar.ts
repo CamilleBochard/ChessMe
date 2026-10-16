@@ -3,7 +3,14 @@
 // Free of anything DOM.
 
 import type { Colour } from '../board/starting-position';
-import { EVALUATION_CAP, type Score } from './engine-analysis';
+import { currentFen, playMove, sideToMove, type Game, type MoveRequest } from '../game/game';
+import { EVALUATION_CAP, type Analysis, type Score } from './engine-analysis';
+
+/** A position, by its FEN, and Stockfish's score of it from White's side. */
+export interface PositionScore {
+  fen: string;
+  score: Score;
+}
 
 /**
  * How steeply the bar fills as the advantage grows: the constant of the
@@ -75,4 +82,20 @@ export function scoreLabel(score: Score, decimal: (value: number, decimals: numb
     return `-${decimal(pawns, 1)}`;
   }
   return decimal(0, 1);
+}
+
+/**
+ * What the analysis of one move says of the positions on either side of it.
+ * The search of the whole position scores the position the move was played
+ * from, through the best move; the search of the move alone scores the
+ * position it leaves. The bar reads both, so every position next to one of
+ * the Bot's moves has a score without another search.
+ */
+export function positionScores(before: Game, move: MoveRequest, analysis: Analysis): PositionScore[] {
+  const mover = sideToMove(before);
+  const after = playMove(before, move)!;
+  return [
+    { fen: currentFen(before), score: fromWhitesSide(analysis.best, mover) },
+    { fen: currentFen(after), score: fromWhitesSide(analysis.played, mover) },
+  ];
 }

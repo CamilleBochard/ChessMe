@@ -2,7 +2,8 @@
 // how the score is written on it.
 
 import { describe, expect, it } from 'vitest';
-import { fromWhitesSide, scoreLabel, whiteShare } from './evaluation-bar';
+import { currentFen, newGame, playMove } from '../game/game';
+import { fromWhitesSide, positionScores, scoreLabel, whiteShare } from './evaluation-bar';
 
 describe("White's share of the evaluation bar", () => {
   it('is half the bar in a level position', () => {
@@ -61,5 +62,23 @@ describe('the score written on the bar', () => {
   it('is M and the moves to mate, with a minus when Black mates', () => {
     expect(scoreLabel({ mateIn: 3 }, decimal)).toBe('M3');
     expect(scoreLabel({ mateIn: -2 }, decimal)).toBe('-M2');
+  });
+});
+
+describe("the positions a Bot move's analysis evaluates", () => {
+  it("are the one it moved from, scored by the best move, and the one it left, scored by the move played", () => {
+    // The visitor opened 1. e4 and the Bot, playing Black, answered c5.
+    const beforeTheBot = playMove(newGame(), { from: 'e2', to: 'e4' })!;
+    const afterTheBot = playMove(beforeTheBot, { from: 'c7', to: 'c5' })!;
+    // Stockfish scores for Black, the side that moved: a little worse with
+    // the best move, a little worse still with c5.
+    const analysis = { best: { centipawns: -30 }, played: { centipawns: -50 } };
+
+    const scores = positionScores(beforeTheBot, { from: 'c7', to: 'c5' }, analysis);
+
+    expect(scores).toEqual([
+      { fen: currentFen(beforeTheBot), score: { centipawns: 30 } },
+      { fen: currentFen(afterTheBot), score: { centipawns: 50 } },
+    ]);
   });
 });
