@@ -10,6 +10,7 @@ import type { BotMove, Candidate } from '../engine/move-selection';
 import { playMove, type Game } from '../game/game';
 import { candidateRows, CHART_LAG, moveKeyOf, movesOnTheChart, rankOf, type ExplainedMove } from './explained-moves';
 import type { Phase } from '../evaluation/move-matching';
+import type { Texts } from '../i18n/texts';
 import improbabilityFile from './improbability-yardstick.json';
 import { lossChart } from './loss-chart';
 import lossFile from './loss-yardstick.json';
@@ -45,6 +46,8 @@ export interface PanelView {
   revealed: boolean;
   /** What Stockfish knows of each move, filed as moveKeyOf files it. */
   evaluations: Map<string, MoveEvaluation>;
+  /** The words of the language the page is in. */
+  texts: Texts;
 }
 
 /** Draws the panel into its two containers. */
@@ -54,78 +57,82 @@ export function showPanel(moveElement: HTMLElement, chartElement: HTMLElement, v
 }
 
 function moveExplanation(view: PanelView): HTMLElement[] {
+  const words = view.texts.panel;
   const explained = view.focus;
   if (explained === null) {
-    return [paragraph('Each of the Bot\'s moves is explained here as the game goes.', 'placeholder')];
+    return [paragraph(words.placeholder, 'placeholder')];
   }
 
-  const heading = paragraph(`${moveNumber(explained.ply)} ${explained.san}`, 'move-heading');
+  const heading = paragraph(`${moveNumber(explained.ply)} ${view.texts.writeMove(explained.san)}`, 'move-heading');
   const botMove = explained.botMove;
-  const parts: HTMLElement[] = [rankBlock(botMove), heading];
+  const parts: HTMLElement[] = [rankBlock(botMove, view.texts), heading];
 
   if (botMove.source === 'opening-book') {
-    parts.push(bookExplanation(explained.san, botMove.counts));
+    parts.push(bookExplanation(view.texts.writeMove(explained.san), botMove.counts, view.texts));
   } else if (botMove.source === 'base-model') {
-    parts.push(...baseModelExplanation(explained, botMove));
+    parts.push(...baseModelExplanation(explained, botMove, view.texts));
   } else {
-    parts.push(paragraph('A legal move picked at random: the Base Model was not available.'));
+    parts.push(paragraph(words.random));
   }
 
   if (view.revealed) {
-    parts.push(lossLine(view.evaluations.get(moveKeyOf(explained))));
+    parts.push(lossLine(view.evaluations.get(moveKeyOf(explained)), view.texts));
   }
   return parts;
 }
 
-function bookExplanation(san: string, counts: { reached: number; played: number } | undefined): HTMLElement {
+function bookExplanation(san: string, counts: { reached: number; played: number } | undefined, texts: Texts): HTMLElement {
   if (counts === undefined) {
-    return paragraph("From the Opening Book: Camille's own reply in this position.");
+    return paragraph(texts.panel.bookWithoutCounts);
   }
-  return paragraph(
-    `From the Opening Book: Camille reached this position ${times(counts.reached)} in his games ` +
-      `and played ${san} ${times(counts.played)}.`,
-  );
+  return paragraph(texts.panel.bookWithCounts(san, counts.reached, counts.played));
 }
 
-function baseModelExplanation(explained: ExplainedMove, botMove: ModelMove): HTMLElement[] {
-  let drawnAmong = 'among every legal move';
+function baseModelExplanation(explained: ExplainedMove, botMove: ModelMove, texts: Texts): HTMLElement[] {
+  const words = texts.panel;
+  let drawnAmong = words.amongEveryMove;
   if (botMove.cut.kind !== 'none') {
-    drawnAmong = `among the model's ${cutName(botMove.cut)} moves, the cut the Bot plays its opening with`;
+    drawnAmong = words.amongCut(cutName(botMove.cut));
   }
-  const how = paragraph(
-    `From the Base Model, out of ${botMove.legalMoves} legal moves, drawn at temperature ${botMove.temperature} ${drawnAmong}.`,
-  );
-
-  const table = candidateTable(explained.before, botMove);
-  const rarity = rarityLine(explained.phase, playedCandidate(botMove));
+  const how = paragraph(words.fromModel(botMove.legalMoves, botMove.temperature, drawnAmong));
+  const table = candidateTable(explained.before, botMove, texts);
+  const rarity = rarityLine(explained.phase, playedCandidate(botMove), texts);
   return [how, table, rarity];
 }
 
 /** Where the move stood, in large, and what the figure means beside it. */
-function rankBlock(botMove: BotMove): HTMLElement {
+function rankBlock(botMove: BotMove, texts: Texts): HTMLElement {
   const block = document.createElement('p');
   block.className = 'move-rank';
   const figure = document.createElement('span');
   figure.className = 'rank-figure';
-  figure.textContent = rankOf(botMove);
+  figure.textContent = rankFigure(botMove, texts);
   const meaning = document.createElement('span');
   meaning.className = 'rank-meaning';
-  meaning.textContent = rankMeaning(botMove);
+  meaning.textContent = rankMeaning(botMove, texts);
   block.append(figure, meaning);
   return block;
 }
 
-function rankMeaning(botMove: BotMove): string {
+/** The figure in large: the rank among the legal moves, or, for a move the model did not choose, where it came from. */
+function rankFigure(botMove: BotMove, texts: Texts): string {
   if (botMove.source === 'opening-book') {
-    return "Camille's own reply, from the Opening Book";
+    return texts.panel.bookFigure;
   }
   if (botMove.source === 'random') {
-    return 'Picked at random: the Base Model was not available';
+    return texts.panel.randomFigure;
   }
-  if (botMove.rank === 1) {
-    return `The model's most likely of ${botMove.legalMoves} legal moves`;
+  return rankOf(botMove);
+}
+
+function rankMeaning(botMove: BotMove, texts: Texts): string {
+  if (botMove.source === 'opening-book') {
+    return texts.panel.bookMeaning;
   }
-  return `The model's ${ordinal(botMove.rank)} most likely of ${botMove.legalMoves} legal moves`;
+  if (botMove.source === 'random') {
+    return texts.panel.randomMeaning;
+  }
+  return texts.panel.rankMeaning(botMove.rank, botMove.legalMoves);
 }
 
 /** The candidate the Bot played, among those the model weighed. */
@@ -134,11 +141,12 @@ function playedCandidate(botMove: ModelMove): Candidate {
 }
 
 /** The model's most likely moves with both probabilities, the move played marked and added if it ranks lower. */
-function candidateTable(before: Game, botMove: ModelMove): HTMLElement {
+function candidateTable(before: Game, botMove: ModelMove, texts: Texts): HTMLElement {
+  const words = texts.panel;
   const table = document.createElement('table');
   table.className = 'candidates';
   const head = table.createTHead().insertRow();
-  for (const title of ['Move', 'Model', 'Drawn']) {
+  for (const title of [words.move, words.model, words.drawn]) {
     const cell = document.createElement('th');
     cell.scope = 'col';
     cell.textContent = title;
@@ -149,53 +157,51 @@ function candidateTable(before: Game, botMove: ModelMove): HTMLElement {
   const played = playedCandidate(botMove);
   const rows = candidateRows(botMove.candidates, botMove.rank);
   for (const candidate of rows.mostLikely) {
-    addCandidateRow(body, before, candidate, candidate === played);
+    addCandidateRow(body, before, candidate, candidate === played, texts);
   }
   if (rows.playedFurtherDown !== null) {
     const gap = body.insertRow();
     const cell = gap.insertCell();
     cell.colSpan = 3;
     cell.textContent = '…';
-    addCandidateRow(body, before, rows.playedFurtherDown, true);
+    addCandidateRow(body, before, rows.playedFurtherDown, true, texts);
   }
   return table;
 }
 
-function addCandidateRow(body: HTMLTableSectionElement, before: Game, candidate: Candidate, isPlayed: boolean): void {
+function addCandidateRow(body: HTMLTableSectionElement, before: Game, candidate: Candidate, isPlayed: boolean, texts: Texts): void {
   const row = body.insertRow();
   if (isPlayed) {
     row.className = 'played';
-    row.setAttribute('aria-label', 'the move played');
+    row.setAttribute('aria-label', texts.panel.playedMove);
   }
   const after = playMove(before, candidate.move);
-  row.insertCell().textContent = after?.lastMoveSan ?? '';
-  row.insertCell().textContent = probability(candidate.modelProbability);
-  row.insertCell().textContent = probability(candidate.drawnProbability);
+  row.insertCell().textContent = texts.writeMove(after?.lastMoveSan ?? '');
+  row.insertCell().textContent = probability(candidate.modelProbability, texts);
+  row.insertCell().textContent = probability(candidate.drawnProbability, texts);
 }
 
 /** How often Camille plays a move the model finds as unlikely, in the move's Phase. */
-function rarityLine(phase: Phase, played: Candidate): HTMLElement {
+function rarityLine(phase: Phase, played: Candidate, texts: Texts): HTMLElement {
   const share = moveRarity(improbabilityYardstick, phase, played.modelProbability);
   if (share === 0) {
-    return paragraph(`None of Camille's ${phase} moves measured was this unlikely to the model.`, 'rarity');
+    return paragraph(texts.panel.rarityNone(phase), 'rarity');
   }
-  return paragraph(`Camille plays a move this unlikely on ${percent(share)} of his ${phase} moves.`, 'rarity');
+  return paragraph(texts.panel.rarity(percent(share, texts), phase), 'rarity');
 }
 
-function lossLine(evaluation: MoveEvaluation | undefined): HTMLElement {
+function lossLine(evaluation: MoveEvaluation | undefined, texts: Texts): HTMLElement {
+  const words = texts.panel;
   if (evaluation === undefined || evaluation === 'pending') {
-    return paragraph('Stockfish is evaluating the move…', 'loss');
+    return paragraph(words.evaluating, 'loss');
   }
   if (evaluation === 'failed') {
-    return paragraph('Stockfish could not evaluate the move.', 'loss');
+    return paragraph(words.evaluationFailed, 'loss');
   }
   if (!evaluation.openPosition) {
-    return paragraph(
-      `The game was already decided: both moves score ten pawns or more for the same side, so the loss is not counted.`,
-      'loss',
-    );
+    return paragraph(words.decided, 'loss');
   }
-  return paragraph(`Stockfish: the move lost ${evaluation.centipawnLoss} centipawns against the best move.`, 'loss');
+  return paragraph(words.lost(evaluation.centipawnLoss), 'loss');
 }
 
 /**
@@ -204,6 +210,7 @@ function lossLine(evaluation: MoveEvaluation | undefined): HTMLElement {
  * Bot's curve is drawn.
  */
 function lossComparison(view: PanelView): HTMLElement[] {
+  const words = view.texts.panel;
   const camille = lossYardstick.profile;
   const charted = movesOnTheChart(view.botMoves, view);
   const bot = lossProfile(evaluatedLosses(charted, view.evaluations));
@@ -214,40 +221,31 @@ function lossComparison(view: PanelView): HTMLElement[] {
 
   const legend = document.createElement('ul');
   legend.className = 'chart-legend';
-  legend.append(legendItem('camille', `Camille, ${camille.moves.toLocaleString('en')} moves`));
+  legend.append(legendItem('camille', words.legendCamille(camille.moves)));
   if (bot.moves > 0) {
-    legend.append(legendItem('bot', `The Bot this game, ${bot.moves} ${moves(bot.moves)}`));
-    legend.append(legendItem('band', `Where chance alone puts Camille on ${bot.moves} ${moves(bot.moves)}`));
+    legend.append(legendItem('bot', words.legendBot(bot.moves)));
+    legend.append(legendItem('band', words.legendBand(bot.moves)));
   }
 
   const figure = document.createElement('div');
   figure.className = 'chart';
-  figure.append(lossChart(camille, bot, band));
+  figure.append(lossChart(camille, bot, band, view.texts));
 
-  const notes = [
-    'Share of moves that lost at most so many centipawns, in positions still open. ' +
-      'Higher and further left: fewer and smaller mistakes.',
-  ];
+  const notes = [words.chartReading];
   if (!view.revealed) {
-    notes.push(
-      `While the game goes on the Bot's curve leaves out its last ${CHART_LAG} moves, so it never shows where ` +
-        'the Bot has just gone wrong. Analysis mode, and the end of the game, show them all.',
-    );
+    notes.push(words.chartLag(CHART_LAG));
   }
   const waiting = unevaluatedMoves(charted, view.evaluations);
   if (waiting > 0) {
     // Stockfish takes the moves one at a time, a few seconds each, so a
     // game joined late in analysis mode takes a while to catch up.
-    notes.push(`Stockfish is evaluating the Bot's moves one at a time: ${waiting} still to come.`);
+    notes.push(words.stillToEvaluate(waiting));
   }
   const failed = failedMoves(charted, view.evaluations);
   if (failed > 0) {
-    notes.push(`Stockfish could not evaluate ${failed} of the Bot's ${moves(failed)}; the curve leaves them out.`);
+    notes.push(words.notEvaluated(failed));
   }
-  notes.push(
-    `Camille: all ${lossYardstick.games} of his games, ${lossYardstick.engine} at depth ${lossYardstick.depth}, ` +
-      'the settings used here.',
-  );
+  notes.push(words.camilleSource(lossYardstick.games, lossYardstick.engine, lossYardstick.depth));
   return [legend, figure, paragraph(notes.join(' '), 'sources')];
 }
 
@@ -305,54 +303,23 @@ function moveNumber(ply: number): string {
   return `${number}…`;
 }
 
-function probability(share: number): string {
+/** A probability in the candidates' table: one decimal, and a dash for a move the cut left out. */
+function probability(share: number, texts: Texts): string {
   if (share === 0) {
     return '–';
   }
   if (share < 0.001) {
-    return '<0.1%';
+    return `<${texts.percent(0.001, 1)}`;
   }
-  return `${(100 * share).toFixed(1)}%`;
+  return texts.percent(share, 1);
 }
 
-function percent(share: number): string {
-  const points = 100 * share;
-  if (points > 0 && points < 1) {
-    return `${points.toFixed(1)}%`;
+/** A share in a sentence: one decimal below 1%, whole points above. */
+function percent(share: number, texts: Texts): string {
+  if (share > 0 && share < 0.01) {
+    return texts.percent(share, 1);
   }
-  return `${Math.round(points)}%`;
-}
-
-function ordinal(rank: number): string {
-  const lastTwo = rank % 100;
-  if (lastTwo >= 11 && lastTwo <= 13) {
-    return `${rank}th`;
-  }
-  const last = rank % 10;
-  if (last === 1) {
-    return `${rank}st`;
-  }
-  if (last === 2) {
-    return `${rank}nd`;
-  }
-  if (last === 3) {
-    return `${rank}rd`;
-  }
-  return `${rank}th`;
-}
-
-function times(count: number): string {
-  if (count === 1) {
-    return 'once';
-  }
-  return `${count} times`;
-}
-
-function moves(count: number): string {
-  if (count === 1) {
-    return 'move';
-  }
-  return 'moves';
+  return texts.percent(share, 0);
 }
 
 function paragraph(text: string, className?: string): HTMLParagraphElement {

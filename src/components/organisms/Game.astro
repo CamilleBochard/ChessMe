@@ -15,6 +15,7 @@ import { readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { SERVED_MODEL_DIRECTORY, SERVED_MODEL_RATING } from '../../engine/served-model';
 import { BROWSER_ENGINE_FILES } from '../../analysis/browser-engine';
+import { TEXTS } from '../../i18n/texts';
 import CornerMarks from '../atoms/CornerMarks.astro';
 import HatchBlock from '../atoms/HatchBlock.astro';
 import Clock from '../molecules/Clock.astro';
@@ -41,6 +42,9 @@ const modelPath = `/models/${modelFileName}`;
 const baseModelName = modelFileName.replace(/\.onnx$/, '');
 // Where scripts/stage-stockfish.ts put the engine analysis mode starts.
 const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
+// Written in English here; the page's script rewrites every data-text in the
+// visitor's language.
+const english = TEXTS.en.page;
 ---
 
 <div
@@ -52,7 +56,7 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
   data-base-model={baseModelName}
   data-engine-path={enginePath}
 >
-  <aside class="settings" aria-label="Game settings">
+  <aside class="settings" aria-label={english.gameSettings} data-text-label="gameSettings">
     <section class="side-section controls">
       <CornerMarks />
       <GameControls />
@@ -113,7 +117,6 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
   import { connectBot, type Bot } from '../../engine/bot-client';
   import type { BotStatus } from '../../engine/bot-protocol';
   import type { BotMove } from '../../engine/move-selection';
-  import type { DownloadProgress } from '../../engine/model-download';
   import { clockFaces, createSessionGame, type ClockFace, type FinishedGame } from '../../session/session-game';
   import { connectTelemetry, sessionGameReport } from '../../telemetry/session-game';
   import { SESSION_GAMES_CHANGED } from '../../telemetry/session-game-summary';
@@ -121,6 +124,7 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
   import { moveLoss } from '../../analysis/engine-analysis';
   import { botMovesOf, moveKeyOf, replyKey, type ExplainedMove } from '../../explanation/explained-moves';
   import { showPanel, type MoveEvaluation } from '../../explanation/panel';
+  import { LANGUAGE_CHANGED, pageLanguage, pageTexts } from '../../i18n/page-language';
   import { adaptiveDialog } from '../adaptive-dialog';
 
   /**
@@ -165,6 +169,9 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
     const impressionChoices = impression.querySelector<HTMLElement>('[data-impression-choices]')!;
     const impressionButtons = impressionChoices.querySelectorAll<HTMLButtonElement>('button');
     const impressionThanks = impression.querySelector<HTMLElement>('[data-impression-thanks]')!;
+    const impressionQuestion = impression.querySelector<HTMLElement>('[data-impression-question]')!;
+    // Whether the visitor's answer was recorded, once they have given one.
+    let impressionRecorded: boolean | null = null;
     const moveExplanation = frame.querySelector<HTMLElement>('[data-move-explanation]')!;
     const lossChartElement = frame.querySelector<HTMLElement>('[data-loss-chart]')!;
     const analysisSwitch = frame.querySelector<HTMLInputElement>('[data-analysis-switch]')!;
@@ -218,6 +225,14 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
     showGame();
     // A phone opens on the settings of a game, over the board.
     setup.openOnPhone();
+    showImpressionText();
+    // A new language redraws every text the script writes; the fixed words
+    // were rewritten by the switch itself.
+    document.addEventListener(LANGUAGE_CHANGED, () => {
+      showImpressionText();
+      showModelStatus(modelStatus, botStatus);
+      showGame();
+    });
     // The clocks change every moment, not only when the game does. A few
     // redraws a second keep the seconds turning on time.
     setInterval(showClocks, 200);
@@ -346,6 +361,7 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
      * stored, since an answer needs a game to be attached to.
      */
     function askImpression(): void {
+      impressionRecorded = null;
       for (const button of impressionButtons) {
         button.disabled = false;
       }
@@ -366,11 +382,21 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
 
       impressionChoices.hidden = true;
       impressionThanks.hidden = false;
+      impressionRecorded = recorded;
+      showImpressionText();
       if (recorded) {
-        impressionThanks.textContent = 'Thank you, your answer has been recorded.';
         announceSessionGamesChanged();
-      } else {
-        impressionThanks.textContent = 'Your answer could not be recorded.';
+      }
+    }
+
+    /** The end-of-game question and, once answered, whether the answer was recorded, in the page's language. */
+    function showImpressionText(): void {
+      const texts = pageTexts();
+      impressionQuestion.textContent = texts.impressionQuestion(Number(frame.dataset.modelRating));
+      if (impressionRecorded === true) {
+        impressionThanks.textContent = texts.impressionRecorded;
+      } else if (impressionRecorded === false) {
+        impressionThanks.textContent = texts.impressionNotRecorded;
       }
     }
 
@@ -486,11 +512,12 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
         },
       });
 
-      let statusText = session.status();
+      const texts = pageTexts();
+      let statusText = session.status(pageLanguage());
       if (isOngoing && botFailed) {
-        statusText = 'The game cannot continue without the Bot.';
+        statusText = texts.cannotContinue;
       } else if (visitor !== null && isOngoing && !isVisitorsTurn && isModelLoading) {
-        statusText = 'The Bot will reply once its model has loaded.';
+        statusText = texts.botWaitsForModel;
       }
       statusElement.textContent = statusText;
 
@@ -522,6 +549,7 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
           botMoves: [],
           revealed: analysisSwitch.checked,
           evaluations: new Map(),
+          texts: pageTexts(),
         });
         return;
       }
@@ -546,6 +574,7 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
         botMoves: botMoves,
         revealed: analysisSwitch.checked || isOver,
         evaluations: evaluations,
+        texts: pageTexts(),
       });
     }
 
@@ -638,7 +667,7 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
      * before.
      */
     function showClocks(): void {
-      const faces = clockFaces(session.visitor());
+      const faces = clockFaces(session.visitor(), pageLanguage());
       let showsTime = isClockChosen();
       if (session.visitor() !== null) {
         showsTime = session.isTimed();
@@ -672,7 +701,7 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
     // A worker that cannot even start, for instance on a browser without
     // WebAssembly, reports nothing through the Bot's own messages.
     worker.addEventListener('error', () => {
-      onStatus({ kind: 'failed', reason: 'the browser could not start it' });
+      onStatus({ kind: 'failed', reason: pageTexts().browserCouldNotStartIt });
     });
 
     // The worker resolves URLs against its own script, so it is given a full
@@ -693,6 +722,7 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
   function showModelStatus(container: HTMLElement, status: BotStatus): void {
     const progressBar = container.querySelector<HTMLProgressElement>('[data-model-progress]')!;
     const message = container.querySelector<HTMLElement>('[data-model-message]')!;
+    const texts = pageTexts();
 
     if (status.kind === 'ready') {
       container.hidden = true;
@@ -703,13 +733,13 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
     if (status.kind === 'failed') {
       progressBar.hidden = true;
       container.classList.add('failed');
-      message.textContent = `The Bot could not be loaded: ${status.reason}. Reload the page to try again.`;
+      message.textContent = texts.botFailed(status.reason);
       return;
     }
 
     if (status.kind === 'preparing') {
       progressBar.removeAttribute('value');
-      message.textContent = 'Preparing the Bot…';
+      message.textContent = texts.preparingTheBot;
       return;
     }
 
@@ -717,20 +747,16 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
     if (progress.totalBytes === undefined) {
       // Without a total the bar can only show that something is happening.
       progressBar.removeAttribute('value');
-      message.textContent = `Downloading the Bot's model: ${megabytes(progress.receivedBytes)} MB`;
+      message.textContent = texts.downloading(megabytes(progress.receivedBytes));
     } else {
       progressBar.max = progress.totalBytes;
       progressBar.value = progress.receivedBytes;
-      message.textContent = `Downloading the Bot's model: ${describeShare(progress)}`;
+      message.textContent = texts.downloadingOf(megabytes(progress.receivedBytes), megabytes(progress.totalBytes));
     }
   }
 
-  function describeShare(progress: DownloadProgress): string {
-    return `${megabytes(progress.receivedBytes)} of ${megabytes(progress.totalBytes!)} MB`;
-  }
-
   function megabytes(bytes: number): string {
-    return (bytes / 1_000_000).toFixed(1);
+    return pageTexts().decimal(bytes / 1_000_000, 1);
   }
 
   /**
@@ -789,8 +815,9 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
     let markedMove: HTMLSpanElement | null = null;
 
     for (const [rowIndex, row] of rows.entries()) {
-      const whiteMove = moveListCell('move', row.white ?? '…');
-      const blackMove = moveListCell('move', row.black ?? '');
+      const texts = pageTexts();
+      const whiteMove = moveListCell('move', texts.writeMove(row.white ?? '…'));
+      const blackMove = moveListCell('move', texts.writeMove(row.black ?? ''));
 
       const item = document.createElement('li');
       item.append(moveListCell('move-number', `${row.moveNumber}.`), whiteMove, blackMove);

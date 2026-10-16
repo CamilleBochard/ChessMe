@@ -9,21 +9,26 @@
 import BracketLabel from '../atoms/BracketLabel.astro';
 import AdaptiveDialog from '../molecules/AdaptiveDialog.astro';
 import TickBox from '../molecules/TickBox.astro';
+import { TEXTS } from '../../i18n/texts';
+
+const english = TEXTS.en.page;
 ---
 
-<AdaptiveDialog title="Pieces" data-pieces-dialog>
+<AdaptiveDialog titleKey="pieces" data-pieces-dialog>
   <fieldset class="piece-sets">
-    <legend><BracketLabel text="Pieces" /></legend>
+    <legend><BracketLabel textKey="pieces" /></legend>
     <div class="choices">
       <TickBox type="radio" name="piece-set" value="anarcandy" data-piece-set-choice checked>Anarcandy</TickBox>
-      <TickBox type="radio" name="piece-set" value="classic" data-piece-set-choice>Classic</TickBox>
+      <TickBox type="radio" name="piece-set" value="classic" data-piece-set-choice textKey="classic">{english.classic}</TickBox>
       <TickBox type="radio" name="piece-set" value="candy" data-piece-set-choice>Candy</TickBox>
       <TickBox type="radio" name="piece-set" value="mech" data-piece-set-choice>Mech</TickBox>
     </div>
     <p class="credits">
-      Anarcandy by <a href="https://github.com/caderek">caderek</a>,
-      from <a href="https://github.com/lichess-org/lila/tree/master/public/piece/anarcandy">Lichess</a>,
-      used unmodified under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>.
+      <span data-text="creditBy">{english.creditBy}</span><a href="https://github.com/caderek">caderek</a><span
+        data-text="creditFrom">{english.creditFrom}</span
+      ><a href="https://github.com/lichess-org/lila/tree/master/public/piece/anarcandy">Lichess</a><span
+        data-text="creditLicence">{english.creditLicence}</span
+      ><a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>.
     </p>
   </fieldset>
 </AdaptiveDialog>

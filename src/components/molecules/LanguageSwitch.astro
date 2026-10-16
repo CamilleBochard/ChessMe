@@ -1,0 +1,67 @@
+---
+// Two buttons that switch the page between English and French. The page
+// opens in the visitor's earlier choice, else their browser's language;
+// src/i18n/page-language.ts holds the choice and rewrites the page's words.
+---
+
+<div class="language-switch" role="group" aria-label="Language" data-text-label="language">
+  <button type="button" lang="en" data-language="en" aria-pressed="true">English</button>
+  <button type="button" lang="fr" data-language="fr" aria-pressed="false">Français</button>
+</div>
+
+<script>
+  import type { Language } from '../../i18n/language';
+  import { LANGUAGE_CHANGED, pageLanguage, switchLanguage } from '../../i18n/page-language';
+
+  const buttons = document.querySelectorAll<HTMLButtonElement>('[data-language]');
+  for (const button of buttons) {
+    button.addEventListener('click', () => {
+      switchLanguage(button.dataset.language as Language);
+    });
+  }
+  showPressed();
+  document.addEventListener(LANGUAGE_CHANGED, showPressed);
+
+  /** Marks the button of the language the page is in. */
+  function showPressed(): void {
+    const language = pageLanguage();
+    for (const button of buttons) {
+      const isCurrent = button.dataset.language === language;
+      button.setAttribute('aria-pressed', String(isCurrent));
+    }
+  }
+</script>
+
+<style>
+  .language-switch {
+    display: inline-flex;
+  }
+
+  button {
+    padding: 4px 10px;
+    border: var(--line);
+    background: var(--paper-light);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  /* The two buttons share the border between them. */
+  button + button {
+    border-left: 0;
+  }
+
+  button:hover,
+  button:focus-visible {
+    outline: none;
+    background: var(--paper-deep);
+  }
+
+  button[aria-pressed='true'] {
+    background: var(--accent);
+  }
+</style>

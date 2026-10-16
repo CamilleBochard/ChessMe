@@ -6,20 +6,23 @@
 // by the game's script.
 import PanelHeader from '../molecules/PanelHeader.astro';
 import TickBox from '../molecules/TickBox.astro';
+import { TEXTS } from '../../i18n/texts';
+
+const english = TEXTS.en.page;
 ---
 
 <section class="explanation" aria-labelledby="explanation-heading">
-  <PanelHeader title="Why the Bot played it" id="explanation-heading" />
+  <PanelHeader titleKey="whyTheBotPlayedIt" id="explanation-heading" />
   <div class="explained-move" data-move-explanation aria-live="polite"></div>
 
-  <PanelHeader title="Mistakes, the Bot against Camille" />
+  <PanelHeader titleKey="mistakesChart" />
   <div class="loss-comparison" data-loss-chart></div>
 
-  <TickBox class="analysis-switch" type="checkbox" data-analysis-switch>Analysis mode</TickBox>
+  <TickBox class="analysis-switch" type="checkbox" data-analysis-switch textKey="analysisMode">{english.analysisMode}</TickBox>
   <p class="analysis-note">
-    The chart runs <a href="https://github.com/nmrugg/stockfish.js">Stockfish</a> (GPL-3.0) in your browser, a 1.8 MB
-    download. Analysis mode shows how much evaluation each of the Bot's moves lost, and the chart up to the last move,
-    as the game goes. A game played with it on is recorded as assisted.
+    <span data-text="analysisNoteBefore">{english.analysisNoteBefore}</span><a
+      href="https://github.com/nmrugg/stockfish.js">Stockfish</a
+    ><span data-text="analysisNoteAfter">{english.analysisNoteAfter}</span>
   </p>
 </section>
 

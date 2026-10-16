@@ -3,19 +3,22 @@
 // square box in ink, filled with accent hatching when ticked, beside a label
 // in capitals. Any attribute other than the class, such as the data attribute
 // the game's script finds the input by, its name or its value, is passed on
-// to the input; the class goes on the label, for the place it sits in.
+// to the input; the class goes on the label, for the place it sits in. A label
+// named among the page's texts is rewritten in the visitor's language.
 import type { HTMLAttributes } from 'astro/types';
+import type { PageText } from '../../i18n/texts';
 
 interface Props extends HTMLAttributes<'input'> {
   type: 'checkbox' | 'radio';
+  textKey?: PageText;
 }
 
-const { class: className, ...attributes } = Astro.props;
+const { class: className, textKey, ...attributes } = Astro.props;
 ---
 
 <label class:list={['tick-box', className]}>
   <input {...attributes} />
-  <slot />
+  <span data-text={textKey}><slot /></span>
 </label>
 
 <style>

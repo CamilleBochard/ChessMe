@@ -3,18 +3,20 @@
 // and on the right whatever the section adds, such as a note in micro text or
 // a pair of buttons.
 import BracketLabel from '../atoms/BracketLabel.astro';
+import type { PageText } from '../../i18n/texts';
 
 interface Props {
-  title: string;
+  /** The section's name, among the page's texts. */
+  titleKey: PageText;
   /** The heading's id, for the section it names to be labelled by it. */
   id?: string;
 }
 
-const { title, id } = Astro.props;
+const { titleKey, id } = Astro.props;
 ---
 
 <div class="panel-header">
-  <BracketLabel as="h2" text={title} id={id} />
+  <BracketLabel as="h2" textKey={titleKey} id={id} />
   <slot />
 </div>
 

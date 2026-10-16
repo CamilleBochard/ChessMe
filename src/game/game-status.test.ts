@@ -225,4 +225,12 @@ describe('describeTurn', () => {
 
     expect(describeTurn(resign(afterOneMove, 'black'), 'black')).toBe('Black resigns. White wins.');
   });
+
+  it('speaks French when asked to', () => {
+    const afterOneMove = playMoves([{ from: 'e2', to: 'e4' }]);
+
+    expect(describeTurn(newGame(), 'white', 'fr')).toBe('Aux Blancs de jouer\u00a0: à vous.');
+    expect(describeTurn(afterOneMove, 'white', 'fr')).toBe('Aux Noirs de jouer\u00a0: le Bot réfléchit…');
+    expect(describeTurn(resign(afterOneMove, 'black'), 'black', 'fr')).toBe('Les Noirs abandonnent. Les Blancs gagnent.');
+  });
 });

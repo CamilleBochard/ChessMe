@@ -1,8 +1,10 @@
 // The chart of losses in the panel: Camille's profile drawn first, the band
 // chance alone leaves around it, and the Bot's profile over them as its moves
 // are evaluated. It only draws; the figures come from ./yardsticks.ts, and the
-// colours from the panel's stylesheet, through the classes set here.
+// colours from the panel's stylesheet, through the classes set here, and its
+// words from the language the page is in.
 
+import type { Texts } from '../i18n/texts';
 import { LOSS_PROFILE_EDGES, type Band, type LossProfile } from './yardsticks';
 
 const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
@@ -21,22 +23,22 @@ const BOTTOM = 34;
  * fewer and smaller mistakes. The Bot's curve and the band are left out until
  * one of its moves has been evaluated.
  */
-export function lossChart(camille: LossProfile, bot: LossProfile, band: Band | null): SVGSVGElement {
+export function lossChart(camille: LossProfile, bot: LossProfile, band: Band | null, texts: Texts): SVGSVGElement {
   const svg = svgElement('svg', {
     viewBox: `0 0 ${WIDTH} ${HEIGHT}`,
     role: 'img',
     class: 'loss-chart',
-    'aria-label': describe(camille, bot),
+    'aria-label': describe(camille, bot, texts),
   }) as SVGSVGElement;
 
   for (const share of [0, 0.5, 1]) {
     svg.append(svgElement('line', { x1: LEFT, x2: WIDTH - RIGHT, y1: y(share), y2: y(share), class: 'gridline' }));
-    svg.append(label(LEFT - 6, y(share) + 3, `${Math.round(share * 100)}%`, 'end'));
+    svg.append(label(LEFT - 6, y(share) + 3, texts.percent(share, 0), 'end'));
   }
   for (const [index, edge] of LOSS_PROFILE_EDGES.entries()) {
     svg.append(label(x(index), HEIGHT - BOTTOM + 14, String(edge), 'middle'));
   }
-  svg.append(label((LEFT + WIDTH - RIGHT) / 2, HEIGHT - 4, 'lost at most, in centipawns', 'middle'));
+  svg.append(label((LEFT + WIDTH - RIGHT) / 2, HEIGHT - 4, texts.panel.chartAxis, 'middle'));
 
   if (band !== null) {
     svg.append(bandShape(band));
@@ -84,13 +86,13 @@ function label(left: number, baseline: number, text: string, anchor: 'start' | '
 }
 
 /** What the chart shows, for a screen reader: the share of moves losing a pawn or less, each side. */
-function describe(camille: LossProfile, bot: LossProfile): string {
+function describe(camille: LossProfile, bot: LossProfile, texts: Texts): string {
   const pawnIndex = LOSS_PROFILE_EDGES.indexOf(100);
-  const camilleShare = Math.round(camille.atMost[pawnIndex] * 100);
-  let description = `Camille loses a pawn or less on ${camilleShare}% of his moves.`;
+  const camilleShare = texts.percent(camille.atMost[pawnIndex], 0);
+  let description = texts.panel.chartCamille(camilleShare);
   if (bot.moves > 0) {
-    const botShare = Math.round(bot.atMost[pawnIndex] * 100);
-    description += ` The Bot, on ${botShare}% of its ${bot.moves} evaluated moves this game.`;
+    const botShare = texts.percent(bot.atMost[pawnIndex], 0);
+    description += ' ' + texts.panel.chartBot(botShare, bot.moves);
   }
   return description;
 }

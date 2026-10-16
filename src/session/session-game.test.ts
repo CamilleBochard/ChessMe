@@ -163,6 +163,17 @@ describe('createSessionGame', () => {
     expect(afterStartingOver).toBe('Choose a side to start.');
   });
 
+  it('says the same in French when asked to', async () => {
+    const session = createSessionGame({ chooseMove: scriptedBot([]) });
+    const beforeStart = session.status('fr');
+
+    await session.start('white');
+    const duringGame = session.status('fr');
+
+    expect(beforeStart).toBe('Choisissez une couleur pour commencer.');
+    expect(duringGame).toBe('Aux Blancs de jouer\u00a0: à vous.');
+  });
+
   it('leaves the result of a finished game alone when the visitor tries to resign', async () => {
     // Fool's Mate: the Bot, playing Black, mates on its second move.
     const session = createSessionGame({
@@ -720,6 +731,14 @@ describe('the clock faces', () => {
     expect(clockFaces(null)).toEqual({
       top: { side: 'black', name: 'Black' },
       bottom: { side: 'white', name: 'White' },
+    });
+  });
+
+  it('names the players in French when asked to', () => {
+    expect(clockFaces('white', 'fr')).toEqual({ top: { side: 'black', name: 'Bot' }, bottom: { side: 'white', name: 'Vous' } });
+    expect(clockFaces(null, 'fr')).toEqual({
+      top: { side: 'black', name: 'Noirs' },
+      bottom: { side: 'white', name: 'Blancs' },
     });
   });
 });

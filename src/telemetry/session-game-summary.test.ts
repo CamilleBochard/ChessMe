@@ -104,3 +104,16 @@ describe('the Session Game summary shown on the write-up', () => {
     expect(summary).toBeUndefined();
   });
 });
+
+describe('the Session Game summary in French', () => {
+  it('writes the record, the shares and the answers as French does, a single result or none in the singular', async () => {
+    const service = fetchAnswering(() => Response.json({ ...COUNTS, bot_wins: 9, bot_losses: 1, draws: 0 }));
+
+    const summary = await readSessionGameSummary(service, 'fr');
+
+    expect(summary?.botRecord).toBe('9 victoires, 0 nulle, 1 défaite');
+    expect(summary?.botScore).toBe('75\u00a0%');
+    expect(summary?.fromOpeningBook).toBe('10\u00a0%');
+    expect(summary?.feltLikeARealPlayer).toBe('4 sur 6 ayant répondu');
+  });
+});

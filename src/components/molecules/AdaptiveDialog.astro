@@ -7,19 +7,26 @@
 // on to the dialog itself.
 import type { HTMLAttributes } from 'astro/types';
 import BracketLabel from '../atoms/BracketLabel.astro';
+import { TEXTS, type PageText } from '../../i18n/texts';
 
 interface Props extends HTMLAttributes<'dialog'> {
-  /** The title shown on a phone, where the dialog stands alone over the board. */
-  title: string;
+  /** The title shown on a phone, where the dialog stands alone over the board, among the page's texts. */
+  titleKey: PageText;
 }
 
-const { title, class: className, ...attributes } = Astro.props;
+const { titleKey, class: className, ...attributes } = Astro.props;
+const english = TEXTS.en.page;
 ---
 
-<dialog class:list={['adaptive-dialog', className]} aria-label={title} {...attributes}>
+<dialog
+  class:list={['adaptive-dialog', className]}
+  aria-label={english[titleKey]}
+  data-text-label={titleKey}
+  {...attributes}
+>
   <div class="dialog-head">
-    <BracketLabel as="p" text={title} />
-    <button type="button" class="dialog-close" data-dialog-close aria-label="Close">
+    <BracketLabel as="p" textKey={titleKey} />
+    <button type="button" class="dialog-close" data-dialog-close aria-label={english.close} data-text-label="close">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
     </button>
   </div>

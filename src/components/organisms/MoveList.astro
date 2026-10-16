@@ -4,15 +4,32 @@
 // that step back and forth through the positions. The game's script writes
 // the rows and enables the buttons.
 import PanelHeader from '../molecules/PanelHeader.astro';
+import { TEXTS } from '../../i18n/texts';
+
+const english = TEXTS.en.page;
 ---
 
 <div class="move-list-panel">
-  <PanelHeader title="Moves" id="moves-heading">
+  <PanelHeader titleKey="moves" id="moves-heading">
     <div class="browse">
-      <button type="button" data-view-back aria-label="Previous position" title="Previous position (←)">
+      <button
+        type="button"
+        data-view-back
+        aria-label={english.previousPosition}
+        title={english.previousPositionShortcut}
+        data-text-label="previousPosition"
+        data-text-title="previousPositionShortcut"
+      >
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
       </button>
-      <button type="button" data-view-forward aria-label="Next position" title="Next position (→)">
+      <button
+        type="button"
+        data-view-forward
+        aria-label={english.nextPosition}
+        title={english.nextPositionShortcut}
+        data-text-label="nextPosition"
+        data-text-title="nextPositionShortcut"
+      >
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
       </button>
     </div>

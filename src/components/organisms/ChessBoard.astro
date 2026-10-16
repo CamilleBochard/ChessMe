@@ -1,5 +1,6 @@
 ---
 import BracketLabel from '../atoms/BracketLabel.astro';
+import { TEXTS } from '../../i18n/texts';
 
 // The board itself: the element Chessground draws into, the frame around it,
 // and the dialog that asks which piece a pawn promotes to. Chessground keeps
@@ -7,22 +8,24 @@ import BracketLabel from '../atoms/BracketLabel.astro';
 // board or piece theme comes from the portfolio's look instead, below. The
 // board is played and redrawn by the game's script, which finds the drawing
 // element by data-board and the dialog by data-promotion.
+
+const english = TEXTS.en.page;
 ---
 
 <div class="board-surround">
   <div class="board" data-board></div>
 </div>
 
-<dialog class="promotion" data-promotion aria-label="Choose a promotion piece">
+<dialog class="promotion" data-promotion aria-label={english.choosePromotion} data-text-label="choosePromotion">
   <form method="dialog">
     <div class="promotion-label">
-      <BracketLabel as="p" text="Promote to" />
+      <BracketLabel as="p" textKey="promoteTo" />
     </div>
     <div class="promotion-choices">
-      <button value="queen"><span class="piece-name">Queen</span></button>
-      <button value="rook"><span class="piece-name">Rook</span></button>
-      <button value="bishop"><span class="piece-name">Bishop</span></button>
-      <button value="knight"><span class="piece-name">Knight</span></button>
+      <button value="queen"><span class="piece-name" data-text="queen">{english.queen}</span></button>
+      <button value="rook"><span class="piece-name" data-text="rook">{english.rook}</span></button>
+      <button value="bishop"><span class="piece-name" data-text="bishop">{english.bishop}</span></button>
+      <button value="knight"><span class="piece-name" data-text="knight">{english.knight}</span></button>
     </div>
   </form>
 </dialog>

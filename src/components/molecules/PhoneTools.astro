@@ -4,17 +4,34 @@
 // other the choice of pieces. The game's script and the piece choice find
 // them by data-open-setup and data-open-pieces. A wide screen hides them: the
 // settings are in view on the left.
+import { TEXTS } from '../../i18n/texts';
+
+const english = TEXTS.en.page;
 ---
 
 <div class="phone-tools">
-  <button type="button" data-open-setup aria-label="Game settings" title="Game settings">
+  <button
+    type="button"
+    data-open-setup
+    aria-label={english.gameSettings}
+    title={english.gameSettings}
+    data-text-label="gameSettings"
+    data-text-title="gameSettings"
+  >
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M4 7h9M17 7h3M4 17h3M11 17h9"></path>
       <circle cx="15" cy="7" r="2"></circle>
       <circle cx="9" cy="17" r="2"></circle>
     </svg>
   </button>
-  <button type="button" data-open-pieces aria-label="Pieces" title="Pieces">
+  <button
+    type="button"
+    data-open-pieces
+    aria-label={english.pieces}
+    title={english.pieces}
+    data-text-label="pieces"
+    data-text-title="pieces"
+  >
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <circle cx="12" cy="6.5" r="2.5"></circle>
       <path d="M9.5 10.5h5l1.5 7h-8z"></path>

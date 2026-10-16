@@ -9,28 +9,31 @@ import BracketLabel from '../atoms/BracketLabel.astro';
 import AdaptiveDialog from '../molecules/AdaptiveDialog.astro';
 import GameButton from '../molecules/GameButton.astro';
 import TickBox from '../molecules/TickBox.astro';
+import { TEXTS } from '../../i18n/texts';
+
+const english = TEXTS.en.page;
 ---
 
 <div class="game-controls">
-  <AdaptiveDialog title="New game" data-setup-dialog>
+  <AdaptiveDialog titleKey="newGame" data-setup-dialog>
     <div class="choices">
       <fieldset class="clock-choice">
-        <legend><BracketLabel text="Clock" /></legend>
-        <TickBox type="radio" name="clock" value="timed" data-clock-choice checked>10 minutes</TickBox>
-        <TickBox type="radio" name="clock" value="untimed" data-clock-choice>No clock</TickBox>
+        <legend><BracketLabel textKey="clock" /></legend>
+        <TickBox type="radio" name="clock" value="timed" data-clock-choice checked textKey="tenMinutes">{english.tenMinutes}</TickBox>
+        <TickBox type="radio" name="clock" value="untimed" data-clock-choice textKey="noClock">{english.noClock}</TickBox>
       </fieldset>
-      <BracketLabel text="Play as" />
+      <BracketLabel textKey="playAs" />
       <div class="buttons">
-        <GameButton accent data-play-as="white">White</GameButton>
-        <GameButton accent data-play-as="black">Black</GameButton>
+        <GameButton accent data-play-as="white" textKey="white">{english.white}</GameButton>
+        <GameButton accent data-play-as="black" textKey="black">{english.black}</GameButton>
       </div>
     </div>
   </AdaptiveDialog>
 
   <div class="buttons" data-controls hidden>
-    <GameButton data-take-back>Take back</GameButton>
-    <GameButton data-resign>Resign</GameButton>
-    <GameButton data-new-game>New game</GameButton>
+    <GameButton data-take-back textKey="takeBack">{english.takeBack}</GameButton>
+    <GameButton data-resign textKey="resign">{english.resign}</GameButton>
+    <GameButton data-new-game textKey="newGame">{english.newGame}</GameButton>
   </div>
 </div>
 

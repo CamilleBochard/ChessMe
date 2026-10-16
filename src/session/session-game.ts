@@ -19,6 +19,8 @@ import {
 import { newClock, remainingTime, startTurn, stopClock, type Clock } from '../game/clock';
 import { describeTurn, gameStatus } from '../game/game-status';
 import type { MoveSource } from '../engine/move-selection';
+import type { Language } from '../i18n/language';
+import { TEXTS } from '../i18n/texts';
 
 /** A move of the Bot and where it came from: all the session needs of the Bot's reply. */
 export interface SourcedMove {
@@ -75,8 +77,8 @@ export interface SessionGame {
   game(): Game;
   /** The visitor's side, or null while waiting for the visitor to pick one. */
   visitor(): Colour | null;
-  /** The line shown under the board: whose turn it is, or how the game ended. */
-  status(): string;
+  /** The line shown under the board, in the language given (English if none): whose turn it is, or how the game ended. */
+  status(language?: Language): string;
   /** The time the side has left on its clock right now, in milliseconds. */
   timeLeft(side: Colour): number;
   /**
@@ -137,16 +139,17 @@ export interface ClockFace {
  * the board, on the side the board is turned to, and the Bot's above. Before
  * a side is chosen the board shows White at the bottom, and so do the clocks.
  */
-export function clockFaces(visitor: Colour | null): { top: ClockFace; bottom: ClockFace } {
+export function clockFaces(visitor: Colour | null, language: Language = 'en'): { top: ClockFace; bottom: ClockFace } {
+  const texts = TEXTS[language];
   if (visitor === null) {
-    return { top: { side: 'black', name: 'Black' }, bottom: { side: 'white', name: 'White' } };
+    return { top: { side: 'black', name: texts.side('black') }, bottom: { side: 'white', name: texts.side('white') } };
   }
 
   let botSide: Colour = 'white';
   if (visitor === 'white') {
     botSide = 'black';
   }
-  return { top: { side: botSide, name: 'Bot' }, bottom: { side: visitor, name: 'You' } };
+  return { top: { side: botSide, name: texts.bot }, bottom: { side: visitor, name: texts.you } };
 }
 
 export function createSessionGame(options: SessionGameOptions): SessionGame {
@@ -368,11 +371,11 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
 
     visitor: () => visitor,
 
-    status(): string {
+    status(language: Language = 'en'): string {
       if (visitor === null) {
-        return 'Choose a side to start.';
+        return TEXTS[language].chooseASide;
       }
-      return describeTurn(game, visitor);
+      return describeTurn(game, visitor, language);
     },
 
     timeLeft(side: Colour): number {

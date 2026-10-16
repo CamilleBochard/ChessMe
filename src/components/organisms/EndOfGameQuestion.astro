@@ -1,16 +1,19 @@
 ---
 // The question asked once a game has ended and been stored: did the Bot feel
 // like a real player of its rating? The game's script shows it, sends the
-// answer and thanks the visitor.
+// answer and thanks the visitor, in the page's language.
 import { SERVED_MODEL_RATING } from '../../engine/served-model';
 import GameButton from '../molecules/GameButton.astro';
+import { TEXTS } from '../../i18n/texts';
+
+const english = TEXTS.en;
 ---
 
 <div class="impression" data-impression hidden>
-  <p class="question">Did the Bot feel like a real player of about {SERVED_MODEL_RATING} on Lichess?</p>
+  <p class="question" data-impression-question>{english.impressionQuestion(SERVED_MODEL_RATING)}</p>
   <div class="choices" data-impression-choices>
-    <GameButton data-felt-real="yes">Yes</GameButton>
-    <GameButton data-felt-real="no">No</GameButton>
+    <GameButton data-felt-real="yes" textKey="yes">{english.page.yes}</GameButton>
+    <GameButton data-felt-real="no" textKey="no">{english.page.no}</GameButton>
   </div>
   <p class="thanks" data-impression-thanks hidden></p>
 </div>

@@ -1,21 +1,24 @@
 ---
 // The portfolio's game-menu button: a label in capitals on a chamfered ink
 // plate, a small accent arrow, and a hatched box beside it. The accent
-// variant marks the choice that starts a game. Any other attribute, such as
+// variant marks the choice that starts a game. A label named among the page's
+// texts is rewritten in the visitor's language. Any other attribute, such as
 // the data attribute the game's script finds the button by, is passed on to
 // the button itself.
 import type { HTMLAttributes } from 'astro/types';
+import type { PageText } from '../../i18n/texts';
 import HatchBlock from '../atoms/HatchBlock.astro';
 
 interface Props extends HTMLAttributes<'button'> {
   accent?: boolean;
+  textKey?: PageText;
 }
 
-const { accent = false, class: className, type = 'button', ...attributes } = Astro.props;
+const { accent = false, textKey, class: className, type = 'button', ...attributes } = Astro.props;
 ---
 
 <button type={type} class:list={['game-button', className, { accent }]} {...attributes}>
-  <span class="plate"><slot /></span>
+  <span class="plate" data-text={textKey}><slot /></span>
   <HatchBlock class="hatch-box" />
 </button>
 
