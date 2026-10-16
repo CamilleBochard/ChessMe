@@ -1,10 +1,11 @@
 ---
 // A game against the Bot, in three columns on a wide screen: on the left the
-// settings of a game, its controls and the choice of pieces; in the middle
+// settings of a game, its controls, the choice of pieces and Camille's
+// record; in the middle
 // the board between the two clocks, with the status under it; on the right
 // the moves, always in view, the end-of-game question and the panel
-// explaining the Bot's moves. On a phone the board comes first, the settings
-// and the pieces open over it from two buttons under it, and the moves follow
+// explaining the Bot's moves. On a phone the board comes first, the settings,
+// the pieces and the record open over it from buttons under it, and the moves follow
 // right below. The page puts its title in the header slot and what appears
 // once a game has ended in the after-game slot. The rules live in src/game/, the Bot's choice
 // in src/engine/ and what the visitor may do when in src/session/; the script
@@ -27,6 +28,7 @@ import ExplanationPanel from './ExplanationPanel.astro';
 import GameControls from './GameControls.astro';
 import MoveList from './MoveList.astro';
 import PieceSetChoice from './PieceSetChoice.astro';
+import PlayerRecord from './PlayerRecord.astro';
 
 // The model the page downloads, found where scripts/stage-model.ts put it. Its
 // size is read here, at build time, because the server sends it compressed and
@@ -63,6 +65,9 @@ const english = TEXTS.en.page;
     </section>
     <section class="side-section pieces">
       <PieceSetChoice />
+    </section>
+    <section class="side-section">
+      <PlayerRecord />
     </section>
   </aside>
 
@@ -954,8 +959,8 @@ const english = TEXTS.en.page;
 
 <style>
   /* On a phone everything stacks: the title, the board between the two
-     clocks, the status with the two buttons that open the settings and the
-     pieces, the buttons of a game in progress, then the moves and the
+     clocks, the status with the buttons that open the settings, the pieces
+     and the record, the buttons of a game in progress, then the moves and the
      panel. From 960px three columns: the settings on the left at 230px, the
      moves and the panel on the right at 320px, and the board centred
      between them. */
@@ -1016,7 +1021,7 @@ const english = TEXTS.en.page;
     border-bottom: 0;
   }
 
-  /* On a phone the settings and the pieces are dialogs over the board, and
+  /* On a phone the settings, the pieces and the record are dialogs over the board, and
      only the buttons of a game in progress show here, under the board. */
   .settings .side-section {
     padding: 0 16px;

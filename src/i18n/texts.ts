@@ -140,6 +140,17 @@ export type PageText =
   | 'creditBy'
   | 'creditFrom'
   | 'creditLicence'
+  | 'record'
+  | 'games'
+  | 'withWhite'
+  | 'withBlack'
+  | 'wins'
+  | 'draws'
+  | 'losses'
+  | 'mostPlayedOpenings'
+  | 'opening'
+  | 'score'
+  | 'recordScope'
   | 'readingTheCounts'
   | 'gamesFinished'
   | 'botRecord'
@@ -244,6 +255,19 @@ const ENGLISH: Texts = {
     creditBy: 'Anarcandy by ',
     creditFrom: ', from ',
     creditLicence: ', used unmodified under ',
+    record: "Camille's games",
+    games: 'Games',
+    withWhite: 'With White',
+    withBlack: 'With Black',
+    wins: 'Wins',
+    draws: 'Draws',
+    losses: 'Losses',
+    mostPlayedOpenings: 'Most played openings',
+    opening: 'Opening',
+    score: 'Score',
+    recordScope:
+      'Ten-minute games since June 2025, on Lichess and Chess.com, the games the Bot learned from. ' +
+      'Score: wins plus half the draws.',
     readingTheCounts: 'Reading the counts…',
     gamesFinished: 'Games finished',
     botRecord: "The Bot's record",
@@ -401,6 +425,19 @@ const FRENCH: Texts = {
     creditBy: 'Anarcandy par ',
     creditFrom: ', tiré de ',
     creditLicence: ', utilisé sans modification sous licence ',
+    record: 'Les parties de Camille',
+    games: 'Parties',
+    withWhite: 'Avec les Blancs',
+    withBlack: 'Avec les Noirs',
+    wins: 'Victoires',
+    draws: 'Nulles',
+    losses: 'Défaites',
+    mostPlayedOpenings: 'Ouvertures les plus jouées',
+    opening: 'Ouverture',
+    score: 'Score',
+    recordScope:
+      'Parties de 10 minutes depuis juin 2025, sur Lichess et Chess.com, celles dont le Bot a appris. ' +
+      `Score${NO_BREAK}: les victoires plus la moitié des nulles.`,
     readingTheCounts: 'Lecture des chiffres…',
     gamesFinished: 'Parties terminées',
     botRecord: 'Le bilan du Bot',
