@@ -1,0 +1,55 @@
+---
+// A checkbox or a radio button with its label, in the portfolio's look: a
+// square box in ink, filled with accent hatching when ticked, beside a label
+// in capitals. Any attribute other than the class, such as the data attribute
+// the game's script finds the input by, its name or its value, is passed on
+// to the input; the class goes on the label, for the place it sits in. A label
+// named among the page's texts is rewritten in the visitor's language.
+import type { HTMLAttributes } from 'astro/types';
+import type { PageText } from '../../i18n/texts';
+
+interface Props extends HTMLAttributes<'input'> {
+  type: 'checkbox' | 'radio';
+  textKey?: PageText;
+}
+
+const { class: className, textKey, ...attributes } = Astro.props;
+---
+
+<label class:list={['tick-box', className]}>
+  <input {...attributes} />
+  <span data-text={textKey}><slot /></span>
+</label>
+
+<style>
+  .tick-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  .tick-box input {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    border: var(--line);
+    background: var(--paper-light);
+    cursor: pointer;
+  }
+
+  .tick-box input:checked {
+    background: var(--hatch-accent), var(--paper-light);
+  }
+
+  .tick-box input:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+</style>

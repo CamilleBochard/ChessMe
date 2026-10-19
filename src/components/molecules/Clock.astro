@@ -1,0 +1,59 @@
+---
+// A player's clock: the player's name on the left, the time left on the right.
+// The game's script fills both in, finds the clock by its position above or
+// below the board, and marks the clock that is running, which turns to ink
+// with an accent square so the eye finds whose time is going without reading.
+// In a game without a clock the script marks it untimed: the name stays and
+// the time is hidden.
+interface Props {
+  position: 'top' | 'bottom';
+}
+
+const { position } = Astro.props;
+---
+
+<div class="clock" data-clock={position}>
+  <span class="clock-name" data-clock-name></span>
+  <span class="clock-time" data-clock-time></span>
+</div>
+
+<style>
+  .clock {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    border: var(--line);
+    background: var(--paper-light);
+    color: var(--ink);
+    font-family: var(--font-mono);
+  }
+
+  .clock-name {
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .clock-time {
+    font-size: 16px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Hidden but still taking its room, so the board does not move when the
+     visitor switches the clock on or off. */
+  .clock.untimed .clock-time {
+    visibility: hidden;
+  }
+
+  .clock.running {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  .clock.running .clock-name::before {
+    content: '■ ' / '';
+    color: var(--accent);
+  }
+</style>

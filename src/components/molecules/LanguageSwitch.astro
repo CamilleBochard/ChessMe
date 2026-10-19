@@ -10,8 +10,8 @@
 </div>
 
 <script>
-  import type { Language } from '../i18n/language';
-  import { LANGUAGE_CHANGED, pageLanguage, switchLanguage } from '../i18n/page-language';
+  import type { Language } from '../../i18n/language';
+  import { LANGUAGE_CHANGED, pageLanguage, switchLanguage } from '../../i18n/page-language';
 
   const buttons = document.querySelectorAll<HTMLButtonElement>('[data-language]');
   for (const button of buttons) {
@@ -35,30 +35,33 @@
 <style>
   .language-switch {
     display: inline-flex;
-    gap: 0.25rem;
-    margin-top: 0.75rem;
   }
 
   button {
-    font: inherit;
-    font-size: 0.8125rem;
-    font-weight: 600;
-    line-height: 1.75rem;
-    padding: 0 0.75rem;
-    border: 1px solid transparent;
-    border-radius: 1rem;
-    background: var(--default-soft);
-    color: var(--text-2);
+    padding: 4px 10px;
+    border: var(--line);
+    background: var(--paper-light);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
     cursor: pointer;
-    transition: border-color 0.2s;
   }
 
-  button:hover {
-    border-color: var(--brand);
+  /* The two buttons share the border between them. */
+  button + button {
+    border-left: 0;
+  }
+
+  button:hover,
+  button:focus-visible {
+    outline: none;
+    background: var(--paper-deep);
   }
 
   button[aria-pressed='true'] {
-    background: var(--brand);
-    color: var(--brand-contrast);
+    background: var(--accent);
   }
 </style>

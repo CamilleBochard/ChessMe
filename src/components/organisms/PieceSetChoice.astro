@@ -1,0 +1,131 @@
+---
+// The visitor's choice of the set the pieces are drawn with, and the credit
+// the sets from other authors ask for, in a dialog: in place on a wide
+// screen, over the board on a phone, where any button marked data-open-pieces
+// opens it. Choosing a set marks it on the html element, which
+// src/styles/piece-sets.css reads; the choice is remembered in the browser,
+// so a returning visitor finds the set they left. The game itself is not
+// involved: the board only ever reads the set's variables.
+import BracketLabel from '../atoms/BracketLabel.astro';
+import AdaptiveDialog from '../molecules/AdaptiveDialog.astro';
+import TickBox from '../molecules/TickBox.astro';
+import { TEXTS } from '../../i18n/texts';
+
+const english = TEXTS.en.page;
+---
+
+<AdaptiveDialog titleKey="pieces" data-pieces-dialog>
+  <fieldset class="piece-sets">
+    <legend><BracketLabel textKey="pieces" /></legend>
+    <div class="choices">
+      <TickBox type="radio" name="piece-set" value="anarcandy" data-piece-set-choice checked>Anarcandy</TickBox>
+      <TickBox type="radio" name="piece-set" value="classic" data-piece-set-choice textKey="classic">{english.classic}</TickBox>
+      <TickBox type="radio" name="piece-set" value="candy" data-piece-set-choice>Candy</TickBox>
+      <TickBox type="radio" name="piece-set" value="mech" data-piece-set-choice>Mech</TickBox>
+    </div>
+    <p class="credits">
+      <span data-text="creditBy">{english.creditBy}</span><a href="https://github.com/caderek">caderek</a><span
+        data-text="creditFrom">{english.creditFrom}</span
+      ><a href="https://github.com/lichess-org/lila/tree/master/public/piece/anarcandy">Lichess</a><span
+        data-text="creditLicence">{english.creditLicence}</span
+      ><a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a>.
+    </p>
+  </fieldset>
+</AdaptiveDialog>
+
+<script>
+  import { adaptiveDialog } from '../adaptive-dialog';
+
+  /** Where the browser keeps the visitor's set between visits. */
+  const PIECE_SET_KEY = 'chessme.piece-set';
+
+  const choices = document.querySelectorAll<HTMLInputElement>('[data-piece-set-choice]');
+  const dialog = adaptiveDialog(document.querySelector<HTMLDialogElement>('[data-pieces-dialog]')!, true);
+
+  for (const opener of document.querySelectorAll<HTMLButtonElement>('[data-open-pieces]')) {
+    opener.addEventListener('click', () => {
+      dialog.openOnPhone();
+    });
+  }
+
+  // A remembered set the page no longer offers is ignored, and Anarcandy,
+  // ticked in the markup, stays.
+  const remembered = rememberedPieceSet();
+  for (const choice of choices) {
+    if (choice.value === remembered) {
+      choice.checked = true;
+      usePieceSet(choice.value);
+    }
+  }
+
+  for (const choice of choices) {
+    choice.addEventListener('change', () => {
+      if (choice.checked) {
+        usePieceSet(choice.value);
+        rememberPieceSet(choice.value);
+        // On a phone the dialog hides the board; closing it shows the set.
+        dialog.closeOnPhone();
+      }
+    });
+  }
+
+  function usePieceSet(name: string): void {
+    document.documentElement.dataset.pieceSet = name;
+  }
+
+  /**
+   * The set chosen on an earlier visit, or null. Storage can be refused, in
+   * which case the page simply opens on Anarcandy.
+   */
+  function rememberedPieceSet(): string | null {
+    try {
+      return window.localStorage.getItem(PIECE_SET_KEY);
+    } catch {
+      return null;
+    }
+  }
+
+  function rememberPieceSet(name: string): void {
+    try {
+      window.localStorage.setItem(PIECE_SET_KEY, name);
+    } catch {
+      // Nothing to do: the choice holds for this visit only.
+    }
+  }
+</script>
+
+<style>
+  /* Over the board the dialog's own title names the choice already. */
+  :global(.adaptive-dialog:modal) .piece-sets legend {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .piece-sets {
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  .piece-sets legend {
+    margin-bottom: 10px;
+    padding: 0;
+  }
+
+  .choices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 20px;
+  }
+
+  .credits {
+    margin: 10px 0 0;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-soft);
+  }
+</style>

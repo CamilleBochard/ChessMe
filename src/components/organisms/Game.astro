@@ -1,14 +1,32 @@
 ---
-// A chessboard where the visitor plays one side and the Bot plays the other,
-// with the controls around a game: choosing a side, taking back, resigning,
-// starting over, and the list of moves so far. The rules live in src/game/,
-// the Bot's choice in src/engine/ and what the visitor may do when in
-// src/session/; this component only translates between them, chessground
-// (which draws the board and handles dragging and clicking) and a few buttons.
+// A game against the Bot, in three columns on a wide screen: on the left the
+// settings of a game, its controls and the choice of pieces; in the middle
+// the board between the two clocks, with the status under it; on the right
+// the moves, always in view, the end-of-game question and the panel
+// explaining the Bot's moves. On a phone the board comes first, the settings
+// and the pieces open over it from two buttons under it, and the moves follow
+// right below. The page puts its title in the header slot and what appears
+// once a game has ended in the after-game slot. The rules live in src/game/, the Bot's choice
+// in src/engine/ and what the visitor may do when in src/session/; the script
+// below only translates between them, chessground (which draws the board and
+// handles dragging and clicking) and the markup of the components, which it
+// reaches through their data attributes.
 import { readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { SERVED_MODEL_DIRECTORY, SERVED_MODEL_RATING } from '../engine/served-model';
-import { BROWSER_ENGINE_FILES } from '../analysis/browser-engine';
+import { SERVED_MODEL_DIRECTORY, SERVED_MODEL_RATING } from '../../engine/served-model';
+import { BROWSER_ENGINE_FILES } from '../../analysis/browser-engine';
+import { TEXTS } from '../../i18n/texts';
+import CornerMarks from '../atoms/CornerMarks.astro';
+import HatchBlock from '../atoms/HatchBlock.astro';
+import Clock from '../molecules/Clock.astro';
+import ModelStatus from '../molecules/ModelStatus.astro';
+import PhoneTools from '../molecules/PhoneTools.astro';
+import ChessBoard from './ChessBoard.astro';
+import EndOfGameQuestion from './EndOfGameQuestion.astro';
+import ExplanationPanel from './ExplanationPanel.astro';
+import GameControls from './GameControls.astro';
+import MoveList from './MoveList.astro';
+import PieceSetChoice from './PieceSetChoice.astro';
 
 // The model the page downloads, found where scripts/stage-model.ts put it. Its
 // size is read here, at build time, because the server sends it compressed and
@@ -24,122 +42,64 @@ const modelPath = `/models/${modelFileName}`;
 const baseModelName = modelFileName.replace(/\.onnx$/, '');
 // Where scripts/stage-stockfish.ts put the engine analysis mode starts.
 const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
+// Written in English here; the page's script rewrites every data-text in the
+// visitor's language.
+const english = TEXTS.en.page;
 ---
 
 <div
-  class="board-frame"
-  data-board-frame
+  class="game"
+  data-game
   data-model-path={modelPath}
   data-model-bytes={modelBytes}
   data-model-rating={SERVED_MODEL_RATING}
   data-base-model={baseModelName}
   data-engine-path={enginePath}
 >
-  <div class="play">
-    <div class="clock" data-clock="top">
-      <span class="clock-name" data-clock-name></span>
-      <span class="clock-time" data-clock-time></span>
-    </div>
-    <div class="board"></div>
-    <div class="clock" data-clock="bottom">
-      <span class="clock-name" data-clock-name></span>
-      <span class="clock-time" data-clock-time></span>
-    </div>
-    <p class="status" data-status aria-live="polite"></p>
-
-    <div class="model-status" data-model-status hidden>
-      <progress data-model-progress></progress>
-      <p data-model-message></p>
-    </div>
-
-    <div class="buttons" data-setup>
-      <span class="buttons-label" data-text="playAs">Play as</span>
-      <button type="button" class="brand" data-play-as="white" data-text="white">White</button>
-      <button type="button" class="brand" data-play-as="black" data-text="black">Black</button>
-    </div>
-
-    <div class="buttons" data-controls hidden>
-      <button type="button" data-take-back data-text="takeBack">Take back</button>
-      <button type="button" data-resign data-text="resign">Resign</button>
-      <button type="button" data-new-game data-text="newGame">New game</button>
-    </div>
-  </div>
-
-  <div class="impression" data-impression hidden>
-    <p data-impression-question>Did the Bot feel like a real player of about {SERVED_MODEL_RATING} on Lichess?</p>
-    <div class="buttons" data-impression-choices>
-      <button type="button" data-felt-real="yes" data-text="yes">Yes</button>
-      <button type="button" data-felt-real="no" data-text="no">No</button>
-    </div>
-    <p class="impression-thanks" data-impression-thanks hidden></p>
-  </div>
-
-  <aside class="moves">
-    <div class="moves-header">
-      <h2 id="moves-heading" data-text="moves">Moves</h2>
-      <div class="browse">
-        <button
-          type="button"
-          data-view-back
-          aria-label="Previous position"
-          title="Previous position (←)"
-          data-text-label="previousPosition"
-          data-text-title="previousPositionShortcut"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
-        </button>
-        <button
-          type="button"
-          data-view-forward
-          aria-label="Next position"
-          title="Next position (→)"
-          data-text-label="nextPosition"
-          data-text-title="nextPositionShortcut"
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
-        </button>
-      </div>
-    </div>
-    <ol class="move-list" data-move-list aria-labelledby="moves-heading"></ol>
-
-    <section class="explanation" aria-labelledby="explanation-heading">
-      <h2 id="explanation-heading" data-text="whyTheBotPlayedIt">Why the Bot played it</h2>
-      <div class="explained-move" data-move-explanation aria-live="polite"></div>
-      <h2 data-text="theGameSoFar">The game so far, against Camille's</h2>
-      <div class="game-comparison" data-game-comparison></div>
-      <label class="analysis-switch">
-        <input type="checkbox" data-analysis-switch />
-        <span data-text="analysisMode">Analysis mode</span>
-      </label>
-      <p class="analysis-note">
-        <span data-text="analysisNoteBefore">Runs </span><a href="https://github.com/nmrugg/stockfish.js">Stockfish</a><span
-          data-text="analysisNoteAfter"
-          >{
-            " (GPL-3.0) in your browser, a 1.8 MB download, to show how much evaluation each of the Bot's moves lost. A game played with it on is recorded as assisted."
-          }</span
-        >
-      </p>
+  <aside class="settings" aria-label={english.gameSettings} data-text-label="gameSettings">
+    <section class="side-section controls">
+      <CornerMarks />
+      <GameControls />
+    </section>
+    <section class="side-section pieces">
+      <PieceSetChoice />
     </section>
   </aside>
 
-  <dialog class="promotion" data-promotion aria-label="Choose a promotion piece" data-text-label="choosePromotion">
-    <form method="dialog">
-      <p data-text="promoteTo">Promote to</p>
-      <div class="promotion-choices">
-        <button value="queen" data-text="queen">Queen</button>
-        <button value="rook" data-text="rook">Rook</button>
-        <button value="bishop" data-text="bishop">Bishop</button>
-        <button value="knight" data-text="knight">Knight</button>
-      </div>
-    </form>
-  </dialog>
+  <div class="stage">
+    <div class="stage-head">
+      <slot name="header" />
+    </div>
+    <Clock position="top" />
+    <ChessBoard />
+    <Clock position="bottom" />
+    <div class="stage-foot">
+      <p class="status" data-status aria-live="polite"></p>
+      <HatchBlock class="foot-band" />
+      <PhoneTools />
+    </div>
+    <ModelStatus />
+  </div>
+
+  <div class="record">
+    <section class="side-section moves">
+      <MoveList />
+    </section>
+    <section class="side-section after-game">
+      <EndOfGameQuestion />
+      <slot name="after-game" />
+    </section>
+    <section class="side-section">
+      <ExplanationPanel />
+    </section>
+  </div>
 </div>
 
 <script>
   import { Chessground } from '@lichess-org/chessground';
   import type { Key } from '@lichess-org/chessground/types';
   import type { SquareName } from 'chessops/types';
-  import type { Colour } from '../board/starting-position';
+  import type { Colour } from '../../board/starting-position';
   import {
     currentFen,
     isInCheck,
@@ -151,20 +111,21 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
     type MoveListRow,
     type MoveRequest,
     type PromotionPiece,
-  } from '../game/game';
-  import { formatClockTime } from '../game/clock';
-  import { gameStatus } from '../game/game-status';
-  import { connectBot, type Bot } from '../engine/bot-client';
-  import type { BotStatus } from '../engine/bot-protocol';
-  import type { BotMove } from '../engine/move-selection';
-  import { clockFaces, createSessionGame, type ClockFace, type FinishedGame } from '../session/session-game';
-  import { connectTelemetry, sessionGameReport } from '../telemetry/session-game';
-  import { SESSION_GAMES_CHANGED } from '../telemetry/session-game-summary';
-  import { startBrowserAnalyser, type BrowserAnalyser } from '../analysis/browser-analyser';
-  import { moveLoss } from '../analysis/engine-analysis';
-  import { botMovesOf, moveKeyOf, replyKey, type ExplainedMove } from '../explanation/explained-moves';
-  import { showPanel, type MoveEvaluation } from '../explanation/panel';
-  import { LANGUAGE_CHANGED, pageLanguage, pageTexts } from '../i18n/page-language';
+  } from '../../game/game';
+  import { formatClockTime } from '../../game/clock';
+  import { gameStatus } from '../../game/game-status';
+  import { connectBot, type Bot } from '../../engine/bot-client';
+  import type { BotStatus } from '../../engine/bot-protocol';
+  import type { BotMove } from '../../engine/move-selection';
+  import { clockFaces, createSessionGame, type ClockFace, type FinishedGame } from '../../session/session-game';
+  import { connectTelemetry, sessionGameReport } from '../../telemetry/session-game';
+  import { SESSION_GAMES_CHANGED } from '../../telemetry/session-game-summary';
+  import { startBrowserAnalyser, type BrowserAnalyser } from '../../analysis/browser-analyser';
+  import { moveLoss } from '../../analysis/engine-analysis';
+  import { botMovesOf, moveKeyOf, replyKey, type ExplainedMove } from '../../explanation/explained-moves';
+  import { showPanel, type MoveEvaluation } from '../../explanation/panel';
+  import { LANGUAGE_CHANGED, pageLanguage, pageTexts } from '../../i18n/page-language';
+  import { adaptiveDialog } from '../adaptive-dialog';
 
   /**
    * Remembered once the model has reached the browser's cache, so that a
@@ -178,7 +139,7 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
   // Astro bundles this script once per page, however many times the component
   // is used, so it has to set up every board on the page rather than the first
   // one it finds.
-  const frames = document.querySelectorAll<HTMLElement>('[data-board-frame]');
+  const frames = document.querySelectorAll<HTMLElement>('[data-game]');
   for (const frame of frames) {
     setUpBoard(frame);
   }
@@ -190,14 +151,16 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
    * waits for the visitor to pick a side; New game brings it back there.
    */
   function setUpBoard(frame: HTMLElement): void {
-    const boardElement = frame.querySelector<HTMLElement>('.board')!;
+    const boardElement = frame.querySelector<HTMLElement>('[data-board]')!;
     const statusElement = frame.querySelector<HTMLElement>('[data-status]')!;
     const modelStatus = frame.querySelector<HTMLElement>('[data-model-status]')!;
-    const setupElement = frame.querySelector<HTMLElement>('[data-setup]')!;
+    const setup = adaptiveDialog(frame.querySelector<HTMLDialogElement>('[data-setup-dialog]')!, true);
+    const setupOpeners = frame.querySelectorAll<HTMLButtonElement>('[data-open-setup]');
     const controlsElement = frame.querySelector<HTMLElement>('[data-controls]')!;
     const takeBackButton = frame.querySelector<HTMLButtonElement>('[data-take-back]')!;
     const resignButton = frame.querySelector<HTMLButtonElement>('[data-resign]')!;
     const newGameButton = frame.querySelector<HTMLButtonElement>('[data-new-game]')!;
+    const clockChoices = frame.querySelectorAll<HTMLInputElement>('[data-clock-choice]');
     const moveListElement = frame.querySelector<HTMLOListElement>('[data-move-list]')!;
     const viewBackButton = frame.querySelector<HTMLButtonElement>('[data-view-back]')!;
     const viewForwardButton = frame.querySelector<HTMLButtonElement>('[data-view-forward]')!;
@@ -210,8 +173,9 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
     // Whether the visitor's answer was recorded, once they have given one.
     let impressionRecorded: boolean | null = null;
     const moveExplanation = frame.querySelector<HTMLElement>('[data-move-explanation]')!;
-    const gameComparison = frame.querySelector<HTMLElement>('[data-game-comparison]')!;
+    const lossChartElement = frame.querySelector<HTMLElement>('[data-loss-chart]')!;
     const analysisSwitch = frame.querySelector<HTMLInputElement>('[data-analysis-switch]')!;
+    const analysisDialog = frame.querySelector<HTMLDialogElement>('[data-analysis-dialog]')!;
     const topClock = frame.querySelector<HTMLElement>('[data-clock="top"]')!;
     const bottomClock = frame.querySelector<HTMLElement>('[data-clock="bottom"]')!;
 
@@ -226,8 +190,8 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
     // Every reply of the Bot, filed by the position and the move, for the
     // panel to explain the moves on the board with.
     const replies = new Map<string, BotMove>();
-    // Analysis mode's engine while the mode is on, and what it has found,
-    // filed like the replies.
+    // Stockfish while it runs, from the start of a game and in analysis
+    // mode, and what it has found, filed like the replies.
     let analysis: BrowserAnalyser | null = null;
     const evaluations = new Map<string, MoveEvaluation>();
 
@@ -260,6 +224,8 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
       },
     });
     showGame();
+    // A phone opens on the settings of a game, over the board.
+    setup.openOnPhone();
     showImpressionText();
     // A new language redraws every text the script writes; the fixed words
     // were rewritten by the switch itself.
@@ -276,10 +242,13 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
       button.addEventListener('click', () => {
         const colour = button.dataset.playAs as Colour;
         board.set({ orientation: colour });
+        setup.closeOnPhone();
         forgetEndedGame();
-        const started = session.start(colour);
-        // A game started with analysis mode on is assisted from its first move.
-        if (analysis !== null) {
+        const started = session.start(colour, { timed: isClockChosen() });
+        // A game started with analysis mode on is assisted from its first
+        // move. Stockfish may still be running for the game before, which
+        // says nothing about this one.
+        if (analysisSwitch.checked) {
           session.markAssisted();
         }
         started.catch(() => {
@@ -290,11 +259,24 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
       });
     }
 
+    // Before a game starts, the clocks follow the choice of a clock as it is made.
+    for (const choice of clockChoices) {
+      choice.addEventListener('change', showClocks);
+    }
+
     takeBackButton.addEventListener('click', () => {
       // A takeback after the end resumes the game; the stored game stays
       // stored, but the question about it is no longer asked.
+      const wasOver = gameStatus(session.game()).kind !== 'ongoing';
       forgetEndedGame();
       session.takeBack();
+      // Once a game is over the panel reveals every evaluation of the Bot's
+      // moves. A game reopened after the visitor could see them is assisted
+      // from here on, as if analysis mode had been on.
+      const isReopened = gameStatus(session.game()).kind === 'ongoing';
+      if (wasOver && isReopened) {
+        session.markAssisted();
+      }
     });
 
     resignButton.addEventListener('click', () => {
@@ -304,7 +286,16 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
     newGameButton.addEventListener('click', () => {
       forgetEndedGame();
       session.startOver();
+      setup.openOnPhone();
     });
+
+    // On a phone, the settings of a new game open from under the board at
+    // any time; the game in progress goes on until a side is picked there.
+    for (const opener of setupOpeners) {
+      opener.addEventListener('click', () => {
+        setup.openOnPhone();
+      });
+    }
 
     for (const button of impressionButtons) {
       button.addEventListener('click', () => {
@@ -312,14 +303,18 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
       });
     }
 
-    analysisSwitch.addEventListener('change', () => {
+    // Turning analysis mode on is asked first, since during a game it shows
+    // where the Bot goes wrong. The click that would tick the switch is held
+    // back, and the switch is ticked only if the visitor confirms. Turning it
+    // off needs no question.
+    analysisSwitch.addEventListener('click', (event) => {
       if (analysisSwitch.checked) {
-        switchAnalysisOn();
-      } else {
-        switchAnalysisOff();
+        event.preventDefault();
+        askAnalysisMode();
       }
-      showGame();
     });
+
+    analysisSwitch.addEventListener('change', onAnalysisSwitched);
 
     viewBackButton.addEventListener('click', () => {
       session.viewBack();
@@ -331,8 +326,9 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
 
     // The arrow keys step through positions too, as on Lichess and Chess.com.
     // Left alone while the promotion dialog is open, where they belong to it.
+    // Left alone too on a form control, where they move between the choices.
     document.addEventListener('keydown', (event) => {
-      if (promotionDialog.open) {
+      if (promotionDialog.open || analysisDialog.open || event.target instanceof HTMLInputElement) {
         return;
       }
       if (event.key === 'ArrowLeft') {
@@ -343,6 +339,31 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
         session.viewForward();
       }
     });
+
+    /** Opens the question about analysis mode, and turns it on if the visitor confirms. */
+    function askAnalysisMode(): void {
+      analysisDialog.returnValue = '';
+      analysisDialog.addEventListener(
+        'close',
+        () => {
+          if (analysisDialog.returnValue === 'on') {
+            analysisSwitch.checked = true;
+            onAnalysisSwitched();
+          }
+        },
+        { once: true },
+      );
+      analysisDialog.showModal();
+    }
+
+    function onAnalysisSwitched(): void {
+      // The visitor can now see where the Bot goes wrong: the game in
+      // progress is assisted, whatever happens to the switch later.
+      if (analysisSwitch.checked) {
+        session.markAssisted();
+      }
+      showGame();
+    }
 
     /**
      * Reports the finished game and, once it is stored, asks the visitor what
@@ -531,7 +552,7 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
       statusElement.textContent = statusText;
 
       const hasStarted = visitor !== null;
-      setupElement.hidden = hasStarted;
+      setup.showOnWideScreen(!hasStarted);
       controlsElement.hidden = !hasStarted;
       takeBackButton.disabled = !session.canTakeBack();
       resignButton.disabled = !session.canResign();
@@ -545,16 +566,18 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
 
     /**
      * Draws the panel: the Bot's last move up to the position on display, and
-     * the game so far against Camille's. In analysis mode every Bot move not
-     * yet evaluated is sent to Stockfish.
+     * the chart of its losses against Camille's. Every Bot move not yet
+     * evaluated is sent to Stockfish; the panel reveals the evaluations in
+     * full only in analysis mode and once the game is over.
      */
     function showExplanation(): void {
+      keepStockfishInStep();
       const visitor = session.visitor();
       if (visitor === null) {
-        showPanel(moveExplanation, gameComparison, {
+        showPanel(moveExplanation, lossChartElement, {
           focus: null,
           botMoves: [],
-          analysisOn: analysis !== null,
+          revealed: analysisSwitch.checked,
           evaluations: new Map(),
           texts: pageTexts(),
         });
@@ -575,22 +598,31 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
       if (analysis !== null) {
         evaluateMissing(botMoves);
       }
-      showPanel(moveExplanation, gameComparison, {
+      const isOver = gameStatus(session.game()).kind !== 'ongoing';
+      showPanel(moveExplanation, lossChartElement, {
         focus: focus,
         botMoves: botMoves,
-        analysisOn: analysis !== null,
+        revealed: analysisSwitch.checked || isOver,
         evaluations: evaluations,
         texts: pageTexts(),
       });
     }
 
-    function switchAnalysisOn(): void {
-      if (analysis !== null) {
-        return;
+    /**
+     * Runs Stockfish from the moment a game starts, so the chart follows it
+     * live, and while analysis mode is on; stops it otherwise.
+     */
+    function keepStockfishInStep(): void {
+      const hasStarted = session.visitor() !== null;
+      const isWanted = analysisSwitch.checked || hasStarted;
+      if (isWanted && analysis === null) {
+        startStockfish();
+      } else if (!isWanted && analysis !== null) {
+        stopStockfish();
       }
-      // The visitor can now see where the Bot goes wrong: the game in
-      // progress is assisted, whatever happens to the switch later.
-      session.markAssisted();
+    }
+
+    function startStockfish(): void {
       const engineUrl = new URL(frame.dataset.enginePath!, window.location.href).href;
       analysis = startBrowserAnalyser(engineUrl, () => {
         // An engine that cannot start leaves every move it was given unevaluated.
@@ -603,8 +635,8 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
       });
     }
 
-    /** Stops the engine. A move it was still evaluating is evaluated again if the mode comes back on. */
-    function switchAnalysisOff(): void {
+    /** Stops the engine. A move it was still evaluating is evaluated again when it next runs. */
+    function stopStockfish(): void {
       if (analysis === null) {
         return;
       }
@@ -648,14 +680,33 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
       }
     }
 
-    /** The visitor's clock under the board and the Bot's above it, the running one marked. */
-    function showClocks(): void {
-      const faces = clockFaces(session.visitor(), pageLanguage());
-      showClock(topClock, faces.top);
-      showClock(bottomClock, faces.bottom);
+    /** True when the visitor has chosen, or left chosen, to play with a clock. */
+    function isClockChosen(): boolean {
+      for (const choice of clockChoices) {
+        if (choice.checked) {
+          return choice.value === 'timed';
+        }
+      }
+      return true;
     }
 
-    function showClock(element: HTMLElement, face: ClockFace): void {
+    /**
+     * The visitor's clock under the board and the Bot's above it, the running
+     * one marked. Without a clock they keep the players' names and show no
+     * time: the game's own setting once it has started, the visitor's choice
+     * before.
+     */
+    function showClocks(): void {
+      const faces = clockFaces(session.visitor(), pageLanguage());
+      let showsTime = isClockChosen();
+      if (session.visitor() !== null) {
+        showsTime = session.isTimed();
+      }
+      showClock(topClock, faces.top, showsTime);
+      showClock(bottomClock, faces.bottom, showsTime);
+    }
+
+    function showClock(element: HTMLElement, face: ClockFace, showsTime: boolean): void {
       const nameElement = element.querySelector<HTMLElement>('[data-clock-name]')!;
       const timeElement = element.querySelector<HTMLElement>('[data-clock-time]')!;
       const timeLeft = session.timeLeft(face.side);
@@ -663,6 +714,7 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
 
       nameElement.textContent = face.name;
       timeElement.textContent = formatClockTime(timeLeft);
+      element.classList.toggle('untimed', !showsTime);
       element.classList.toggle('running', isRunning);
     }
   }
@@ -674,7 +726,7 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
 
   /** Starts the Bot in its own Web Worker, so its thinking never blocks the board. */
   function startBot(frame: HTMLElement, onStatus: (status: BotStatus) => void): Bot {
-    const worker = new Worker(new URL('../engine/bot-worker-entry.ts', import.meta.url), { type: 'module' });
+    const worker = new Worker(new URL('../../engine/bot-worker-entry.ts', import.meta.url), { type: 'module' });
 
     // A worker that cannot even start, for instance on a browser without
     // WebAssembly, reports nothing through the Bot's own messages.
@@ -861,486 +913,150 @@ const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
   }
 </script>
 
-<style is:global>
-  @import '@lichess-org/chessground/assets/chessground.base.css';
-  @import '@lichess-org/chessground/assets/chessground.brown.css';
-  @import '@lichess-org/chessground/assets/chessground.cburnett.css';
-
-  /* Chessground's stock coordinates hang outside the board: the file letters
-     sit at left: 24px with width: 100%, so they run 24px past the right edge,
-     and the rank digits sit at top: -20px. On a phone that overhang becomes
-     horizontal page scroll, and the file letters land under the wrong files.
-     Pull both back inside the board. */
-  .board-frame .cg-wrap coords.files {
-    left: 0;
-  }
-
-  .board-frame .cg-wrap coords.ranks {
-    top: 0;
-  }
-
-  /* The first-visit entrance: the board fades in, then the white pieces and
-     the black ones drop onto their squares. Pieces are placed by chessground
-     through their transform, so the drop uses the separate translate property,
-     which adds to it. The board only fades: scaling it would skew the bounds
-     chessground measures once for dragging. Under 1.4 s in all, the time the
-     page script keeps the class on. */
-  @media (prefers-reduced-motion: no-preference) {
-    .board-frame.entering .cg-wrap {
-      animation: board-appear 450ms ease-out both;
-    }
-
-    .board-frame.entering piece {
-      animation: piece-settle 550ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-      animation-delay: 350ms;
-    }
-
-    .board-frame.entering piece.black {
-      animation-delay: 550ms;
-    }
-  }
-
-  @keyframes board-appear {
-    from {
-      opacity: 0;
-    }
-  }
-
-  @keyframes piece-settle {
-    from {
-      opacity: 0;
-      translate: 0 -35%;
-    }
-  }
-</style>
-
 <style>
-  /* On a phone everything stacks: board, controls, then the moves. From
-     960px the moves move into their own column on the right, behind a divider
-     line, and the whole thing fits the screen height without scrolling. */
-  .board-frame {
-    display: grid;
-    gap: 1.5rem;
-  }
-
-  .play {
+  /* On a phone everything stacks: the title, the board between the two
+     clocks, the status with the two buttons that open the settings and the
+     pieces, the buttons of a game in progress, then the moves and the
+     panel. From 960px three columns: the settings on the left at 230px, the
+     moves and the panel on the right at 320px, and the board centred
+     between them. */
+  .game {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 0.75rem;
   }
 
-  /* Chessground sizes itself to its container, so the container is where the
-     responsive behaviour belongs. */
-  .board {
-    width: 100%;
-    max-width: 40rem;
-    aspect-ratio: 1;
+  .stage {
+    order: 1;
+    display: grid;
+    grid-template-columns: min-content;
+    justify-content: center;
+    gap: 12px;
+    padding: 20px 16px 16px;
   }
 
-  /* A clock sits right above and right below the board, as wide as it, with
-     the name on the left and the time on the right. The running clock is
-     filled so the eye finds whose time is going without reading it. */
-  .clock {
-    width: 100%;
-    max-width: 40rem;
+  .settings {
+    order: 2;
+  }
+
+  .record {
+    order: 3;
+    border-top: var(--line);
+    background: var(--paper);
+  }
+
+  .stage-head {
+    margin-bottom: 4px;
+  }
+
+  .stage-foot {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 0.25rem 0.75rem;
-    border: 1px solid var(--divider);
-    border-radius: 0.5rem;
-    color: var(--text-2);
-  }
-
-  .clock-time {
-    font-variant-numeric: tabular-nums;
-    font-weight: 600;
-    font-size: 1.25rem;
-  }
-
-  .clock.running {
-    background: var(--brand);
-    border-color: var(--brand);
-    color: var(--bg);
+    gap: 16px;
   }
 
   .status {
     margin: 0;
     min-height: 1.5em;
-    text-align: center;
-    font-weight: 600;
-    color: var(--text-1);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 700;
   }
 
-  .model-status {
-    width: 100%;
-    max-width: 24rem;
-    text-align: center;
+  .stage-foot :global(.foot-band) {
+    flex: 1 1 3rem;
+    height: 10px;
+    opacity: 0.8;
   }
 
-  .model-status[hidden] {
+  .side-section {
+    padding: 18px 20px;
+    border-bottom: var(--line);
+  }
+
+  .side-section:last-child {
+    border-bottom: 0;
+  }
+
+  /* On a phone the settings and the pieces are dialogs over the board, and
+     only the buttons of a game in progress show here, under the board. */
+  .settings .side-section {
+    padding: 0 16px;
+    border-bottom: 0;
+  }
+
+  .settings .controls:has([data-controls]:not([hidden])) {
+    padding-bottom: 16px;
+  }
+
+  .settings :global(.corner-marks) {
     display: none;
   }
 
-  .model-status progress {
-    width: 100%;
+  /* The section that runs the game carries the registration marks, as the
+     portfolio marks the region a visitor acts in. */
+  .controls {
+    position: relative;
   }
 
-  .model-status p {
-    margin: 0.25rem 0 0;
-    font-size: 0.875rem;
-    color: var(--text-2);
-  }
-
-  .model-status.failed p {
-    font-weight: 600;
-    color: var(--text-1);
-  }
-
-  .buttons {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-  }
-
-  .buttons[hidden] {
-    display: none;
-  }
-
-  .buttons-label {
-    margin-right: 0.25rem;
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--text-2);
-  }
-
-  /* Pill buttons on a soft grey, with the brand colour kept for the one
-     choice that starts a game. */
-  .buttons button,
-  .promotion-choices button {
-    font: inherit;
-    font-size: 0.875rem;
-    font-weight: 600;
-    line-height: 2.25rem;
-    padding: 0 1.25rem;
-    border: 1px solid transparent;
-    border-radius: 1.25rem;
-    background: var(--default-soft);
-    color: var(--text-1);
-    cursor: pointer;
-    transition: border-color 0.2s, background-color 0.2s;
-  }
-
-  .buttons button:hover:not(:disabled),
-  .promotion-choices button:hover {
-    border-color: var(--brand);
-  }
-
-  .buttons button.brand {
-    background: var(--brand);
-    color: var(--brand-contrast);
-  }
-
-  .buttons button:disabled {
-    opacity: 0.4;
-    cursor: default;
-  }
-
-  /* Under the buttons on a phone. On a wide screen the page places it, since
-     it decides what sits in its columns. */
-  .impression {
-    width: 100%;
-    max-width: 24rem;
-    margin-inline: auto;
-    text-align: center;
-  }
-
-  .impression[hidden] {
-    display: none;
-  }
-
-  .impression p {
-    margin: 0 0 0.5rem;
-    font-size: 0.875rem;
-    color: var(--text-2);
-  }
-
-  .moves {
-    border-top: 1px solid var(--divider);
-    padding-top: 1.25rem;
-  }
-
-  .moves-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 0.75rem;
-  }
-
-  .browse {
-    display: flex;
-    gap: 0.25rem;
-  }
-
-  .browse button {
+  .after-game {
     display: grid;
-    place-items: center;
-    width: 2.25rem;
-    height: 2rem;
-    padding: 0;
-    border: 1px solid transparent;
-    border-radius: 0.5rem;
-    background: var(--default-soft);
-    color: var(--text-1);
-    cursor: pointer;
-    transition: border-color 0.2s;
+    gap: 20px;
   }
 
-  .browse button:hover:not(:disabled) {
-    border-color: var(--brand);
-  }
-
-  .browse button:disabled {
-    opacity: 0.4;
-    cursor: default;
-  }
-
-  .browse svg {
-    width: 1.125rem;
-    height: 1.125rem;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 2.25;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-
-  .moves h2 {
-    margin: 0;
-    font-size: 0.8125rem;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--text-1);
-  }
-
-  /* Three columns, number then White then Black, like a scoresheet. Its rows
-     are created by the script, which Astro's scoping cannot see, hence
-     :global for everything inside the list. */
-  .move-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    max-height: 12rem;
-    overflow-y: auto;
-    font-size: 0.875rem;
-    font-variant-numeric: tabular-nums;
-    color: var(--text-2);
-  }
-
-  .move-list :global(li) {
-    display: grid;
-    grid-template-columns: 2.5rem 1fr 1fr;
-    padding: 0.25rem 0.5rem;
-    border-radius: 0.25rem;
-  }
-
-  .move-list :global(li:nth-child(odd)) {
-    background: var(--bg-soft);
-  }
-
-  .move-list :global(.move-number) {
-    color: var(--text-3);
-  }
-
-  .move-list :global(.latest) {
-    color: var(--brand);
-    font-weight: 600;
-  }
-
-  /* The panel under the moves: why the Bot played the move on display, and
-     the game so far against Camille's. Its contents are created by the
-     script, hence :global for everything inside the two containers. */
-  .explanation {
-    margin-top: 1.25rem;
-    padding-top: 1rem;
-    border-top: 1px solid var(--divider);
-    font-size: 0.875rem;
-    color: var(--text-2);
-  }
-
-  .explanation h2 {
-    margin: 1rem 0 0.5rem;
-  }
-
-  .explanation h2:first-child {
-    margin-top: 0;
-  }
-
-  .explanation :global(p) {
-    margin: 0 0 0.5rem;
-  }
-
-  .explanation :global(.move-heading) {
-    font-weight: 600;
-    color: var(--text-1);
-  }
-
-  .explanation :global(.placeholder),
-  .explanation :global(.sources) {
-    color: var(--text-3);
-  }
-
-  .explanation :global(.sources) {
-    font-size: 0.8125rem;
-  }
-
-  .explanation :global(table.candidates) {
-    width: 100%;
-    margin: 0 0 0.5rem;
-    border-collapse: collapse;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .explanation :global(table.candidates th) {
-    font-weight: 600;
-    color: var(--text-3);
-    text-align: right;
-  }
-
-  .explanation :global(table.candidates th:first-child),
-  .explanation :global(table.candidates td:first-child) {
-    text-align: left;
-  }
-
-  .explanation :global(table.candidates td) {
-    padding: 0.125rem 0;
-    text-align: right;
-  }
-
-  .explanation :global(table.candidates tr.played) {
-    color: var(--brand);
-    font-weight: 600;
-  }
-
-  .explanation :global(dl.phases) {
-    margin: 0 0 0.5rem;
-  }
-
-  .explanation :global(dl.phases dt) {
-    font-weight: 600;
-    color: var(--text-1);
-  }
-
-  .explanation :global(dl.phases dd) {
-    margin: 0 0 0.5rem;
-  }
-
-  .analysis-switch {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    margin-top: 1rem;
-    font-weight: 600;
-    color: var(--text-1);
-    cursor: pointer;
-  }
-
-  .analysis-switch input {
-    accent-color: var(--brand);
-  }
-
-  .analysis-note {
-    margin: 0.25rem 0 0;
-    font-size: 0.8125rem;
-    color: var(--text-3);
-  }
-
-  .analysis-note a {
-    color: inherit;
+  /* The question and the summary of the site's games only appear once a
+     game has ended; until then their section takes no room. Astro may place
+     a component's script beside it, which never counts as shown. */
+  .after-game:not(:has(> :not([hidden], script))) {
+    display: none;
   }
 
   @media (min-width: 960px) {
-    /* The play area and the moves become columns of the page's own grid, so
-       the page can set the title right against the board's left edge. */
-    .board-frame {
-      display: contents;
+    .game {
+      display: grid;
+      grid-template-columns: 230px minmax(0, 1fr) 320px;
+      height: 100dvh;
     }
 
-    /* Both span every row of the page's grid, so the page can stack more than
-       its title in the first column. */
-    .play {
-      grid-row: 1 / -1;
-      padding: 2rem 2rem 2rem 0;
-      min-height: 0;
-      /* The board and the two clocks share this width. */
-      --board-size: min(calc(100dvh - 15rem), calc(100vw - 20rem - 14rem - 2rem));
+    .stage,
+    .settings,
+    .record {
+      order: 0;
     }
 
-    /* As large as the screen height allows while leaving room for the two
-       clocks, the status line and one row of buttons, so the controls never
-       fall below the fold. On a wide but short screen the width caps it instead,
-       keeping room for the title column (14rem), the moves column (20rem) and
-       the padding around the board. */
-    .board {
-      width: var(--board-size);
-      max-width: none;
-    }
-
-    /* As wide as the board above and below it. */
-    .clock {
-      width: var(--board-size);
-      max-width: none;
-    }
-
-    .moves {
-      grid-row: 1 / -1;
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-      border-top: none;
-      border-left: 1px solid var(--divider);
-      padding: 2rem 1.5rem;
-    }
-
-    /* The moves keep up to a third of the column and the panel scrolls in
-       the rest, so the explanation stays in view beside the board. */
-    .move-list {
-      flex: 0 1 auto;
-      max-height: 33%;
-    }
-
-    .explanation {
-      flex: 1;
-      min-height: 0;
+    .stage {
+      align-content: center;
+      padding: 16px 32px;
       overflow-y: auto;
     }
-  }
 
-  .promotion {
-    border: 1px solid var(--divider);
-    border-radius: 0.75rem;
-    padding: 1.25rem 1.5rem;
-    background: var(--bg);
-    color: var(--text-1);
-  }
+    .settings {
+      border-right: var(--line);
+      background: var(--paper);
+      overflow-y: auto;
+    }
 
-  .promotion::backdrop {
-    background: rgb(0 0 0 / 0.5);
-  }
+    .settings .side-section {
+      padding: 18px 20px;
+      border-bottom: var(--line);
+    }
 
-  .promotion p {
-    margin: 0 0 0.75rem;
-    text-align: center;
-    font-weight: 600;
-  }
+    .settings :global(.corner-marks) {
+      display: block;
+    }
 
-  .promotion-choices {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(6rem, 1fr));
-    gap: 0.5rem;
+    .record {
+      border-top: 0;
+      border-left: var(--line);
+      overflow-y: auto;
+    }
+
+    /* The moves stay at the top of their column while the panel scrolls
+       under them, so the history can always be walked. */
+    .moves {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: var(--paper);
+    }
   }
 </style>

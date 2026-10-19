@@ -7,9 +7,6 @@ import type { Colour } from '../board/starting-position';
 import type { Phase } from '../evaluation/move-matching';
 import { notation, type Language } from './language';
 
-/** How a figure of the game so far compares with Camille's games. */
-export type Placement = 'inside' | 'below' | 'above';
-
 export interface Texts {
   /** The page's own words, placed by data-text attributes. */
   page: Record<PageText, string>;
@@ -55,7 +52,6 @@ export interface Texts {
 /** The words of the panel beside the board. */
 export interface PanelTexts {
   placeholder: string;
-  phase: Record<Phase, string>;
   /** A Phase named inside a sentence: "of his middlegame moves". */
   phaseMoves: Record<Phase, string>;
   bookWithCounts(san: string, reached: number, played: number): string;
@@ -69,26 +65,31 @@ export interface PanelTexts {
   drawn: string;
   /** How a screen reader names the row of the move played. */
   playedMove: string;
-  rank(rank: number): string;
+  /** The figure shown in large for a move the Base Model did not choose. */
+  bookFigure: string;
+  randomFigure: string;
+  /** What the figure in large means. */
+  bookMeaning: string;
+  randomMeaning: string;
+  rankMeaning(rank: number, legalMoves: number): string;
   rarity(share: string, phase: Phase): string;
   rarityNone(phase: Phase): string;
   evaluating: string;
   evaluationFailed: string;
   decided: string;
   lost(centipawns: number): string;
-  movesUnderOnePercent: string;
-  averageLoss: string;
-  openingTooShort(figure: string, botMoves: number): string;
-  tooFew(figure: string, counted: string, needed: number): string;
-  modelMovesSoFar(count: number): string;
-  openMovesEvaluated(count: number): string;
-  improbableVerdict(improbable: number, moves: number, share: string, placement: Placement, range: string): string;
-  lossVerdict(average: number, moves: number, placement: Placement, range: string): string;
-  centipawnRange(low: number, high: number): string;
-  /** Two shares already written as percentages. */
-  percentRange(low: string, high: string): string;
-  usualRange(movesForAVerdict: number, games: number): string;
-  lossesSource(engine: string, depth: number, games: number): string;
+  legendCamille(moves: number): string;
+  legendBot(moves: number): string;
+  legendBand(moves: number): string;
+  chartReading: string;
+  chartLag(lag: number): string;
+  stillToEvaluate(waiting: number): string;
+  notEvaluated(failed: number): string;
+  camilleSource(games: number, engine: string, depth: number): string;
+  chartAxis: string;
+  /** The chart for a screen reader, from shares already written as percentages. */
+  chartCamille(share: string): string;
+  chartBot(share: string, moves: number): string;
 }
 
 /** The page's fixed words, each placed where an element's data-text names it. */
@@ -96,6 +97,11 @@ export type PageText =
   | 'intro'
   | 'summaryTitle'
   | 'language'
+  | 'close'
+  | 'gameSettings'
+  | 'clock'
+  | 'tenMinutes'
+  | 'noClock'
   | 'playAs'
   | 'white'
   | 'black'
@@ -116,10 +122,20 @@ export type PageText =
   | 'bishop'
   | 'knight'
   | 'whyTheBotPlayedIt'
-  | 'theGameSoFar'
+  | 'mistakesChart'
   | 'analysisMode'
   | 'analysisNoteBefore'
   | 'analysisNoteAfter'
+  | 'analysisExampleLoss'
+  | 'analysisShows'
+  | 'analysisWarning'
+  | 'turnOn'
+  | 'cancel'
+  | 'pieces'
+  | 'classic'
+  | 'creditBy'
+  | 'creditFrom'
+  | 'creditLicence'
   | 'readingTheCounts'
   | 'gamesFinished'
   | 'botRecord'
@@ -180,6 +196,11 @@ const ENGLISH: Texts = {
     intro: 'Play a game against a bot that imitates Camille.',
     summaryTitle: 'Games on this site',
     language: 'Language',
+    close: 'Close',
+    gameSettings: 'Game settings',
+    clock: 'Clock',
+    tenMinutes: '10 minutes',
+    noClock: 'No clock',
     playAs: 'Play as',
     white: 'White',
     black: 'Black',
@@ -200,12 +221,21 @@ const ENGLISH: Texts = {
     bishop: 'Bishop',
     knight: 'Knight',
     whyTheBotPlayedIt: 'Why the Bot played it',
-    theGameSoFar: "The game so far, against Camille's",
+    mistakesChart: 'Mistakes, the Bot against Camille',
     analysisMode: 'Analysis mode',
-    analysisNoteBefore: 'Runs ',
-    analysisNoteAfter:
-      " (GPL-3.0) in your browser, a 1.8 MB download, to show how much evaluation each of the Bot's moves lost. " +
-      'A game played with it on is recorded as assisted.',
+    analysisNoteBefore: 'Chart by ',
+    analysisNoteAfter: ' (GPL-3.0), in your browser.',
+    analysisExampleLoss: 'Stockfish: the move lost 85 centipawns against the best move.',
+    analysisShows: "Shows how much evaluation each of the Bot's moves lost, and its whole curve on the chart, as the game goes.",
+    analysisWarning:
+      'Turned on during a game, it shows you where the Bot goes wrong: an advantage. The game is then recorded as assisted.',
+    turnOn: 'Turn on',
+    cancel: 'Cancel',
+    pieces: 'Pieces',
+    classic: 'Classic',
+    creditBy: 'Anarcandy by ',
+    creditFrom: ', from ',
+    creditLicence: ', used unmodified under ',
     readingTheCounts: 'Reading the counts…',
     gamesFinished: 'Games finished',
     botRecord: "The Bot's record",
@@ -255,7 +285,6 @@ const ENGLISH: Texts = {
   writeMove: (san) => notation(san, 'en'),
   panel: {
     placeholder: "Each of the Bot's moves is explained here as the game goes.",
-    phase: { opening: 'Opening (1-10)', middlegame: 'Middlegame (11-30)', endgame: 'Endgame (31+)' },
     phaseMoves: { opening: 'opening moves', middlegame: 'middlegame moves', endgame: 'endgame moves' },
     bookWithCounts: (san, reached, played) =>
       `From the Opening Book: Camille reached this position ${englishTimes(reached)} in his games ` +
@@ -270,11 +299,15 @@ const ENGLISH: Texts = {
     model: 'Model',
     drawn: 'Drawn',
     playedMove: 'the move played',
-    rank: (rank) => {
+    bookFigure: 'Book',
+    randomFigure: 'Random',
+    bookMeaning: "Camille's own reply, from the Opening Book",
+    randomMeaning: 'Picked at random: the Base Model was not available',
+    rankMeaning: (rank, legalMoves) => {
       if (rank === 1) {
-        return "It was the model's most likely move.";
+        return `The model's most likely of ${legalMoves} legal moves`;
       }
-      return `It was the model's ${englishOrdinal(rank)} most likely move.`;
+      return `The model's ${englishOrdinal(rank)} most likely of ${legalMoves} legal moves`;
     },
     rarity: (share, phase) => `Camille plays a move this unlikely on ${share} of his ${ENGLISH.panel.phaseMoves[phase]}.`,
     rarityNone: (phase) => `None of Camille's ${ENGLISH.panel.phaseMoves[phase]} measured was this unlikely to the model.`,
@@ -283,25 +316,22 @@ const ENGLISH: Texts = {
     decided:
       'The game was already decided: both moves score ten pawns or more for the same side, so the loss is not counted.',
     lost: (centipawns) => `Stockfish: the move lost ${centipawns} centipawns against the best move.`,
-    movesUnderOnePercent: 'Moves under 1%',
-    averageLoss: 'Average loss',
-    openingTooShort: (figure, botMoves) =>
-      `${figure}: the opening holds at most ${botMoves} of the Bot's moves, too few to tell from one game.`,
-    tooFew: (figure, counted, needed) => `${figure}: ${counted}, too few to tell (${needed} needed).`,
-    modelMovesSoFar: (count) => `${english(count, 'Base Model move', 'Base Model moves')} so far`,
-    openMovesEvaluated: (count) => `${english(count, 'move', 'moves')} in open positions evaluated so far`,
-    improbableVerdict: (improbable, moves, share, placement, range) =>
-      `Moves under 1%: ${improbable} of ${moves} (${share}), ${englishPlacement(placement)} (${range}).`,
-    lossVerdict: (average, moves, placement, range) =>
-      `Average loss: ${average} cp over ${moves} moves, ${englishPlacement(placement)} (${range}).`,
-    centipawnRange: (low, high) => `${low} to ${high} cp`,
-    percentRange: (low, high) => `${low} to ${high}`,
-    usualRange: (movesForAVerdict, games) =>
-      `His usual range is the middle 80% of his games, from ${movesForAVerdict} moves in a Phase up. ` +
-      `Moves under 1%: the Base Model's own probabilities, on his ${games} games held back for testing.`,
-    lossesSource: (engine, depth, games) =>
-      `Losses: ${engine} at depth ${depth}, the settings used here, on all ${games} of his games, ` +
-      'counting only the moves made in open positions.',
+    legendCamille: (moves) => `Camille, ${moves.toLocaleString('en')} moves`,
+    legendBot: (moves) => `The Bot this game, ${english(moves, 'move', 'moves')}`,
+    legendBand: (moves) => `Where chance alone puts Camille on ${english(moves, 'move', 'moves')}`,
+    chartReading:
+      'Share of moves that lost at most so many centipawns, in positions still open. ' +
+      'Higher and further left: fewer and smaller mistakes.',
+    chartLag: (lag) =>
+      `While the game goes on the Bot's curve leaves out its last ${lag} moves, so it never shows where ` +
+      'the Bot has just gone wrong. Analysis mode, and the end of the game, show them all.',
+    stillToEvaluate: (waiting) => `Stockfish is evaluating the Bot's moves one at a time: ${waiting} still to come.`,
+    notEvaluated: (failed) => `Stockfish could not evaluate ${failed} of the Bot's moves; the curve leaves them out.`,
+    camilleSource: (games, engine, depth) =>
+      `Camille: all ${games} of his games, ${engine} at depth ${depth}, the settings used here.`,
+    chartAxis: 'lost at most, in centipawns',
+    chartCamille: (share) => `Camille loses a pawn or less on ${share} of his moves.`,
+    chartBot: (share, moves) => `The Bot, on ${share} of its ${moves} evaluated moves this game.`,
   },
 };
 
@@ -312,21 +342,16 @@ function englishTimes(count: number): string {
   return `${count} times`;
 }
 
-function englishPlacement(placement: Placement): string {
-  if (placement === 'below') {
-    return 'below his usual range';
-  }
-  if (placement === 'above') {
-    return 'above his usual range';
-  }
-  return 'inside his usual range';
-}
-
 const FRENCH: Texts = {
   page: {
     intro: 'Jouez une partie contre un bot qui imite Camille.',
     summaryTitle: 'Les parties jouées sur ce site',
     language: 'Langue',
+    close: 'Fermer',
+    gameSettings: 'Réglages de la partie',
+    clock: 'Pendule',
+    tenMinutes: '10 minutes',
+    noClock: 'Sans pendule',
     playAs: 'Jouer avec',
     white: 'les Blancs',
     black: 'les Noirs',
@@ -347,12 +372,23 @@ const FRENCH: Texts = {
     bishop: 'Fou',
     knight: 'Cavalier',
     whyTheBotPlayedIt: "Pourquoi le Bot l'a joué",
-    theGameSoFar: 'La partie jusqu’ici, face à celles de Camille',
+    mistakesChart: 'Les erreurs, le Bot face à Camille',
     analysisMode: 'Mode analyse',
-    analysisNoteBefore: 'Lance ',
-    analysisNoteAfter:
-      ` (GPL-3.0) dans votre navigateur, un téléchargement de 1,8${NO_BREAK}Mo, pour montrer combien chaque coup du Bot ` +
-      'a perdu à l’évaluation. Une partie jouée avec ce mode activé est enregistrée comme assistée.',
+    analysisNoteBefore: 'Graphique calculé par ',
+    analysisNoteAfter: ' (GPL-3.0), dans votre navigateur.',
+    analysisExampleLoss: `Stockfish${NO_BREAK}: le coup a perdu 85 centipions par rapport au meilleur coup.`,
+    analysisShows:
+      'Montre combien chaque coup du Bot a perdu à l’évaluation, et toute sa courbe sur le graphique, au fil de la partie.',
+    analysisWarning:
+      `Activé pendant une partie, il vous montre où le Bot se trompe${NO_BREAK}: un avantage. ` +
+      'La partie est alors enregistrée comme assistée.',
+    turnOn: 'Activer',
+    cancel: 'Annuler',
+    pieces: 'Pièces',
+    classic: 'Classique',
+    creditBy: 'Anarcandy par ',
+    creditFrom: ', tiré de ',
+    creditLicence: ', utilisé sans modification sous licence ',
     readingTheCounts: 'Lecture des chiffres…',
     gamesFinished: 'Parties terminées',
     botRecord: 'Le bilan du Bot',
@@ -402,7 +438,6 @@ const FRENCH: Texts = {
   writeMove: (san) => notation(san, 'fr'),
   panel: {
     placeholder: 'Chaque coup du Bot est expliqué ici au fil de la partie.',
-    phase: { opening: 'Ouverture (1-10)', middlegame: 'Milieu de partie (11-30)', endgame: 'Finale (31+)' },
     phaseMoves: {
       opening: 'coups d’ouverture',
       middlegame: 'coups de milieu de partie',
@@ -421,11 +456,15 @@ const FRENCH: Texts = {
     model: 'Modèle',
     drawn: 'Tirage',
     playedMove: 'le coup joué',
-    rank: (rank) => {
+    bookFigure: 'Livre',
+    randomFigure: 'Hasard',
+    bookMeaning: 'La réponse de Camille lui-même, tirée du livre d’ouvertures',
+    randomMeaning: `Tiré au hasard${NO_BREAK}: le modèle de base n’était pas disponible`,
+    rankMeaning: (rank, legalMoves) => {
       if (rank === 1) {
-        return 'C’était le coup le plus probable selon le modèle.';
+        return `Le coup le plus probable selon le modèle, sur ${legalMoves} coups légaux`;
       }
-      return `C’était le ${frenchOrdinal(rank)} coup le plus probable selon le modèle.`;
+      return `Le ${frenchOrdinal(rank)} coup le plus probable selon le modèle, sur ${legalMoves} coups légaux`;
     },
     rarity: (share, phase) =>
       `Camille joue un coup aussi improbable sur ${share} de ses ${FRENCH.panel.phaseMoves[phase]}.`,
@@ -437,31 +476,27 @@ const FRENCH: Texts = {
       `La partie était déjà jouée${NO_BREAK}: les deux coups valent dix pions ou plus pour le même camp, ` +
       'donc la perte n’est pas comptée.',
     lost: (centipawns) => `Stockfish${NO_BREAK}: le coup a perdu ${centipawns} centipions par rapport au meilleur coup.`,
-    movesUnderOnePercent: `Coups sous 1${NO_BREAK}%`,
-    averageLoss: 'Perte moyenne',
-    openingTooShort: (figure, botMoves) =>
-      `${figure}${NO_BREAK}: l’ouverture compte au plus ${botMoves} coups du Bot, trop peu pour conclure sur une partie.`,
-    tooFew: (figure, counted, needed) => `${figure}${NO_BREAK}: ${counted}, trop peu pour conclure (il en faut ${needed}).`,
-    modelMovesSoFar: (count) => `${french(count, 'coup du modèle de base', 'coups du modèle de base')} jusqu’ici`,
-    openMovesEvaluated: (count) => {
-      if (count < 2) {
-        return `${count} coup en position ouverte évalué jusqu’ici`;
+    legendCamille: (moves) => `Camille, ${moves.toLocaleString('fr')} coups`,
+    legendBot: (moves) => `Le Bot dans cette partie, ${french(moves, 'coup', 'coups')}`,
+    legendBand: (moves) => `Où le seul hasard place Camille sur ${french(moves, 'coup', 'coups')}`,
+    chartReading:
+      'Part des coups qui ont perdu au plus tant de centipions, dans les positions encore ouvertes. ' +
+      `Plus haut et plus à gauche${NO_BREAK}: des erreurs moins nombreuses et plus petites.`,
+    chartLag: (lag) =>
+      `Tant que la partie continue, la courbe du Bot laisse de côté ses ${lag} derniers coups, pour ne jamais ` +
+      'montrer où le Bot vient de se tromper. Le mode analyse, et la fin de la partie, les montrent tous.',
+    stillToEvaluate: (waiting) => `Stockfish évalue les coups du Bot un par un${NO_BREAK}: encore ${waiting} à venir.`,
+    notEvaluated: (failed) => {
+      if (failed < 2) {
+        return `Stockfish n’a pas pu évaluer ${failed} coup du Bot${NO_BREAK}; la courbe le laisse de côté.`;
       }
-      return `${count} coups en position ouverte évalués jusqu’ici`;
+      return `Stockfish n’a pas pu évaluer ${failed} coups du Bot${NO_BREAK}; la courbe les laisse de côté.`;
     },
-    improbableVerdict: (improbable, moves, share, placement, range) =>
-      `Coups sous 1${NO_BREAK}%${NO_BREAK}: ${improbable} sur ${moves} (${share}), ${frenchPlacement(placement)} (${range}).`,
-    lossVerdict: (average, moves, placement, range) =>
-      `Perte moyenne${NO_BREAK}: ${average}${NO_BREAK}cp sur ${moves} coups, ${frenchPlacement(placement)} (${range}).`,
-    centipawnRange: (low, high) => `de ${low} à ${high}${NO_BREAK}cp`,
-    percentRange: (low, high) => `de ${low} à ${high}`,
-    usualRange: (movesForAVerdict, games) =>
-      `Son intervalle habituel couvre les 80${NO_BREAK}% centraux de ses parties, à partir de ${movesForAVerdict} coups ` +
-      `dans une phase. Coups sous 1${NO_BREAK}%${NO_BREAK}: les probabilités du modèle de base lui-même, ` +
-      `sur ses ${games} parties mises de côté pour les mesures.`,
-    lossesSource: (engine, depth, games) =>
-      `Pertes${NO_BREAK}: ${engine} à la profondeur ${depth}, les réglages utilisés ici, sur ses ${games} parties, ` +
-      'en ne comptant que les coups joués en position ouverte.',
+    camilleSource: (games, engine, depth) =>
+      `Camille${NO_BREAK}: ses ${games} parties, ${engine} à la profondeur ${depth}, les réglages utilisés ici.`,
+    chartAxis: 'perte au plus, en centipions',
+    chartCamille: (share) => `Camille perd un pion ou moins sur ${share} de ses coups.`,
+    chartBot: (share, moves) => `Le Bot, sur ${share} de ses ${moves} coups évalués dans cette partie.`,
   },
 };
 
@@ -474,16 +509,6 @@ function frenchTimes(count: number): string {
 
 function frenchNumber(value: number): string {
   return `${value}`.replace('.', ',');
-}
-
-function frenchPlacement(placement: Placement): string {
-  if (placement === 'below') {
-    return 'sous son intervalle habituel';
-  }
-  if (placement === 'above') {
-    return 'au-dessus de son intervalle habituel';
-  }
-  return 'dans son intervalle habituel';
 }
 
 function opponentOf(side: Colour): Colour {

@@ -1,0 +1,29 @@
+---
+// The smallest text of the portfolio: Space Mono at 10 px, in capitals,
+// spaced out and in soft ink, for notes that sit beside a label or a value
+// rather than being read first. A text named among the page's texts is
+// rewritten in the visitor's language by src/i18n/page-language.ts.
+import type { PageText } from '../../i18n/texts';
+
+interface Props {
+  as?: 'span' | 'p';
+  class?: string;
+  textKey?: PageText;
+}
+
+const { as: Element = 'span', class: className, textKey } = Astro.props;
+---
+
+<Element class:list={['micro-text', className]} data-text={textKey}><slot /></Element>
+
+<style>
+  .micro-text {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    line-height: 1.5;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+</style>

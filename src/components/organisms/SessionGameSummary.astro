@@ -3,7 +3,8 @@
 // the Bot's record in them, and what visitors made of it. The figures are read
 // from the Session Game service; this component only places them on the page,
 // in the page's language.
-import { TEXTS, type PageText } from '../i18n/texts';
+import BracketLabel from '../atoms/BracketLabel.astro';
+import { TEXTS, type PageText } from '../../i18n/texts';
 
 interface Props {
   /**
@@ -23,7 +24,7 @@ const hiddenUntilAGameEnds = readOn === 'game-end';
 ---
 
 <section class="session-game-summary" data-session-game-summary data-read-on={readOn} hidden={hiddenUntilAGameEnds}>
-  {titleKey !== undefined && <h2 data-text={titleKey}>{english[titleKey]}</h2>}
+  {titleKey !== undefined && <BracketLabel as="h2" textKey={titleKey} />}
   <p data-summary-status data-text="readingTheCounts">{english.readingTheCounts}</p>
   <dl hidden data-summary-figures>
     <dt data-text="gamesFinished">{english.gamesFinished}</dt>
@@ -44,8 +45,8 @@ const hiddenUntilAGameEnds = readOn === 'game-end';
     readSessionGameSummary,
     SESSION_GAMES_CHANGED,
     type SessionGameSummary,
-  } from '../telemetry/session-game-summary';
-  import { LANGUAGE_CHANGED, pageLanguage, pageTexts } from '../i18n/page-language';
+  } from '../../telemetry/session-game-summary';
+  import { LANGUAGE_CHANGED, pageLanguage, pageTexts } from '../../i18n/page-language';
 
   const summaries = document.querySelectorAll<HTMLElement>('[data-session-game-summary]');
   for (const summary of summaries) {
@@ -95,30 +96,36 @@ const hiddenUntilAGameEnds = readOn === 'game-end';
 </script>
 
 <style>
-  h2 {
-    font-size: 1rem;
-    margin: 0 0 0.5rem;
+  .session-game-summary {
+    font-size: 13px;
+  }
+
+  .session-game-summary > :global(h2) {
+    margin-bottom: 12px;
   }
 
   p {
     margin: 0;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink-soft);
   }
 
-  /* Only a shown list is laid out as a grid: a display set here would
-     otherwise override the hidden attribute and show an empty list. */
-  dl:not([hidden]) {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 0.25rem 1rem;
+  /* Each figure under its name, since some, such as the Bot's record, are
+     too long to share a line with it in a narrow column. */
+  dl {
     margin: 0;
   }
 
   dt {
-    opacity: 0.75;
+    color: var(--ink-soft);
   }
 
   dd {
-    margin: 0;
+    margin: 0 0 8px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
     font-variant-numeric: tabular-nums;
   }
 </style>

@@ -11,7 +11,7 @@
 // page while its text is rewritten; renaming the file to write-up.astro
 // publishes it at /write-up/.
 import { readFileSync } from 'node:fs';
-import SessionGameSummary from '../components/SessionGameSummary.astro';
+import SessionGameSummary from '../components/organisms/SessionGameSummary.astro';
 import Page from '../layouts/Page.astro';
 import type { SweepRecord } from '../evaluation/base-model-sweep';
 import { PHASES, type Phase } from '../evaluation/move-matching';

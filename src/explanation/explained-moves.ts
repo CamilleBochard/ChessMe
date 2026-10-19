@@ -85,3 +85,31 @@ export function candidateRows(candidates: Candidate[], rank: number): CandidateR
   return { mostLikely: mostLikely, playedFurtherDown: playedFurtherDown };
 }
 
+
+/**
+ * Where a move the Base Model chose stood, as the panel shows it in large:
+ * its rank among the position's legal moves, such as 1/22 for the model's
+ * favourite out of 22. The Opening Book's reply and a move picked at random
+ * rank nothing; the panel names them in the page's language instead.
+ */
+export function rankOf(botMove: Extract<BotMove, { source: 'base-model' }>): string {
+  return `${botMove.rank}/${botMove.legalMoves}`;
+}
+
+/** How many of the Bot's latest moves the chart leaves out while the game goes on. */
+export const CHART_LAG = 3;
+
+/**
+ * The Bot's moves the chart of losses may draw. While the game goes on it
+ * leaves out the last CHART_LAG of them: the curve moving with the move just
+ * played would tell the visitor whether the Bot had just gone wrong, which is
+ * the help analysis mode marks a game assisted for. Once the evaluations are
+ * revealed, in analysis mode or once the game is over, every move is drawn.
+ */
+export function movesOnTheChart<Move>(botMoves: Move[], view: { revealed: boolean }): Move[] {
+  if (view.revealed) {
+    return botMoves;
+  }
+  const shown = Math.max(0, botMoves.length - CHART_LAG);
+  return botMoves.slice(0, shown);
+}

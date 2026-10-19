@@ -1,6 +1,7 @@
 // Camille's yardsticks, against which the panel beside the board sets each of
 // the Bot's moves and the game so far: how often he plays a move the Base
-// Model finds this unlikely, and the range his own games cover.
+// Model finds this unlikely, the range his own games cover, and the profile
+// of his losses the Bot's are drawn over.
 // Built under Node by scripts/yardsticks.ts and shipped with the site as JSON.
 // Free of anything DOM or Node.
 
@@ -164,9 +165,11 @@ export interface LossMove extends BotLoss {
   game: string;
 }
 
-/** Per Phase, how far Camille's games spread in the evaluation his moves lost. */
+/** How far Camille's games spread in the evaluation his moves lost, per Phase, and how all his moves spread. */
 export interface LossYardstick {
   phases: Record<Phase, { perGame: Spread | null }>;
+  /** The profile of every one of his moves in open positions, whatever the Phase. */
+  profile: LossProfile;
 }
 
 /** The loss yardstick as scripts/yardsticks.ts writes it, with the engine that measured it. */
@@ -194,7 +197,7 @@ export function lossYardstick(moves: LossMove[]): LossYardstick {
     const inPhase = open.filter((move) => move.phase === phase);
     return { perGame: perGameSpread(inPhase, averageLoss) };
   });
-  return { phases: phases };
+  return { phases: phases, profile: lossProfile(moves) };
 }
 
 /** The average evaluation the moves lost, in centipawns. */
@@ -203,52 +206,63 @@ function averageLoss(moves: { centipawnLoss: number }[]): number {
   return total / moves.length;
 }
 
-/** How a figure of the game so far compares with Camille's games, in one Phase. */
-export type Verdict =
-  /** Fewer moves than MOVES_FOR_A_VERDICT: one game this short cannot be told apart from his. */
-  | { kind: 'too-few-moves'; moves: number }
-  /** Inside the range the middle 80% of his games cover, or below or above it. */
-  | { kind: 'inside' | 'below' | 'above'; moves: number; figure: number; spread: Spread };
-
 /**
- * Per Phase, the share of the Bot's Base Model moves so far the model gave
- * less than 1%, set against the spread of the same share across Camille's
- * games.
+ * The losses, in centipawns, at which a profile of losses is read: from a
+ * move that lost nothing to one that lost ten pawns, closer together where
+ * most moves fall.
  */
-export function gameImprobability(botMoves: BotWeighedMove[], yardstick: ImprobabilityYardstick): Record<Phase, Verdict> {
-  return perPhase((phase) => {
-    const inPhase = botMoves.filter((move) => move.phase === phase);
-    return againstSpread(inPhase, shareImprobable, yardstick.phases[phase].perGame);
-  });
-}
+export const LOSS_PROFILE_EDGES: readonly number[] = [0, 10, 25, 50, 100, 200, 300, 500, 1000];
 
-/** The game's figure in one Phase, read from its moves there, against the spread of Camille's games. */
-function againstSpread<Move>(moves: Move[], figureOf: (moves: Move[]) => number, spread: Spread | null): Verdict {
-  // Without a spread, none of his games had enough moves in the Phase
-  // either, so the game has too few for a verdict as well.
-  if (moves.length < MOVES_FOR_A_VERDICT || spread === null) {
-    return { kind: 'too-few-moves', moves: moves.length };
-  }
-  const figure = figureOf(moves);
-  if (figure < spread.low) {
-    return { kind: 'below', moves: moves.length, figure: figure, spread: spread };
-  }
-  if (figure > spread.high) {
-    return { kind: 'above', moves: moves.length, figure: figure, spread: spread };
-  }
-  return { kind: 'inside', moves: moves.length, figure: figure, spread: spread };
+/** How a player's moves spread in the evaluation they lost. */
+export interface LossProfile {
+  /** How many moves in open positions it was read from. */
+  moves: number;
+  /** For each loss of LOSS_PROFILE_EDGES, the share of those moves that lost no more; empty without moves. */
+  atMost: number[];
 }
 
 /**
- * Per Phase, the Bot's average loss so far over its moves in open positions,
- * set against the spread of the same average across Camille's games. Every
- * move counts, the Opening Book's too, as every one of his moves counts in
- * his.
+ * The profile of the given moves' losses. Only moves made in open positions
+ * count: once a game is decided, every move reads as losing nothing.
  */
-export function gameLosses(botMoves: BotLoss[], yardstick: LossYardstick): Record<Phase, Verdict> {
-  const open = botMoves.filter((move) => move.openPosition);
-  return perPhase((phase) => {
-    const inPhase = open.filter((move) => move.phase === phase);
-    return againstSpread(inPhase, averageLoss, yardstick.phases[phase].perGame);
-  });
+export function lossProfile(moves: MoveLoss[]): LossProfile {
+  const open = moves.filter((move) => move.openPosition);
+  if (open.length === 0) {
+    return { moves: 0, atMost: [] };
+  }
+  const atMost: number[] = [];
+  for (const edge of LOSS_PROFILE_EDGES) {
+    const noMore = open.filter((move) => move.centipawnLoss <= edge).length;
+    atMost.push(noMore / open.length);
+  }
+  return { moves: open.length, atMost: atMost };
+}
+
+/** How many standard errors cover the middle 80% of a normal distribution. */
+const MIDDLE_80_PERCENT = 1.2816;
+
+/** For each edge of a profile, the lowest and highest share chance alone would read. */
+export interface Band {
+  low: number[];
+  high: number[];
+}
+
+/**
+ * The band in which Camille's own profile would fall eight times in ten if
+ * it were read from only as many moves as the Bot has played. A curve of the
+ * Bot inside it cannot be told apart from his on so few moves. Each share is
+ * spread as a proportion read from that many independent moves; a game's
+ * moves are not quite independent, so the true band is somewhat wider.
+ */
+export function chanceBand(camille: LossProfile, moves: number): Band {
+  const low: number[] = [];
+  const high: number[] = [];
+  for (const share of camille.atMost) {
+    const standardError = Math.sqrt((share * (1 - share)) / moves);
+    const lowest = share - MIDDLE_80_PERCENT * standardError;
+    const highest = share + MIDDLE_80_PERCENT * standardError;
+    low.push(Math.max(0, lowest));
+    high.push(Math.min(1, highest));
+  }
+  return { low: low, high: high };
 }
