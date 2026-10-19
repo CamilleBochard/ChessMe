@@ -100,6 +100,16 @@ def test_answers_the_bots_record_over_the_stored_games(service):
     assert reply["black"]["openings"][0]["name"] == "Barnes Opening"
 
 
+def test_answers_a_record_that_counts_a_game_stored_after_it_was_last_read(service):
+    post(service["url"] + "/api/session-games", FOOLS_MATE)
+    get(service["url"] + "/api/session-games/record")
+
+    post(service["url"] + "/api/session-games", FOOLS_MATE)
+    status, reply = get(service["url"] + "/api/session-games/record")
+
+    assert reply["games"] == 2
+
+
 def test_answers_a_refused_game_with_the_reason(service):
     abandoned = {"botColour": "black", "baseModel": "maia3-5m", "rating": 1100, "moves": [{"uci": "e2e4"}]}
 

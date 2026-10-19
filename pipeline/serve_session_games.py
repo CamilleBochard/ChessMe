@@ -31,6 +31,7 @@ from pipeline.session_games import (
     open_store,
     record_impression,
     record_session_game,
+    scalar,
     session_game_counts,
     session_game_record,
 )
@@ -70,6 +71,10 @@ def make_server(database: Path, table: dict[str, str], host: str, port: int) -> 
     A server, not yet serving, that stores what it receives in the database
     at that path, and names the openings of the Bot's games from table.
     """
+    # Working out the record replays every stored game, a few milliseconds
+    # each, so it is kept until another game is stored: counting the rows is
+    # far cheaper than reading the games.
+    kept_record: dict = {"games": None, "record": None}
 
     class SessionGameHandler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
@@ -107,7 +112,11 @@ def make_server(database: Path, table: dict[str, str], host: str, port: int) -> 
         def answer_record(self) -> None:
             store = open_store(database)
             try:
-                record = session_game_record(store, table)
+                stored_games = scalar(store, "SELECT COUNT(*) FROM session_games")
+                if kept_record["games"] != stored_games:
+                    kept_record["record"] = session_game_record(store, table)
+                    kept_record["games"] = stored_games
+                record = kept_record["record"]
             finally:
                 store.close()
 
