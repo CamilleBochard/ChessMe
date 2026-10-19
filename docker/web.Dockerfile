@@ -4,7 +4,7 @@
 # built files only: no Node, no sources, no node_modules. Base images pinned
 # by digest: a tag can be moved, a digest cannot.
 #
-# The Base Model (models/onnx/maia3-5m.onnx) and the Opening Book
+# The Base Model (models/onnx/maia3-5m-fine-tuned.onnx) and the Opening Book
 # (data/dataset/opening-book.json) are not in the repository. They must be in
 # the build context before `docker build`: the build stops if either is missing.
 
@@ -18,11 +18,15 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY astro.config.mjs tsconfig.json ./
-COPY scripts/stage-model.ts ./scripts/
-COPY models/onnx/maia3-5m.onnx ./models/onnx/
+COPY scripts/stage-model.ts scripts/stage-stockfish.ts ./scripts/
+COPY models/onnx/maia3-5m-fine-tuned.onnx ./models/onnx/
 COPY data/dataset/opening-book.json ./data/dataset/
 COPY docs/experiments/results ./docs/experiments/results
 COPY src ./src
+# The fonts and the piece sets the site serves as they are. The model and
+# Stockfish are staged into public/ by the build.
+COPY public/fonts ./public/fonts
+COPY public/pieces ./public/pieces
 RUN npm run build
 
 # ---------- Stage 2: static web server ----------

@@ -17,7 +17,7 @@ concurrency:
 env:
   # The release holding the Base Model and the Opening Book, which the
   # repository does not hold. Their checksums are in docker/bot-data.sha256.
-  BOT_DATA_RELEASE: bot-data-1
+  BOT_DATA_RELEASE: bot-data-2
 
 jobs:
   publish:
@@ -46,7 +46,7 @@ jobs:
         run: |
           base_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${BOT_DATA_RELEASE}"
           mkdir -p models/onnx data/dataset
-          curl --fail --silent --show-error --location -o models/onnx/maia3-5m.onnx "$base_url/maia3-5m.onnx"
+          curl --fail --silent --show-error --location -o models/onnx/maia3-5m-fine-tuned.onnx "$base_url/maia3-5m-fine-tuned.onnx"
           curl --fail --silent --show-error --location -o data/dataset/opening-book.json "$base_url/opening-book.json"
           sha256sum --check docker/bot-data.sha256
 

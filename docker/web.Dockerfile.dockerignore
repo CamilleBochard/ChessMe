@@ -6,8 +6,11 @@
 !astro.config.mjs
 !tsconfig.json
 !scripts/stage-model.ts
-!models/onnx/maia3-5m.onnx
+!scripts/stage-stockfish.ts
+!models/onnx/maia3-5m-fine-tuned.onnx
 !data/dataset/opening-book.json
 !docs/experiments/results/
 !src/
+!public/fonts/
+!public/pieces/
 !docker/nginx/
