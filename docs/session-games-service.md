@@ -23,7 +23,9 @@ is refused for a game that had already ended on the board.
 ## On the VPS
 
 The service needs Python 3.12 and python-chess, installed from this
-repository with `pip install .` in a virtual environment. It listens on
+repository with `pip install .` in a virtual environment. It names the
+openings of the Bot's games with the table in `data/openings`, read from the
+checkout it runs in. It listens on
 127.0.0.1 only, and creates its database on the first request, in a
 directory the service's user must be able to write:
 
@@ -67,6 +69,13 @@ location = /api/session-games/counts {
     proxy_pass http://127.0.0.1:8787;
 }
 
+location = /api/session-games/record {
+    access_log off;
+    error_log /dev/null;
+    limit_req zone=session_game_counts burst=10 nodelay;
+    proxy_pass http://127.0.0.1:8787;
+}
+
 location /api/ {
     # No access log, and no error log: both record the visitor's address,
     # the error log for each request the rate limit turns away and each one
@@ -81,14 +90,17 @@ location /api/ {
 ```
 
 Both `limit_req_zone` lines belong in the `http` block, outside the server
-block. The exact-match location for the counts takes precedence over the
-`/api/` prefix.
+block. The exact-match locations for the counts and the record take
+precedence over the `/api/` prefix, and share the reading limit.
 
 ## Reading the counts
 
-The game page shows the aggregate counts as they stand once a game ends,
-and the write-up page whenever it is read, both from
-`GET /api/session-games/counts`, which answers them as JSON. Its rate limit
+The game page's Bot tab shows the aggregate counts and the Bot's record, read
+when the tab is opened and again once a game ends, and the write-up page
+shows the counts whenever it is read. They come from
+`GET /api/session-games/counts` and `GET /api/session-games/record`, which
+answer them as JSON, the record in the shape of Camille's in
+`src/record/player-record.json`. Its rate limit
 above is separate from the one on game reports: a reader who reloads the
 page more than thirty times a minute sees the counts as unavailable, and
 can still report the game they play next.

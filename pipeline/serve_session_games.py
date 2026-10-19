@@ -6,6 +6,9 @@ See docs/adr/0002-session-games-received-beside-the-static-site.md.
 
     python -m pipeline.serve_session_games --database data/session-games.sqlite [--port 8787]
 
+It names the openings of the Bot's games with the openings table in
+data/openings, the one Camille's record is named with.
+
 The service listens on the local machine only: the web server in front of
 it is what the internet reaches.
 """
@@ -20,6 +23,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+from pipeline.player_record import OPENINGS_DIR, read_opening_table
 from pipeline.session_games import (
     RejectedGame,
     RejectedImpression,
@@ -28,6 +32,7 @@ from pipeline.session_games import (
     record_impression,
     record_session_game,
     session_game_counts,
+    session_game_record,
 )
 
 SESSION_GAMES_PATH = "/api/session-games"
@@ -39,6 +44,9 @@ IMPRESSION_PATH = re.compile(r"/api/session-games/(?P<game_id>[0-9a-f-]{36})/imp
 # What the write-up page reads to show how many games have been played and
 # how the Bot fared, as they stand when the page is read.
 COUNTS_PATH = "/api/session-games/counts"
+
+# What the game page reads to show the Bot's record beside Camille's.
+RECORD_PATH = "/api/session-games/record"
 
 DEFAULT_PORT = 8787
 
@@ -57,13 +65,20 @@ class BadRequest(Exception):
         self.reason = reason
 
 
-def make_server(database: Path, host: str, port: int) -> ThreadingHTTPServer:
-    """A server, not yet serving, that stores what it receives in the database at that path."""
+def make_server(database: Path, table: dict[str, str], host: str, port: int) -> ThreadingHTTPServer:
+    """
+    A server, not yet serving, that stores what it receives in the database
+    at that path, and names the openings of the Bot's games from table.
+    """
 
     class SessionGameHandler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
             if self.path == COUNTS_PATH:
                 self.answer_counts()
+                return
+
+            if self.path == RECORD_PATH:
+                self.answer_record()
                 return
 
             self.reply(HTTPStatus.NOT_FOUND, {"error": "no such endpoint"})
@@ -88,6 +103,15 @@ def make_server(database: Path, host: str, port: int) -> ThreadingHTTPServer:
                 store.close()
 
             self.reply(HTTPStatus.OK, counts)
+
+        def answer_record(self) -> None:
+            store = open_store(database)
+            try:
+                record = session_game_record(store, table)
+            finally:
+                store.close()
+
+            self.reply(HTTPStatus.OK, record)
 
         def receive_game(self) -> None:
             try:
@@ -191,6 +215,8 @@ if __name__ == "__main__":
     parser.add_argument("--port", type=int, default=DEFAULT_PORT, help=f"local port to listen on (default {DEFAULT_PORT})")
     arguments = parser.parse_args()
 
-    server = make_server(arguments.database, host="127.0.0.1", port=arguments.port)
+    # Read once, as the service starts: the table is a few thousand lines.
+    table = read_opening_table(OPENINGS_DIR)
+    server = make_server(arguments.database, table, host="127.0.0.1", port=arguments.port)
     print(f"Storing Session Games in {arguments.database}, listening on 127.0.0.1:{arguments.port}")
     server.serve_forever()
