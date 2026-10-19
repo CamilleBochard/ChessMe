@@ -1,8 +1,9 @@
 ---
-// The two buttons a phone shows under the board, since its narrow screen has
-// no room for the settings column: one opens the settings of a new game, the
-// other the choice of pieces. The game's script and the piece choice find
-// them by data-open-setup and data-open-pieces. A wide screen hides them: the
+// The buttons a phone shows under the board, since its narrow screen has no
+// room for the left-hand column: one opens the settings of a new game,
+// another the choice of pieces, the last Camille's record. The game's
+// script, the piece choice and the record find them by data-open-setup,
+// data-open-pieces and data-open-record. A wide screen hides them: the
 // settings are in view on the left.
 import { TEXTS } from '../../i18n/texts';
 
@@ -36,6 +37,18 @@ const english = TEXTS.en.page;
       <circle cx="12" cy="6.5" r="2.5"></circle>
       <path d="M9.5 10.5h5l1.5 7h-8z"></path>
       <path d="M6.5 17.5h11v2.5h-11z"></path>
+    </svg>
+  </button>
+  <button
+    type="button"
+    data-open-record
+    aria-label={english.record}
+    title={english.record}
+    data-text-label="record"
+    data-text-title="record"
+  >
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M5 20V12M10 20V6M15 20V9M20 20V4"></path>
     </svg>
   </button>
 </div>

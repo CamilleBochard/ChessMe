@@ -1,0 +1,118 @@
+{
+ "games": 1046,
+ "results": {
+  "wins": 484,
+  "draws": 36,
+  "losses": 526
+ },
+ "white": {
+  "games": 525,
+  "results": {
+   "wins": 259,
+   "draws": 19,
+   "losses": 247
+  },
+  "openings": [
+   {
+    "name": "Scotch Game",
+    "games": 121,
+    "results": {
+     "wins": 65,
+     "draws": 4,
+     "losses": 52
+    }
+   },
+   {
+    "name": "Queen's Pawn Game",
+    "games": 77,
+    "results": {
+     "wins": 40,
+     "draws": 4,
+     "losses": 33
+    }
+   },
+   {
+    "name": "Scandinavian Defense",
+    "games": 49,
+    "results": {
+     "wins": 20,
+     "draws": 0,
+     "losses": 29
+    }
+   },
+   {
+    "name": "French Defense",
+    "games": 31,
+    "results": {
+     "wins": 16,
+     "draws": 1,
+     "losses": 14
+    }
+   },
+   {
+    "name": "Philidor Defense",
+    "games": 29,
+    "results": {
+     "wins": 20,
+     "draws": 1,
+     "losses": 8
+    }
+   }
+  ]
+ },
+ "black": {
+  "games": 521,
+  "results": {
+   "wins": 225,
+   "draws": 17,
+   "losses": 279
+  },
+  "openings": [
+   {
+    "name": "Sicilian Defense",
+    "games": 142,
+    "results": {
+     "wins": 58,
+     "draws": 4,
+     "losses": 80
+    }
+   },
+   {
+    "name": "Scandinavian Defense",
+    "games": 109,
+    "results": {
+     "wins": 39,
+     "draws": 6,
+     "losses": 64
+    }
+   },
+   {
+    "name": "Caro-Kann Defense",
+    "games": 88,
+    "results": {
+     "wins": 41,
+     "draws": 4,
+     "losses": 43
+    }
+   },
+   {
+    "name": "Queen's Pawn Game",
+    "games": 55,
+    "results": {
+     "wins": 25,
+     "draws": 1,
+     "losses": 29
+    }
+   },
+   {
+    "name": "Benoni Defense",
+    "games": 33,
+    "results": {
+     "wins": 15,
+     "draws": 1,
+     "losses": 17
+    }
+   }
+  ]
+ }
+}

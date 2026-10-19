@@ -1,0 +1,52 @@
+"""Builds Camille's record for the game page from every export in data/raw.
+
+Run from the repository root:
+
+    python -m pipeline.build_player_record
+
+The record covers the games the Bot is built from, picked as the dataset
+picks them, and names their openings with Lichess's openings table, kept in
+data/openings. It is written as JSON beside the component that shows it.
+"""
+
+import csv
+import json
+from pathlib import Path
+
+from pipeline.build_dataset import PLAYER
+from pipeline.dataset import kept_games
+from pipeline.player_record import opening_table, player_record
+
+REPOSITORY_ROOT = Path(__file__).resolve().parent.parent
+RAW_DIR = REPOSITORY_ROOT / "data" / "raw"
+OPENINGS_DIR = REPOSITORY_ROOT / "data" / "openings"
+RECORD_PATH = REPOSITORY_ROOT / "src" / "record" / "player-record.json"
+
+
+def build(raw_dir: Path, openings_dir: Path, record_path: Path) -> dict:
+    games = [game for game, _ in kept_games(sorted(raw_dir.glob("*.pgn")))]
+    table = opening_table(_opening_lines(openings_dir))
+    record = player_record(games, PLAYER, table)
+
+    record_path.parent.mkdir(parents=True, exist_ok=True)
+    record_path.write_text(json.dumps(record, indent=1, ensure_ascii=False), encoding="utf-8")
+    return record
+
+
+def _opening_lines(openings_dir: Path) -> list[tuple[str, str]]:
+    """The (name, moves) lines of the table's files: eco, name and pgn columns, tab-separated, with a header."""
+    lines = []
+    for path in sorted(openings_dir.glob("*.tsv")):
+        with open(path, encoding="utf-8", newline="") as table_file:
+            for row in csv.DictReader(table_file, delimiter="\t", quoting=csv.QUOTE_NONE):
+                lines.append((row["name"], row["pgn"]))
+    return lines
+
+
+if __name__ == "__main__":
+    built = build(RAW_DIR, OPENINGS_DIR, RECORD_PATH)
+    results = built["results"]
+    print(
+        f"{built['games']} games ({built['white']['games']} with White, {built['black']['games']} with Black): "
+        f"{results['wins']} wins, {results['draws']} draws, {results['losses']} losses, written to {RECORD_PATH}"
+    )
