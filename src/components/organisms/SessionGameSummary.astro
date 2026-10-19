@@ -1,0 +1,100 @@
+---
+// The Session Game summary: how many games visitors have finished on the site,
+// the Bot's record in them, and what visitors made of it. The figures are read
+// from the Session Game service as the page opens; this component only places
+// them on the page, in the page's language.
+import { TEXTS } from '../../i18n/texts';
+
+// Written in English here; the page's script rewrites every data-text in the
+// visitor's language.
+const english = TEXTS.en.page;
+---
+
+<section class="session-game-summary" data-session-game-summary>
+  <p data-summary-status data-text="readingTheCounts">{english.readingTheCounts}</p>
+  <dl hidden data-summary-figures>
+    <dt data-text="gamesFinished">{english.gamesFinished}</dt>
+    <dd data-figure="games"></dd>
+    <dt data-text="botRecord">{english.botRecord}</dt>
+    <dd data-figure="botRecord"></dd>
+    <dt data-text="botScore">{english.botScore}</dt>
+    <dd data-figure="botScore" data-text="noGameYet">{english.noGameYet}</dd>
+    <dt data-text="fromOpeningBook">{english.fromOpeningBook}</dt>
+    <dd data-figure="fromOpeningBook" data-text="noMoveYet">{english.noMoveYet}</dd>
+    <dt data-text="feltReal">{english.feltReal}</dt>
+    <dd data-figure="feltLikeARealPlayer" data-text="noAnswerYet">{english.noAnswerYet}</dd>
+  </dl>
+</section>
+
+<script>
+  import { readSessionGameSummary, type SessionGameSummary } from '../../telemetry/session-game-summary';
+  import { LANGUAGE_CHANGED, pageLanguage, pageTexts } from '../../i18n/page-language';
+
+  const summaries = document.querySelectorAll<HTMLElement>('[data-session-game-summary]');
+  for (const summary of summaries) {
+    void showSummary(summary);
+    // The figures are written in the page's language, so they are read
+    // again in the new one.
+    document.addEventListener(LANGUAGE_CHANGED, () => {
+      void showSummary(summary);
+    });
+  }
+
+  async function showSummary(container: HTMLElement): Promise<void> {
+    const status = container.querySelector<HTMLElement>('[data-summary-status]')!;
+    const figures = container.querySelector<HTMLElement>('[data-summary-figures]')!;
+
+    const summary = await readSessionGameSummary(fetch, pageLanguage());
+    if (summary === undefined) {
+      status.textContent = pageTexts().summaryUnavailable;
+      status.hidden = false;
+      figures.hidden = true;
+      return;
+    }
+
+    // A figure the summary leaves out, such as the score before any game, keeps
+    // the wording already on the page.
+    for (const figure of figures.querySelectorAll<HTMLElement>('[data-figure]')) {
+      const name = figure.dataset.figure as keyof SessionGameSummary;
+      const value = summary[name];
+      if (value !== undefined) {
+        figure.textContent = value;
+        // A figure now shown is no longer the placeholder a language switch rewrites.
+        delete figure.dataset.text;
+      }
+    }
+    status.hidden = true;
+    figures.hidden = false;
+  }
+</script>
+
+<style>
+  .session-game-summary {
+    font-size: 13px;
+  }
+
+  p {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+
+  /* Each figure under its name, since some, such as the Bot's record, are
+     too long to share a line with it in a narrow column. */
+  dl {
+    margin: 0;
+  }
+
+  dt {
+    color: var(--ink-soft);
+  }
+
+  dd {
+    margin: 0 0 8px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+</style>

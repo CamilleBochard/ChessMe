@@ -1,0 +1,215 @@
+---
+// The panel beside the moves: why the Bot played the move on display, with
+// where it stood among the legal moves in large, the chart of the Bot's
+// losses this game over Camille's, and the switch for analysis mode, which
+// asks before turning it on. Its two containers are filled by
+// src/explanation/panel.ts and the switch is wired by the game's script.
+import PanelHeader from '../molecules/PanelHeader.astro';
+import TickBox from '../molecules/TickBox.astro';
+import AnalysisModeDialog from './AnalysisModeDialog.astro';
+import { TEXTS } from '../../i18n/texts';
+
+const english = TEXTS.en.page;
+---
+
+<section class="explanation" aria-labelledby="explanation-heading">
+  <PanelHeader titleKey="whyTheBotPlayedIt" id="explanation-heading" />
+  <div class="explained-move" data-move-explanation aria-live="polite"></div>
+
+  <PanelHeader titleKey="mistakesChart" />
+  <div class="loss-comparison" data-loss-chart></div>
+
+  <TickBox class="analysis-switch" type="checkbox" data-analysis-switch textKey="analysisMode">{english.analysisMode}</TickBox>
+  <p class="analysis-note">
+    <span data-text="analysisNoteBefore">{english.analysisNoteBefore}</span><a
+      href="https://github.com/nmrugg/stockfish.js">Stockfish</a
+    ><span data-text="analysisNoteAfter">{english.analysisNoteAfter}</span>
+  </p>
+  <AnalysisModeDialog />
+</section>
+
+<style>
+  .explanation {
+    font-size: 13px;
+  }
+
+  .explanation > :global(.panel-header:not(:first-child)) {
+    margin-top: 20px;
+  }
+
+  /* The contents of the two containers are created by the script, which the
+     component's scoping cannot see, hence :global inside them. */
+  .explanation :global(p) {
+    margin: 0 0 8px;
+  }
+
+  .explanation :global(.move-heading) {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .explanation :global(.placeholder),
+  .explanation :global(.sources) {
+    color: var(--ink-soft);
+  }
+
+  .explanation :global(.sources) {
+    font-size: 12px;
+  }
+
+  .explanation :global(table.candidates) {
+    width: 100%;
+    margin: 0 0 8px;
+    border-collapse: collapse;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .explanation :global(table.candidates th) {
+    padding-bottom: 4px;
+    border-bottom: var(--line);
+    font-weight: 400;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    text-align: right;
+  }
+
+  .explanation :global(table.candidates th:first-child),
+  .explanation :global(table.candidates td:first-child) {
+    text-align: left;
+  }
+
+  .explanation :global(table.candidates td) {
+    padding: 2px 4px;
+    text-align: right;
+  }
+
+  .explanation :global(table.candidates tr.played) {
+    background: var(--ink);
+    color: var(--paper);
+  }
+
+  /* Where the move stood, in large: 1/22 for the model's favourite out of 22. */
+  .explanation :global(.move-rank) {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .explanation :global(.rank-figure) {
+    font-family: var(--font-title);
+    font-size: 44px;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .explanation :global(.rank-meaning) {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--ink-soft);
+  }
+
+  /* The chart: Camille in ink, the Bot in accent over him, and the band of
+     chance in a faint ink. */
+  .explanation {
+    --band: color-mix(in srgb, var(--ink) 12%, transparent);
+  }
+
+  .explanation :global(.chart-legend) {
+    display: grid;
+    gap: 4px;
+    margin: 0 0 8px;
+    padding: 0;
+    list-style: none;
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+
+  .explanation :global(.chart-legend li) {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .explanation :global(.swatch) {
+    flex: none;
+    width: 16px;
+    height: 3px;
+  }
+
+  .explanation :global(.swatch.camille) {
+    background: var(--ink);
+  }
+
+  .explanation :global(.swatch.bot) {
+    background: var(--accent);
+  }
+
+  .explanation :global(.swatch.band) {
+    height: 10px;
+    background: var(--band);
+  }
+
+  .explanation :global(.loss-chart) {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin-bottom: 8px;
+  }
+
+  .explanation :global(.loss-chart .gridline) {
+    stroke: var(--ink-faint);
+    stroke-width: 1;
+  }
+
+  .explanation :global(.loss-chart .axis-label) {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    fill: var(--ink-soft);
+  }
+
+  .explanation :global(.loss-chart .band) {
+    fill: var(--band);
+  }
+
+  .explanation :global(.loss-chart .curve) {
+    fill: none;
+    stroke-width: 2;
+    stroke-linejoin: round;
+  }
+
+  .explanation :global(.loss-chart .camille) {
+    stroke: var(--ink);
+  }
+
+  .explanation :global(.loss-chart .bot) {
+    stroke: var(--accent);
+  }
+
+  .explanation :global(.loss-chart .dot.camille) {
+    fill: var(--ink);
+  }
+
+  .explanation :global(.loss-chart .dot.bot) {
+    fill: var(--accent);
+  }
+
+  .explanation :global(.analysis-switch) {
+    margin-top: 20px;
+  }
+
+  .explanation .analysis-note {
+    margin-top: 6px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-soft);
+  }
+</style>

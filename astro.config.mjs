@@ -5,6 +5,12 @@ import { defineConfig } from 'astro/config';
 // with one small client script and no framework runtime.
 export default defineConfig({
   vite: {
+    build: {
+      // Astro writes a script below this size straight into the page. The
+      // production Content-Security-Policy only lets scripts load from the
+      // site's own files, so every script stays a file of its own.
+      assetsInlineLimit: 0,
+    },
     server: {
       // In development the page reports Session Games to a local copy of the
       // service, started with python -m pipeline.serve_session_games. On the

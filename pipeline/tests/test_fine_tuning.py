@@ -11,6 +11,7 @@ from pipeline.dataset import Position, is_held_back  # noqa: E402
 from pipeline.fine_tuning import (  # noqa: E402
     TrainingSettings,
     fine_tune,
+    largest_weight_difference,
     split_validation,
     take_whole_games,
     top_moves,
@@ -123,3 +124,33 @@ def test_takes_whole_games_in_order_until_there_are_as_many_positions_as_asked()
 
     # Two whole games make 6 positions, short of 7, so a third is taken whole.
     assert [kept.game_id for kept in taken] == ["lichess:game0"] * 3 + ["lichess:game1"] * 3 + ["lichess:game2"] * 3
+
+
+def test_measures_the_largest_difference_between_two_models_weights():
+    first = {"layer.weight": torch.tensor([[1.0, 2.0], [3.0, 4.0]]), "layer.bias": torch.tensor([0.5])}
+    second = {"layer.weight": torch.tensor([[1.0, 2.25], [3.0, 3.5]]), "layer.bias": torch.tensor([0.5])}
+
+    assert largest_weight_difference(first, second) == pytest.approx(0.5)
+
+
+def test_refuses_to_compare_weights_of_two_different_shapes_of_model():
+    first = {"layer.weight": torch.zeros(2, 2)}
+    second = {"other.weight": torch.zeros(2, 2)}
+
+    with pytest.raises(ValueError, match="layer.weight"):
+        largest_weight_difference(first, second)
+
+
+@needs_weights
+def test_the_reference_model_can_carry_fine_tuned_weights_saved_by_training(base_model, tmp_path):
+    trained = copy.deepcopy(base_model.state_dict())
+    # A weight held by one layer only: the attention bias is one tensor
+    # listed under nine names, so changing one name alone would be undone.
+    name = "elo_embedding_low.weight"
+    trained[name] = trained[name] + 1.0
+    weights_path = tmp_path / "trained.pt"
+    torch.save(trained, weights_path)
+
+    model = load_reference(fine_tuned_weights=weights_path)
+
+    assert torch.equal(model.state_dict()[name], trained[name])

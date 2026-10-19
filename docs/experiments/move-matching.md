@@ -96,3 +96,83 @@ These are the first two measurements, not yet the Baseline, at a
 placeholder rating of 1500. The sweep across every candidate, with error
 estimates and a breakdown by Phase, chose the Base Model: see
 [Choosing the Base Model](base-model-sweep.md).
+
+## The drawn move
+
+The Bot does not always play the Base Model's most likely move. The Base
+Model predicts the moves of a crowd of players at a rating, and the crowd's
+single most likely move is rarely a mistake, while a player at that rating
+sometimes plays a less likely move and makes most of his mistakes among
+them. A Bot always playing the top move filters those out, and Camille won
+none of 21 games against it. So the engine draws the Base Model's move at
+random, weighted by the model's probabilities over the legal moves. A
+temperature shapes the draw: each probability is raised to the power 1/T
+and the set rescaled, which is what dividing the network's raw scores by T
+before its softmax gives. At 1, the served setting, each move is played as
+often as the model predicts; below 1 the draw leans towards the top move,
+and at 0 it always plays it. The Opening Book is consulted before any draw
+and still plays Camille's most played reply.
+
+### Reproducing
+
+```sh
+npm run drawn-move -- models/onnx/maia3-5m.onnx --rating 1100 --record docs/experiments/results/drawn-move.json
+```
+
+`--temperature <t>` measures another temperature. The other scripts
+(Move-Matching, the sweep, the Opening Book, the Bot's games) ask for
+temperature 0, so the figures and games recorded with the top move are
+reproduced unchanged.
+
+### Method
+
+**The expected score, not one run.** A drawn move is random, so the
+Move-Matching of one run would mix the luck of the draw with the luck of
+which games the Test Set holds. Each position is scored instead by the
+probability the draw lands on Camille's move, and the scores are summed:
+the Move-Matching the draw earns on average. The standard error is
+clustered by game as before, each game contributing the sum of its
+positions' probabilities in place of its count of matches.
+
+**One pass for both figures.** The engine works out, for each position, how
+likely it is to play each move; the same distribution is what it draws
+from. Its most likely move gives the top-move score and the probability it
+gives Camille's move gives the drawn score, so the two columns come from
+the same run on the same positions.
+
+**The Base Model alone**, as the sweep measured it, so the top-move column
+reproduces the published figures.
+
+### Results
+
+Measured on 2026-10-12 on the Test Set, 7,092 positions from 230 games,
+with Maia-3 5M at 1100 under Node, in about five minutes. Move-Matching in
+percent, ± one standard error clustered by game, with the number of
+positions in brackets.
+
+| Phase | Top move | Drawn at temperature 1 |
+|---|---|---|
+| Opening (1-10) | 51.30 ± 1.46 (1150) | 35.08 ± 0.78 (1150) |
+| Middlegame (11-30) | 47.60 ± 1.06 (2187) | 34.40 ± 0.58 (2187) |
+| Endgame (31+) | 50.65 ± 0.94 (3755) | 37.97 ± 0.71 (3755) |
+| After ply 10 | 49.53 ± 0.67 (5942) | 36.66 ± 0.50 (5942) |
+| All | 49.82 ± 0.57 (7092) | 36.40 ± 0.43 (7092) |
+
+The top-move column is the Baseline the [Opening Book experiment](opening-book.md)
+recorded in `docs/experiments/results/opening-book.json`, to the last digit
+in every slice, after ply 10 included.
+
+### Reading the results
+
+**Drawing costs between 13 and 16 points of Move-Matching**: 16.2 in the
+opening, 13.2 in the middlegame and 12.7 in the endgame; after ply 10,
+36.66% against 49.53%. On average the model gives the move Camille
+played a probability of about 0.36, so a draw lands on it a little more
+than one time in three, while the top move is his about half the time.
+
+The loss is the price of the change, not a flaw in it: Move-Matching
+rewards always playing the most likely move, which is exactly what made
+the Bot stronger than the player it imitates. Whether the drawn Bot plays
+at Camille's Level is a different measurement, of evaluation losses
+against his [Blunder Profile](blunder-profile.md): it is made in [the
+draw's temperature](draw-temperature.md), which keeps temperature 1.

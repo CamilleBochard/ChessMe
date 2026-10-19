@@ -1,0 +1,1104 @@
+---
+// A game against the Bot, in three columns on a wide screen: on the left the
+// settings of a game, its controls, the choice of pieces and the stats of
+// Camille and the Bot; in the middle the board between the two clocks, with
+// the status under it; on the right the moves, always in view, the
+// end-of-game question and the panel explaining the Bot's moves. On a phone
+// the board comes first, the settings, the pieces and the stats open over it
+// from buttons under it, and the moves follow right below. The page puts its
+// title in the header slot. The rules live in src/game/, the Bot's choice in
+// src/engine/ and what the visitor may do when in src/session/; the script
+// below only translates between them, chessground (which draws the board and
+// handles dragging and clicking) and the markup of the components, which it
+// reaches through their data attributes.
+import { readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+import { SERVED_MODEL_DIRECTORY, SERVED_MODEL_RATING } from '../../engine/served-model';
+import { BROWSER_ENGINE_FILES } from '../../analysis/browser-engine';
+import { TEXTS } from '../../i18n/texts';
+import CornerMarks from '../atoms/CornerMarks.astro';
+import HatchBlock from '../atoms/HatchBlock.astro';
+import Clock from '../molecules/Clock.astro';
+import ModelStatus from '../molecules/ModelStatus.astro';
+import PhoneTools from '../molecules/PhoneTools.astro';
+import ChessBoard from './ChessBoard.astro';
+import EndOfGameQuestion from './EndOfGameQuestion.astro';
+import ExplanationPanel from './ExplanationPanel.astro';
+import GameControls from './GameControls.astro';
+import MoveList from './MoveList.astro';
+import PieceSetChoice from './PieceSetChoice.astro';
+import StatsPanel from './StatsPanel.astro';
+
+// The model the page downloads, found where scripts/stage-model.ts put it. Its
+// size is read here, at build time, because the server sends it compressed and
+// the browser cannot tell from the response how large it is once unpacked.
+const modelFileName = readdirSync(SERVED_MODEL_DIRECTORY).find((name) => name.endsWith('.onnx'));
+if (modelFileName === undefined) {
+  throw new Error(`No Base Model in ${SERVED_MODEL_DIRECTORY}: run npm run stage-model`);
+}
+const modelBytes = statSync(join(SERVED_MODEL_DIRECTORY, modelFileName)).size;
+const modelPath = `/models/${modelFileName}`;
+// How a Session Game names the Base Model: after its file, whose name carries
+// a hash of its contents, so two versions of a model are never confused.
+const baseModelName = modelFileName.replace(/\.onnx$/, '');
+// Where scripts/stage-stockfish.ts put the engine analysis mode starts.
+const enginePath = `/stockfish/${BROWSER_ENGINE_FILES[0]}`;
+// Written in English here; the page's script rewrites every data-text in the
+// visitor's language.
+const english = TEXTS.en.page;
+---
+
+<div
+  class="game"
+  data-game
+  data-model-path={modelPath}
+  data-model-bytes={modelBytes}
+  data-model-rating={SERVED_MODEL_RATING}
+  data-base-model={baseModelName}
+  data-engine-path={enginePath}
+>
+  <aside class="settings" aria-label={english.gameSettings} data-text-label="gameSettings">
+    <section class="side-section controls">
+      <CornerMarks />
+      <GameControls />
+    </section>
+    <section class="side-section pieces">
+      <PieceSetChoice />
+    </section>
+    <section class="side-section">
+      <StatsPanel />
+    </section>
+  </aside>
+
+  <div class="stage">
+    <div class="stage-head">
+      <slot name="header" />
+    </div>
+    <Clock position="top" />
+    <ChessBoard />
+    <Clock position="bottom" />
+    <div class="stage-foot">
+      <p class="status" data-status aria-live="polite"></p>
+      <HatchBlock class="foot-band" />
+      <PhoneTools />
+    </div>
+    <ModelStatus />
+  </div>
+
+  <div class="record">
+    <section class="side-section moves">
+      <MoveList />
+    </section>
+    <section class="side-section after-game">
+      <EndOfGameQuestion />
+    </section>
+    <section class="side-section">
+      <ExplanationPanel />
+    </section>
+  </div>
+</div>
+
+<script>
+  import { Chessground } from '@lichess-org/chessground';
+  import type { Key } from '@lichess-org/chessground/types';
+  import type { SquareName } from 'chessops/types';
+  import type { Colour } from '../../board/starting-position';
+  import {
+    currentFen,
+    isInCheck,
+    uciName,
+    isPromotion,
+    legalDestinations,
+    moveList,
+    sideToMove,
+    type MoveListRow,
+    type MoveRequest,
+    type PromotionPiece,
+  } from '../../game/game';
+  import { formatClockTime } from '../../game/clock';
+  import { gameStatus } from '../../game/game-status';
+  import { connectBot, type Bot } from '../../engine/bot-client';
+  import type { BotStatus } from '../../engine/bot-protocol';
+  import type { BotMove } from '../../engine/move-selection';
+  import { clockFaces, createSessionGame, type ClockFace, type FinishedGame } from '../../session/session-game';
+  import { connectTelemetry, sessionGameReport } from '../../telemetry/session-game';
+  import { SESSION_GAMES_CHANGED } from '../../telemetry/session-game-summary';
+  import { startBrowserAnalyser, type BrowserAnalyser } from '../../analysis/browser-analyser';
+  import { moveLoss, type Score } from '../../analysis/engine-analysis';
+  import { barReading, positionScores } from '../../analysis/evaluation-bar';
+  import { botMovesOf, moveKeyOf, replyKey, type ExplainedMove } from '../../explanation/explained-moves';
+  import { showPanel, type MoveEvaluation } from '../../explanation/panel';
+  import { LANGUAGE_CHANGED, pageLanguage, pageTexts } from '../../i18n/page-language';
+  import { adaptiveDialog } from '../adaptive-dialog';
+
+  /**
+   * Remembered once the model has reached the browser's cache, so that a
+   * returning visitor skips the entrance animation.
+   */
+  const MODEL_CACHED_KEY = 'chessme.model-cached';
+
+  /** How long the entrance animation runs, matching the CSS below. */
+  const ENTRANCE_MILLISECONDS = 1400;
+
+  // Astro bundles this script once per page, however many times the component
+  // is used, so it has to set up every board on the page rather than the first
+  // one it finds.
+  const frames = document.querySelectorAll<HTMLElement>('[data-game]');
+  for (const frame of frames) {
+    setUpBoard(frame);
+  }
+
+  /**
+   * Starts the Bot's worker, which begins downloading the model at once so the
+   * wait overlaps with the visitor arriving, and wires one board and its
+   * controls to a Session Game. The board opens on the starting position and
+   * waits for the visitor to pick a side; New game brings it back there.
+   */
+  function setUpBoard(frame: HTMLElement): void {
+    const boardElement = frame.querySelector<HTMLElement>('[data-board]')!;
+    const statusElement = frame.querySelector<HTMLElement>('[data-status]')!;
+    const modelStatus = frame.querySelector<HTMLElement>('[data-model-status]')!;
+    const setup = adaptiveDialog(frame.querySelector<HTMLDialogElement>('[data-setup-dialog]')!, true);
+    const setupOpeners = frame.querySelectorAll<HTMLButtonElement>('[data-open-setup]');
+    const controlsElement = frame.querySelector<HTMLElement>('[data-controls]')!;
+    const takeBackButton = frame.querySelector<HTMLButtonElement>('[data-take-back]')!;
+    const resignButton = frame.querySelector<HTMLButtonElement>('[data-resign]')!;
+    const newGameButton = frame.querySelector<HTMLButtonElement>('[data-new-game]')!;
+    const clockChoices = frame.querySelectorAll<HTMLInputElement>('[data-clock-choice]');
+    const moveListElement = frame.querySelector<HTMLOListElement>('[data-move-list]')!;
+    const viewBackButton = frame.querySelector<HTMLButtonElement>('[data-view-back]')!;
+    const viewForwardButton = frame.querySelector<HTMLButtonElement>('[data-view-forward]')!;
+    const promotionDialog = frame.querySelector<HTMLDialogElement>('[data-promotion]')!;
+    const impression = frame.querySelector<HTMLElement>('[data-impression]')!;
+    const impressionChoices = impression.querySelector<HTMLElement>('[data-impression-choices]')!;
+    const impressionButtons = impressionChoices.querySelectorAll<HTMLButtonElement>('button');
+    const impressionThanks = impression.querySelector<HTMLElement>('[data-impression-thanks]')!;
+    const impressionQuestion = impression.querySelector<HTMLElement>('[data-impression-question]')!;
+    // Whether the visitor's answer was recorded, once they have given one.
+    let impressionRecorded: boolean | null = null;
+    const moveExplanation = frame.querySelector<HTMLElement>('[data-move-explanation]')!;
+    const lossChartElement = frame.querySelector<HTMLElement>('[data-loss-chart]')!;
+    const analysisSwitch = frame.querySelector<HTMLInputElement>('[data-analysis-switch]')!;
+    const analysisDialog = frame.querySelector<HTMLDialogElement>('[data-analysis-dialog]')!;
+    const evaluationBar = frame.querySelector<HTMLElement>('[data-evaluation-bar]')!;
+    const topClock = frame.querySelector<HTMLElement>('[data-clock="top"]')!;
+    const bottomClock = frame.querySelector<HTMLElement>('[data-clock="bottom"]')!;
+
+    const telemetry = connectTelemetry((input, init) => window.fetch(input, init));
+    const servedModel = { baseModel: frame.dataset.baseModel!, rating: Number(frame.dataset.modelRating) };
+    // The id the service stored the game on the board under, once it has
+    // ended and been stored: the game the end-of-game question is about.
+    let storedGameId: string | undefined = undefined;
+
+    let botStatus: BotStatus = { kind: 'downloading', progress: { receivedBytes: 0, totalBytes: undefined } };
+
+    // Every reply of the Bot, filed by the position and the move, for the
+    // panel to explain the moves on the board with.
+    const replies = new Map<string, BotMove>();
+    // Stockfish while it runs, from the start of a game and in analysis
+    // mode, and what it has found, filed like the replies.
+    let analysis: BrowserAnalyser | null = null;
+    const evaluations = new Map<string, MoveEvaluation>();
+    // Stockfish's score of every position next to one of the Bot's moves,
+    // from White's side and filed by FEN, for the evaluation bar.
+    const scores = new Map<string, Score>();
+
+    if (isFirstVisit()) {
+      playEntrance(frame);
+    }
+
+    const bot = startBot(frame, showBotStatus);
+
+    const session = createSessionGame({
+      chooseMove: askBot,
+      onChange: () => {
+        showGame();
+      },
+      onGameEnd: reportFinishedGame,
+    });
+
+    const board = Chessground(boardElement, {
+      orientation: 'white',
+      coordinates: true,
+      premovable: { enabled: false },
+      movable: {
+        free: false,
+        showDests: true,
+        events: {
+          after: (from, to) => {
+            void onVisitorMove(from, to);
+          },
+        },
+      },
+    });
+    showGame();
+    // A phone opens on the settings of a game, over the board.
+    setup.openOnPhone();
+    showImpressionText();
+    // A new language redraws every text the script writes; the fixed words
+    // were rewritten by the switch itself.
+    document.addEventListener(LANGUAGE_CHANGED, () => {
+      showImpressionText();
+      showModelStatus(modelStatus, botStatus);
+      showGame();
+    });
+    // The clocks change every moment, not only when the game does. A few
+    // redraws a second keep the seconds turning on time.
+    setInterval(showClocks, 200);
+
+    for (const button of frame.querySelectorAll<HTMLButtonElement>('[data-play-as]')) {
+      button.addEventListener('click', () => {
+        const colour = button.dataset.playAs as Colour;
+        board.set({ orientation: colour });
+        setup.closeOnPhone();
+        forgetEndedGame();
+        const started = session.start(colour, { timed: isClockChosen() });
+        // A game started with analysis mode on is assisted from its first
+        // move. Stockfish may still be running for the game before, which
+        // says nothing about this one.
+        if (analysisSwitch.checked) {
+          session.markAssisted();
+        }
+        started.catch(() => {
+          // The Bot failed while choosing its first move; its status already
+          // says so, and the board only needs redrawing.
+          showGame();
+        });
+      });
+    }
+
+    // Before a game starts, the clocks follow the choice of a clock as it is made.
+    for (const choice of clockChoices) {
+      choice.addEventListener('change', showClocks);
+    }
+
+    takeBackButton.addEventListener('click', () => {
+      // A takeback after the end resumes the game; the stored game stays
+      // stored, but the question about it is no longer asked.
+      const wasOver = gameStatus(session.game()).kind !== 'ongoing';
+      forgetEndedGame();
+      session.takeBack();
+      // Once a game is over the panel reveals every evaluation of the Bot's
+      // moves. A game reopened after the visitor could see them is assisted
+      // from here on, as if analysis mode had been on.
+      const isReopened = gameStatus(session.game()).kind === 'ongoing';
+      if (wasOver && isReopened) {
+        session.markAssisted();
+      }
+    });
+
+    resignButton.addEventListener('click', () => {
+      session.resign();
+    });
+
+    newGameButton.addEventListener('click', () => {
+      forgetEndedGame();
+      session.startOver();
+      setup.openOnPhone();
+    });
+
+    // On a phone, the settings of a new game open from under the board at
+    // any time; the game in progress goes on until a side is picked there.
+    for (const opener of setupOpeners) {
+      opener.addEventListener('click', () => {
+        setup.openOnPhone();
+      });
+    }
+
+    for (const button of impressionButtons) {
+      button.addEventListener('click', () => {
+        void sendImpression(button.dataset.feltReal === 'yes');
+      });
+    }
+
+    // Turning analysis mode on is asked first, since during a game it shows
+    // where the Bot goes wrong. The click that would tick the switch is held
+    // back, and the switch is ticked only if the visitor confirms. Turning it
+    // off needs no question.
+    analysisSwitch.addEventListener('click', (event) => {
+      if (analysisSwitch.checked) {
+        event.preventDefault();
+        askAnalysisMode();
+      }
+    });
+
+    analysisSwitch.addEventListener('change', onAnalysisSwitched);
+
+    viewBackButton.addEventListener('click', () => {
+      session.viewBack();
+    });
+
+    viewForwardButton.addEventListener('click', () => {
+      session.viewForward();
+    });
+
+    // The arrow keys step through positions too, as on Lichess and Chess.com.
+    // Left alone while the promotion dialog is open, where they belong to it.
+    // Left alone too on a form control, where they move between the choices.
+    document.addEventListener('keydown', (event) => {
+      if (promotionDialog.open || analysisDialog.open || event.target instanceof HTMLInputElement) {
+        return;
+      }
+      if (event.key === 'ArrowLeft') {
+        event.preventDefault();
+        session.viewBack();
+      } else if (event.key === 'ArrowRight') {
+        event.preventDefault();
+        session.viewForward();
+      }
+    });
+
+    /** Opens the question about analysis mode, and turns it on if the visitor confirms. */
+    function askAnalysisMode(): void {
+      analysisDialog.returnValue = '';
+      analysisDialog.addEventListener(
+        'close',
+        () => {
+          if (analysisDialog.returnValue === 'on') {
+            analysisSwitch.checked = true;
+            onAnalysisSwitched();
+          }
+        },
+        { once: true },
+      );
+      analysisDialog.showModal();
+    }
+
+    function onAnalysisSwitched(): void {
+      // The visitor can now see where the Bot goes wrong: the game in
+      // progress is assisted, whatever happens to the switch later.
+      if (analysisSwitch.checked) {
+        session.markAssisted();
+      }
+      showGame();
+    }
+
+    /**
+     * Reports the finished game and, once it is stored, asks the visitor what
+     * they made of the Bot. A game left unfinished is never reported. The
+     * question is only asked if the game is still the one on the board: the
+     * visitor may have started another while the report was on its way.
+     */
+    function reportFinishedGame(finished: FinishedGame): void {
+      const endedGame = session.game();
+      const report = sessionGameReport(servedModel, finished);
+      void telemetry.reportGame(report).then((gameId) => {
+        // Announced even when the report failed: the game has ended, so the
+        // page shows where the site's games stand, or that it cannot tell.
+        announceSessionGamesChanged();
+        const isStillOnTheBoard = session.game() === endedGame;
+        if (gameId !== undefined && isStillOnTheBoard) {
+          storedGameId = gameId;
+          askImpression();
+        }
+      });
+    }
+
+    /**
+     * Shows the end-of-game question. It only appears for a game the service
+     * stored, since an answer needs a game to be attached to.
+     */
+    function askImpression(): void {
+      impressionRecorded = null;
+      for (const button of impressionButtons) {
+        button.disabled = false;
+      }
+      impressionChoices.hidden = false;
+      impressionThanks.hidden = true;
+      impression.hidden = false;
+    }
+
+    async function sendImpression(feltLikeARealPlayer: boolean): Promise<void> {
+      const gameId = storedGameId;
+      if (gameId === undefined) {
+        return;
+      }
+      for (const button of impressionButtons) {
+        button.disabled = true;
+      }
+      const recorded = await telemetry.reportImpression(gameId, feltLikeARealPlayer);
+
+      impressionChoices.hidden = true;
+      impressionThanks.hidden = false;
+      impressionRecorded = recorded;
+      showImpressionText();
+      if (recorded) {
+        announceSessionGamesChanged();
+      }
+    }
+
+    /** The end-of-game question and, once answered, whether the answer was recorded, in the page's language. */
+    function showImpressionText(): void {
+      const texts = pageTexts();
+      impressionQuestion.textContent = texts.impressionQuestion(Number(frame.dataset.modelRating));
+      if (impressionRecorded === true) {
+        impressionThanks.textContent = texts.impressionRecorded;
+      } else if (impressionRecorded === false) {
+        impressionThanks.textContent = texts.impressionNotRecorded;
+      }
+    }
+
+    /** Hides the question about a game that is over, as the visitor moves on from it. */
+    function forgetEndedGame(): void {
+      storedGameId = undefined;
+      impression.hidden = true;
+    }
+
+    /**
+     * The Bot's move for a position. Before the model has arrived the Opening
+     * Book answers the positions it holds at once, and any other request waits
+     * in the worker, so a visitor can play during the download.
+     */
+    async function askBot(fen: string): Promise<BotMove> {
+      try {
+        const reply = await bot.requestMove(fen);
+        replies.set(replyKey(fen, reply.move), reply);
+        return reply;
+      } catch (error) {
+        // A model that failed to load has already been reported as the Bot's
+        // status. A move that failed after loading has not, and without this
+        // the page would say the Bot is thinking forever.
+        if (botStatus.kind !== 'failed') {
+          showBotStatus({ kind: 'failed', reason: (error as Error).message });
+        }
+        throw error;
+      }
+    }
+
+    function showBotStatus(status: BotStatus): void {
+      botStatus = status;
+      // Exposed on the page so the Bot's state can be checked from outside,
+      // as the browser check of the download and the cache does.
+      frame.dataset.botStatus = status.kind;
+      if (status.kind === 'ready') {
+        rememberModelCached();
+      }
+      showModelStatus(modelStatus, status);
+      showGame();
+    }
+
+    async function onVisitorMove(from: Key, to: Key): Promise<void> {
+      // Chessground only lets a piece go to a square from legalDestinations,
+      // which never contains its 'a0' placeholder, so both keys are real squares.
+      const move: MoveRequest = {
+        from: from as SquareName,
+        to: to as SquareName,
+      };
+
+      if (isPromotion(session.game(), move.from, move.to)) {
+        const piece = await askPromotionPiece(promotionDialog);
+        if (piece === null) {
+          // The visitor closed the dialog: take the pawn back to its square.
+          showGame();
+          return;
+        }
+        move.promotion = piece;
+      }
+
+      let accepted = false;
+      try {
+        accepted = await session.playVisitorMove(move);
+      } catch {
+        // The Bot failed while choosing its reply; its status already says so.
+        showGame();
+        return;
+      }
+      if (!accepted) {
+        // Refused: redraw the current game, which puts the piece back.
+        showGame();
+      }
+    }
+
+    /**
+     * Draws the position on display, states whose turn it is or how the game
+     * ended, and enables only the controls the session allows right now.
+     * Redrawing after every move matters even for a legal one: chessground
+     * moved only the piece that was dragged, so a pawn taken en passant or a
+     * promoted pawn would otherwise still show its old state.
+     */
+    function showGame(): void {
+      const game = session.game();
+      const shown = session.viewedGame();
+      const visitor = session.visitor();
+      const isOngoing = gameStatus(game).kind === 'ongoing';
+      const isVisitorsTurn = sideToMove(game) === visitor;
+      const isShowingCurrent = shown === game;
+      const botFailed = botStatus.kind === 'failed';
+      const isModelLoading = botStatus.kind === 'downloading' || botStatus.kind === 'preparing';
+
+      let lastMove: Key[] | undefined = undefined;
+      if (shown.lastMove !== undefined) {
+        lastMove = [shown.lastMove.from, shown.lastMove.to];
+      }
+
+      // Only the visitor's pieces can be moved, only on the visitor's turn,
+      // only on the current position, not while looking back, and not at all
+      // once the Bot has failed, since the game cannot go on.
+      let movableColour: Colour | undefined = undefined;
+      if (visitor !== null && isOngoing && isVisitorsTurn && isShowingCurrent && !botFailed) {
+        movableColour = visitor;
+      }
+
+      board.set({
+        fen: currentFen(shown),
+        turnColor: sideToMove(shown),
+        lastMove: lastMove,
+        check: isInCheck(shown),
+        movable: {
+          color: movableColour,
+          dests: legalDestinations(shown),
+        },
+      });
+
+      const texts = pageTexts();
+      let statusText = session.status(pageLanguage());
+      if (isOngoing && botFailed) {
+        statusText = texts.cannotContinue;
+      } else if (visitor !== null && isOngoing && !isVisitorsTurn && isModelLoading) {
+        statusText = texts.botWaitsForModel;
+      }
+      statusElement.textContent = statusText;
+
+      const hasStarted = visitor !== null;
+      setup.showOnWideScreen(!hasStarted);
+      controlsElement.hidden = !hasStarted;
+      takeBackButton.disabled = !session.canTakeBack();
+      resignButton.disabled = !session.canResign();
+      viewBackButton.disabled = !session.canViewBack();
+      viewForwardButton.disabled = !session.canViewForward();
+
+      showMoveList(moveListElement, moveList(game), moveList(shown));
+      showClocks();
+      showExplanation();
+    }
+
+    /**
+     * Draws the evaluation bar for the position on display, in analysis mode
+     * and once a game has started, turned with the board so the visitor's
+     * colour is at the bottom.
+     */
+    function showEvaluationBar(): void {
+      const visitor = session.visitor();
+      const isShown = analysisSwitch.checked && visitor !== null;
+      evaluationBar.hidden = !isShown;
+      if (!isShown) {
+        return;
+      }
+
+      const texts = pageTexts();
+      const reading = barReading(session.viewedGame(), scores, texts.decimal);
+      const scoreElement = evaluationBar.querySelector<HTMLElement>('[data-evaluation-score]')!;
+      evaluationBar.classList.toggle('black-below', visitor === 'black');
+      evaluationBar.classList.toggle('unknown', reading === null);
+      if (reading === null) {
+        evaluationBar.style.setProperty('--white-share', '0.5');
+        scoreElement.textContent = '…';
+        evaluationBar.setAttribute('aria-label', texts.evaluationUnknown);
+        return;
+      }
+      evaluationBar.style.setProperty('--white-share', String(reading.whiteShare));
+      scoreElement.textContent = reading.label;
+      evaluationBar.setAttribute('aria-label', texts.evaluation(reading.label));
+    }
+
+    /**
+     * Draws the panel: the Bot's last move up to the position on display, and
+     * the chart of its losses against Camille's. Every Bot move not yet
+     * evaluated is sent to Stockfish; the panel reveals the evaluations in
+     * full only in analysis mode and once the game is over.
+     */
+    function showExplanation(): void {
+      keepStockfishInStep();
+      // The bar reads the same analyses as the panel, so it is redrawn with it.
+      showEvaluationBar();
+      const visitor = session.visitor();
+      if (visitor === null) {
+        showPanel(moveExplanation, lossChartElement, {
+          focus: null,
+          botMoves: [],
+          revealed: analysisSwitch.checked,
+          evaluations: new Map(),
+          texts: pageTexts(),
+        });
+        return;
+      }
+
+      let botColour: Colour = 'white';
+      if (visitor === 'white') {
+        botColour = 'black';
+      }
+      const botMoves = botMovesOf(session.game(), botColour, replies);
+      const shownBotMoves = botMovesOf(session.viewedGame(), botColour, replies);
+      let focus: ExplainedMove | null = null;
+      if (shownBotMoves.length > 0) {
+        focus = shownBotMoves[shownBotMoves.length - 1];
+      }
+
+      if (analysis !== null) {
+        evaluateMissing(botMoves);
+      }
+      const isOver = gameStatus(session.game()).kind !== 'ongoing';
+      showPanel(moveExplanation, lossChartElement, {
+        focus: focus,
+        botMoves: botMoves,
+        revealed: analysisSwitch.checked || isOver,
+        evaluations: evaluations,
+        texts: pageTexts(),
+      });
+    }
+
+    /**
+     * Runs Stockfish from the moment a game starts, so the chart follows it
+     * live, and while analysis mode is on; stops it otherwise.
+     */
+    function keepStockfishInStep(): void {
+      const hasStarted = session.visitor() !== null;
+      const isWanted = analysisSwitch.checked || hasStarted;
+      if (isWanted && analysis === null) {
+        startStockfish();
+      } else if (!isWanted && analysis !== null) {
+        stopStockfish();
+      }
+    }
+
+    function startStockfish(): void {
+      const engineUrl = new URL(frame.dataset.enginePath!, window.location.href).href;
+      analysis = startBrowserAnalyser(engineUrl, () => {
+        // An engine that cannot start leaves every move it was given unevaluated.
+        for (const [key, evaluation] of evaluations) {
+          if (evaluation === 'pending') {
+            evaluations.set(key, 'failed');
+          }
+        }
+        showExplanation();
+      });
+    }
+
+    /** Stops the engine. A move it was still evaluating is evaluated again when it next runs. */
+    function stopStockfish(): void {
+      if (analysis === null) {
+        return;
+      }
+      analysis.stop();
+      analysis = null;
+      for (const [key, evaluation] of evaluations) {
+        if (evaluation === 'pending') {
+          evaluations.delete(key);
+        }
+      }
+    }
+
+    /** Sends the engine every Bot move it has not yet been given. */
+    function evaluateMissing(botMoves: ExplainedMove[]): void {
+      const running = analysis;
+      if (running === null) {
+        return;
+      }
+      for (const explained of botMoves) {
+        const key = moveKeyOf(explained);
+        if (evaluations.has(key)) {
+          continue;
+        }
+        evaluations.set(key, 'pending');
+        const fen = currentFen(explained.before);
+        const move = uciName(explained.botMove.move);
+        running.analyser
+          .analyse(fen, move)
+          .then((found) => {
+            evaluations.set(key, moveLoss(found));
+            for (const positionScore of positionScores(explained.before, explained.botMove.move, found)) {
+              scores.set(positionScore.fen, positionScore.score);
+            }
+          })
+          .catch(() => {
+            evaluations.set(key, 'failed');
+          })
+          .finally(() => {
+            // An answer from an engine switched off since is not shown.
+            if (analysis === running) {
+              showExplanation();
+            }
+          });
+      }
+    }
+
+    /** True when the visitor has chosen, or left chosen, to play with a clock. */
+    function isClockChosen(): boolean {
+      for (const choice of clockChoices) {
+        if (choice.checked) {
+          return choice.value === 'timed';
+        }
+      }
+      return true;
+    }
+
+    /**
+     * The visitor's clock under the board and the Bot's above it, the running
+     * one marked. Without a clock they keep the players' names and show no
+     * time: the game's own setting once it has started, the visitor's choice
+     * before.
+     */
+    function showClocks(): void {
+      const faces = clockFaces(session.visitor(), pageLanguage());
+      let showsTime = isClockChosen();
+      if (session.visitor() !== null) {
+        showsTime = session.isTimed();
+      }
+      showClock(topClock, faces.top, showsTime);
+      showClock(bottomClock, faces.bottom, showsTime);
+    }
+
+    function showClock(element: HTMLElement, face: ClockFace, showsTime: boolean): void {
+      const nameElement = element.querySelector<HTMLElement>('[data-clock-name]')!;
+      const timeElement = element.querySelector<HTMLElement>('[data-clock-time]')!;
+      const timeLeft = session.timeLeft(face.side);
+      const isRunning = session.runningClock() === face.side;
+
+      nameElement.textContent = face.name;
+      timeElement.textContent = formatClockTime(timeLeft);
+      element.classList.toggle('untimed', !showsTime);
+      element.classList.toggle('running', isRunning);
+    }
+  }
+
+  /** Tells whatever shows the Session Game summary on this page to read it again. */
+  function announceSessionGamesChanged(): void {
+    document.dispatchEvent(new Event(SESSION_GAMES_CHANGED));
+  }
+
+  /** Starts the Bot in its own Web Worker, so its thinking never blocks the board. */
+  function startBot(frame: HTMLElement, onStatus: (status: BotStatus) => void): Bot {
+    const worker = new Worker(new URL('../../engine/bot-worker-entry.ts', import.meta.url), { type: 'module' });
+
+    // A worker that cannot even start, for instance on a browser without
+    // WebAssembly, reports nothing through the Bot's own messages.
+    worker.addEventListener('error', () => {
+      onStatus({ kind: 'failed', reason: pageTexts().browserCouldNotStartIt });
+    });
+
+    // The worker resolves URLs against its own script, so it is given a full
+    // one rather than a path.
+    const modelUrl = new URL(frame.dataset.modelPath!, window.location.href);
+    return connectBot(
+      worker,
+      {
+        url: modelUrl.href,
+        fileBytes: Number(frame.dataset.modelBytes),
+        rating: Number(frame.dataset.modelRating),
+      },
+      { onStatus: onStatus },
+    );
+  }
+
+  /** Shows the model's download, hides it once the Bot is ready, and explains a failure. */
+  function showModelStatus(container: HTMLElement, status: BotStatus): void {
+    const progressBar = container.querySelector<HTMLProgressElement>('[data-model-progress]')!;
+    const message = container.querySelector<HTMLElement>('[data-model-message]')!;
+    const texts = pageTexts();
+
+    if (status.kind === 'ready') {
+      container.hidden = true;
+      return;
+    }
+
+    container.hidden = false;
+    if (status.kind === 'failed') {
+      progressBar.hidden = true;
+      container.classList.add('failed');
+      message.textContent = texts.botFailed(status.reason);
+      return;
+    }
+
+    if (status.kind === 'preparing') {
+      progressBar.removeAttribute('value');
+      message.textContent = texts.preparingTheBot;
+      return;
+    }
+
+    const progress = status.progress;
+    if (progress.totalBytes === undefined) {
+      // Without a total the bar can only show that something is happening.
+      progressBar.removeAttribute('value');
+      message.textContent = texts.downloading(megabytes(progress.receivedBytes));
+    } else {
+      progressBar.max = progress.totalBytes;
+      progressBar.value = progress.receivedBytes;
+      message.textContent = texts.downloadingOf(megabytes(progress.receivedBytes), megabytes(progress.totalBytes));
+    }
+  }
+
+  function megabytes(bytes: number): string {
+    return pageTexts().decimal(bytes / 1_000_000, 1);
+  }
+
+  /**
+   * True until the model has once reached the browser's cache. Storage can be
+   * refused, in which case every visit counts as a first one: the animation
+   * plays again, which costs the visitor nothing.
+   */
+  function isFirstVisit(): boolean {
+    try {
+      return window.localStorage.getItem(MODEL_CACHED_KEY) === null;
+    } catch {
+      return true;
+    }
+  }
+
+  function rememberModelCached(): void {
+    // Where the browser offers no Cache API the model was not kept, and the
+    // next visit downloads it again: that visit is a first one too.
+    if (!('caches' in window)) {
+      return;
+    }
+    try {
+      window.localStorage.setItem(MODEL_CACHED_KEY, 'yes');
+    } catch {
+      // Nothing to do: the next visit plays the entrance again.
+    }
+  }
+
+  /**
+   * Plays the entrance: the board appears, then the pieces settle onto their
+   * squares. The class is removed afterwards, because chessground creates new
+   * piece elements during play and they must not replay it. The board accepts
+   * moves throughout, so the animation never delays play.
+   */
+  function playEntrance(frame: HTMLElement): void {
+    frame.classList.add('entering');
+    window.setTimeout(() => {
+      frame.classList.remove('entering');
+    }, ENTRANCE_MILLISECONDS);
+  }
+
+  /**
+   * Writes the moves so far as numbered rows and marks the move that led to
+   * the position on display, so the eye finds it, keeping it in view. The
+   * shown rows are the list up to that position: its last move is the one to
+   * mark, and none is marked at the starting position.
+   */
+  function showMoveList(listElement: HTMLOListElement, rows: MoveListRow[], shownRows: MoveListRow[]): void {
+    const markedRowIndex = shownRows.length - 1;
+    let isBlackMoveMarked = false;
+    if (markedRowIndex >= 0) {
+      isBlackMoveMarked = shownRows[markedRowIndex].black !== null;
+    }
+
+    const items: HTMLLIElement[] = [];
+    let markedMove: HTMLSpanElement | null = null;
+
+    for (const [rowIndex, row] of rows.entries()) {
+      const texts = pageTexts();
+      const whiteMove = moveListCell('move', texts.writeMove(row.white ?? '…'));
+      const blackMove = moveListCell('move', texts.writeMove(row.black ?? ''));
+
+      const item = document.createElement('li');
+      item.append(moveListCell('move-number', `${row.moveNumber}.`), whiteMove, blackMove);
+      items.push(item);
+
+      if (rowIndex === markedRowIndex) {
+        if (isBlackMoveMarked) {
+          markedMove = blackMove;
+        } else {
+          markedMove = whiteMove;
+        }
+      }
+    }
+
+    listElement.replaceChildren(...items);
+    if (markedMove !== null) {
+      markedMove.classList.add('latest');
+      scrollListTo(listElement, markedMove);
+    }
+  }
+
+  /**
+   * Scrolls the list, and only the list, just enough to show the element.
+   * scrollIntoView would also scroll the page, which on a phone would jump
+   * from the board down to the list after every move.
+   */
+  function scrollListTo(listElement: HTMLElement, element: HTMLElement): void {
+    const listBox = listElement.getBoundingClientRect();
+    const elementBox = element.getBoundingClientRect();
+
+    if (elementBox.top < listBox.top) {
+      listElement.scrollTop -= listBox.top - elementBox.top;
+    } else if (elementBox.bottom > listBox.bottom) {
+      listElement.scrollTop += elementBox.bottom - listBox.bottom;
+    }
+  }
+
+  function moveListCell(className: string, text: string): HTMLSpanElement {
+    const cell = document.createElement('span');
+    cell.className = className;
+    cell.textContent = text;
+    return cell;
+  }
+
+  /** Opens the promotion dialog and resolves with the chosen piece, or null if it was dismissed. */
+  function askPromotionPiece(dialog: HTMLDialogElement): Promise<PromotionPiece | null> {
+    return new Promise((resolve) => {
+      dialog.returnValue = '';
+      dialog.addEventListener(
+        'close',
+        () => {
+          const choice = dialog.returnValue;
+          if (choice === 'queen' || choice === 'rook' || choice === 'bishop' || choice === 'knight') {
+            resolve(choice);
+          } else {
+            resolve(null);
+          }
+        },
+        { once: true },
+      );
+      dialog.showModal();
+    });
+  }
+</script>
+
+<style>
+  /* On a phone everything stacks: the title, the board between the two
+     clocks, the status with the buttons that open the settings, the pieces
+     and the record, the buttons of a game in progress, then the moves and the
+     panel. From 960px three columns: the settings on the left at 230px, the
+     moves and the panel on the right at 320px, and the board centred
+     between them. */
+  .game {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .stage {
+    order: 1;
+    display: grid;
+    grid-template-columns: min-content;
+    justify-content: center;
+    gap: 12px;
+    padding: 20px 16px 16px;
+  }
+
+  .settings {
+    order: 2;
+  }
+
+  .record {
+    order: 3;
+    border-top: var(--line);
+    background: var(--paper);
+  }
+
+  .stage-head {
+    margin-bottom: 4px;
+  }
+
+  .stage-foot {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .status {
+    margin: 0;
+    min-height: 1.5em;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 700;
+  }
+
+  .stage-foot :global(.foot-band) {
+    flex: 1 1 3rem;
+    height: 10px;
+    opacity: 0.8;
+  }
+
+  .side-section {
+    padding: 18px 20px;
+    border-bottom: var(--line);
+  }
+
+  .side-section:last-child {
+    border-bottom: 0;
+  }
+
+  /* On a phone the settings, the pieces and the record are dialogs over the board, and
+     only the buttons of a game in progress show here, under the board. */
+  .settings .side-section {
+    padding: 0 16px;
+    border-bottom: 0;
+  }
+
+  .settings .controls:has([data-controls]:not([hidden])) {
+    padding-bottom: 16px;
+  }
+
+  .settings :global(.corner-marks) {
+    display: none;
+  }
+
+  /* The section that runs the game carries the registration marks, as the
+     portfolio marks the region a visitor acts in. */
+  .controls {
+    position: relative;
+  }
+
+  .after-game {
+    display: grid;
+    gap: 20px;
+  }
+
+  /* The question only appears once a game has ended; until then its
+     section takes no room. Astro may place a component's script beside it,
+     which never counts as shown. */
+  .after-game:not(:has(> :not([hidden], script))) {
+    display: none;
+  }
+
+  @media (min-width: 960px) {
+    .game {
+      display: grid;
+      grid-template-columns: 230px minmax(0, 1fr) 320px;
+      height: 100dvh;
+    }
+
+    .stage,
+    .settings,
+    .record {
+      order: 0;
+    }
+
+    .stage {
+      align-content: center;
+      padding: 16px 32px;
+      overflow-y: auto;
+    }
+
+    .settings {
+      border-right: var(--line);
+      background: var(--paper);
+      overflow-y: auto;
+    }
+
+    .settings .side-section {
+      padding: 18px 20px;
+      border-bottom: var(--line);
+    }
+
+    .settings :global(.corner-marks) {
+      display: block;
+    }
+
+    .record {
+      border-top: 0;
+      border-left: var(--line);
+      overflow-y: auto;
+    }
+
+    /* The moves stay at the top of their column while the panel scrolls
+       under them, so the history can always be walked. */
+    .moves {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: var(--paper);
+    }
+  }
+</style>

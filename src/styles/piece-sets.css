@@ -1,0 +1,82 @@
+/* The sets of pieces the board can be drawn with. Each set names its twelve
+   images and how much of a square they fill; the board and the promotion
+   dialog only read these variables. Anarcandy is the default, and the
+   visitor's choice of another is marked on the html element, so that one
+   attribute changes every piece on the page. The paths are absolute because
+   a relative url() in a variable would resolve against whichever stylesheet
+   reads it. */
+
+/* Anarcandy by caderek, from Lichess, under CC BY-NC-SA 4.0; see
+   public/pieces/anarcandy/LICENSE.txt. Drawn to the edge of their images, so
+   they are shrunk to leave the square's marks room around them. */
+:root {
+  --piece-size: 86%;
+  --piece-wK: url('/pieces/anarcandy/wK.svg');
+  --piece-wQ: url('/pieces/anarcandy/wQ.svg');
+  --piece-wR: url('/pieces/anarcandy/wR.svg');
+  --piece-wB: url('/pieces/anarcandy/wB.svg');
+  --piece-wN: url('/pieces/anarcandy/wN.svg');
+  --piece-wP: url('/pieces/anarcandy/wP.svg');
+  --piece-bK: url('/pieces/anarcandy/bK.svg');
+  --piece-bQ: url('/pieces/anarcandy/bQ.svg');
+  --piece-bR: url('/pieces/anarcandy/bR.svg');
+  --piece-bB: url('/pieces/anarcandy/bB.svg');
+  --piece-bN: url('/pieces/anarcandy/bN.svg');
+  --piece-bP: url('/pieces/anarcandy/bP.svg');
+}
+
+/* Filled glyphs from DejaVu Sans, White in light paper outlined in ink,
+   Black in ink; see public/pieces/classic/LICENSE-DejaVu.txt. Their
+   margins are in the images, which fill the whole square. */
+html[data-piece-set='classic'] {
+  --piece-size: 100%;
+  --piece-wK: url('/pieces/classic/wK.svg');
+  --piece-wQ: url('/pieces/classic/wQ.svg');
+  --piece-wR: url('/pieces/classic/wR.svg');
+  --piece-wB: url('/pieces/classic/wB.svg');
+  --piece-wN: url('/pieces/classic/wN.svg');
+  --piece-wP: url('/pieces/classic/wP.svg');
+  --piece-bK: url('/pieces/classic/bK.svg');
+  --piece-bQ: url('/pieces/classic/bQ.svg');
+  --piece-bR: url('/pieces/classic/bR.svg');
+  --piece-bB: url('/pieces/classic/bB.svg');
+  --piece-bN: url('/pieces/classic/bN.svg');
+  --piece-bP: url('/pieces/classic/bP.svg');
+}
+
+/* Candy, drawn for ChessMe in pink and navy; see
+   public/pieces/candy/LICENSE.txt. Its images keep a margin of their own. */
+html[data-piece-set='candy'] {
+  --piece-size: 92%;
+  --piece-wK: url('/pieces/candy/wK.svg');
+  --piece-wQ: url('/pieces/candy/wQ.svg');
+  --piece-wR: url('/pieces/candy/wR.svg');
+  --piece-wB: url('/pieces/candy/wB.svg');
+  --piece-wN: url('/pieces/candy/wN.svg');
+  --piece-wP: url('/pieces/candy/wP.svg');
+  --piece-bK: url('/pieces/candy/bK.svg');
+  --piece-bQ: url('/pieces/candy/bQ.svg');
+  --piece-bR: url('/pieces/candy/bR.svg');
+  --piece-bB: url('/pieces/candy/bB.svg');
+  --piece-bN: url('/pieces/candy/bN.svg');
+  --piece-bP: url('/pieces/candy/bP.svg');
+}
+
+/* Mech, pixel-art robots drawn for ChessMe; see
+   public/pieces/mech/LICENSE.txt. Drawn to the edge of their grid, so
+   shrunk like Anarcandy. */
+html[data-piece-set='mech'] {
+  --piece-size: 82%;
+  --piece-wK: url('/pieces/mech/wK.svg');
+  --piece-wQ: url('/pieces/mech/wQ.svg');
+  --piece-wR: url('/pieces/mech/wR.svg');
+  --piece-wB: url('/pieces/mech/wB.svg');
+  --piece-wN: url('/pieces/mech/wN.svg');
+  --piece-wP: url('/pieces/mech/wP.svg');
+  --piece-bK: url('/pieces/mech/bK.svg');
+  --piece-bQ: url('/pieces/mech/bQ.svg');
+  --piece-bR: url('/pieces/mech/bR.svg');
+  --piece-bB: url('/pieces/mech/bB.svg');
+  --piece-bN: url('/pieces/mech/bN.svg');
+  --piece-bP: url('/pieces/mech/bP.svg');
+}

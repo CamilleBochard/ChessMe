@@ -5,9 +5,12 @@
 // Free of anything DOM or Node, so the same code could run wherever the engine
 // does; writing the games out is left to the caller.
 
-import type { MoveProbability } from '../engine/base-model';
-import { currentFen, newGame, playMove, sideToMove, uciName, type MoveRequest } from '../game/game';
+import type { BaseModel } from '../engine/base-model';
+import { drawMove } from '../engine/move-draw';
+import { selectMove, type EngineOptions } from '../engine/move-selection';
+import { currentFen, gameFromFen, newGame, playMove, sideToMove, uciName, type MoveRequest } from '../game/game';
 import { gameStatus, type GameStatus } from '../game/game-status';
+import { seededRandom } from './seeded-random';
 
 /** One side of a game: given the position as FEN, the move it plays there. */
 export type Player = (fen: string) => Promise<MoveRequest>;
@@ -53,21 +56,33 @@ export async function playGame(white: Player, black: Player): Promise<PlayedGame
 }
 
 /**
- * Picks a move at random, each move as often as its probability says: the
- * random number falls somewhere in [0, 1), and each move owns a stretch of
- * that range as wide as its probability.
+ * Added to the seed to give the Bot a stream of random numbers of its own,
+ * apart from its opponent's. The opponent's stream is the one the recorded
+ * top-move games were played with; a Bot at temperature 0 draws nothing it
+ * uses, so those games come out exactly as they were. The offset is the
+ * usual 32-bit golden-ratio constant: any large odd number keeps the two
+ * streams far apart.
  */
-export function drawMove(policy: MoveProbability[], random: () => number): MoveRequest {
-  const drawn = random();
+const BOT_STREAM_OFFSET = 0x9e3779b9;
 
-  let stretchEnd = 0;
-  for (const candidate of policy) {
-    stretchEnd += candidate.probability;
-    if (drawn < stretchEnd) {
-      return candidate.move;
-    }
-  }
-  // Probabilities that add up to a hair under one leave a sliver at the top
-  // of the range; it belongs to the last move.
-  return policy[policy.length - 1].move;
+/** Who plays the Bot's games, and the seed their draws come from. */
+export interface SeededGamesSetup {
+  /** How the Bot chooses its move: its Opening Book, Base Model and temperature. */
+  bot: Omit<EngineOptions, 'random'>;
+  /** The network the opponent draws each of its moves from, at temperature 1. */
+  opponentModel: BaseModel;
+  seed: number;
+}
+
+/** The Bot and its opponent as players whose draws follow the seed. */
+export function seededPlayers(setup: SeededGamesSetup): { bot: Player; opponent: Player } {
+  const opponentRandom = seededRandom(setup.seed);
+  const botRandom = seededRandom(setup.seed + BOT_STREAM_OFFSET);
+
+  const bot: Player = (fen) => selectMove(fen, { ...setup.bot, random: botRandom });
+  const opponent: Player = async (fen) => {
+    const policy = await setup.opponentModel.movePolicy(gameFromFen(fen));
+    return drawMove(policy, opponentRandom);
+  };
+  return { bot: bot, opponent: opponent };
 }

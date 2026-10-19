@@ -1,0 +1,42 @@
+{
+ "measuredOn": "2026-10-15",
+ "engine": "Stockfish 19 Lite WASM",
+ "depth": 14,
+ "losses": "data/dataset/centipawn-losses-browser.jsonl",
+ "games": 1046,
+ "moves": 30860,
+ "movesForAVerdict": 8,
+ "phases": {
+  "opening": {
+   "perGame": null
+  },
+  "middlegame": {
+   "perGame": {
+    "games": 938,
+    "low": 24.4,
+    "high": 160
+   }
+  },
+  "endgame": {
+   "perGame": {
+    "games": 609,
+    "low": 46.53846153846154,
+    "high": 216.75
+   }
+  }
+ },
+ "profile": {
+  "moves": 28289,
+  "atMost": [
+   0.41111386051115273,
+   0.47905546325426845,
+   0.5551981335501431,
+   0.6525858107391566,
+   0.763088126126763,
+   0.867474990278907,
+   0.915691611580473,
+   0.9610449291243947,
+   0.9932836084697232
+  ]
+ }
+}

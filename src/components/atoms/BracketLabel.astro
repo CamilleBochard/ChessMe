@@ -1,0 +1,39 @@
+---
+// The portfolio's way of naming a region of the page: a short label in Space
+// Mono between square brackets, such as [Moves]. The brackets are drawn by the
+// stylesheet and hidden from screen readers, which read the label alone. When
+// it names a section it is rendered as that section's heading. A label named
+// among the page's texts is written in English here and rewritten in the
+// visitor's language by src/i18n/page-language.ts.
+import { TEXTS, type PageText } from '../../i18n/texts';
+
+interface Props {
+  textKey: PageText;
+  as?: 'span' | 'h2' | 'p';
+  id?: string;
+}
+
+const { textKey, as: Element = 'span', id } = Astro.props;
+const english = TEXTS.en.page[textKey];
+---
+
+<Element class="bracket-label" id={id} data-text={textKey}>{english}</Element>
+
+<style>
+  .bracket-label {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.4;
+    color: var(--ink);
+  }
+
+  .bracket-label::before {
+    content: '[' / '';
+  }
+
+  .bracket-label::after {
+    content: ']' / '';
+  }
+</style>

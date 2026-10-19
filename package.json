@@ -5,19 +5,29 @@
   "type": "module",
   "license": "AGPL-3.0-or-later",
   "scripts": {
-    "predev": "npm run stage-model",
+    "predev": "npm run stage-model && npm run stage-stockfish",
     "dev": "astro dev",
-    "prebuild": "npm run stage-model",
+    "prebuild": "npm run stage-model && npm run stage-stockfish",
     "build": "astro build",
     "preview": "astro preview",
     "typecheck": "astro check && tsc -p tsconfig.engine.json",
     "test": "vitest run",
     "stage-model": "tsx scripts/stage-model.ts",
+    "stage-stockfish": "tsx scripts/stage-stockfish.ts",
     "check-models": "node --experimental-strip-types --no-warnings scripts/check-models.ts",
     "move-matching": "tsx scripts/move-matching.ts",
     "base-model-sweep": "tsx scripts/base-model-sweep.ts",
     "opening-book": "tsx scripts/opening-book.ts",
-    "bot-games": "tsx scripts/bot-games.ts"
+    "bot-games": "tsx scripts/bot-games.ts",
+    "drawn-move": "tsx scripts/drawn-move.ts",
+    "compare-bots": "tsx scripts/compare-bots.ts",
+    "move-probabilities": "tsx scripts/move-probabilities.ts",
+    "improbability": "tsx scripts/improbability.ts",
+    "opening-cut-check": "tsx scripts/opening-cut-check.ts",
+    "improbable-moves": "tsx scripts/improbable-moves.ts",
+    "browser-engine-parity": "tsx scripts/browser-engine-parity.ts",
+    "yardsticks": "tsx scripts/yardsticks.ts",
+    "browser-engine-gap": "tsx scripts/browser-engine-gap.ts"
   },
   "dependencies": {
     "@lichess-org/chessground": "^10.1.1",
@@ -27,6 +37,7 @@
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
     "onnxruntime-web": "^1.30.0",
+    "stockfish": "19.0.0",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",
     "vitest": "^5.0.1"

@@ -10,7 +10,7 @@ Bot can be compared on games that share no position at all.
 ## Reproducing
 
 ```sh
-npm run bot-games
+npm run bot-games -- --model models/onnx/maia3-5m.onnx
 python -m pipeline.extract_style_fingerprint
 ```
 

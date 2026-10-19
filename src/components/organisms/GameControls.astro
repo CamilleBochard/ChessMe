@@ -1,0 +1,84 @@
+---
+// The controls that run a game. The settings of a new one, whether to play
+// with a clock and then the choice of a side, which starts it, sit in a
+// dialog: in place on a wide screen until the game starts, over the board on
+// a phone. Once a game is on, take back, resign and start over. The game's
+// script opens the dialog, shows the buttons, reads the clock choice through
+// data-clock-choice, and enables only what the Session Game allows right now.
+import BracketLabel from '../atoms/BracketLabel.astro';
+import AdaptiveDialog from '../molecules/AdaptiveDialog.astro';
+import GameButton from '../molecules/GameButton.astro';
+import TickBox from '../molecules/TickBox.astro';
+import { TEXTS } from '../../i18n/texts';
+
+const english = TEXTS.en.page;
+---
+
+<div class="game-controls">
+  <AdaptiveDialog titleKey="newGame" data-setup-dialog>
+    <div class="choices">
+      <fieldset class="clock-choice">
+        <legend><BracketLabel textKey="clock" /></legend>
+        <TickBox type="radio" name="clock" value="timed" data-clock-choice checked textKey="tenMinutes">{english.tenMinutes}</TickBox>
+        <TickBox type="radio" name="clock" value="untimed" data-clock-choice textKey="noClock">{english.noClock}</TickBox>
+      </fieldset>
+      <BracketLabel textKey="playAs" />
+      <div class="buttons">
+        <GameButton accent data-play-as="white" textKey="white">{english.white}</GameButton>
+        <GameButton accent data-play-as="black" textKey="black">{english.black}</GameButton>
+      </div>
+    </div>
+  </AdaptiveDialog>
+
+  <div class="buttons" data-controls hidden>
+    <GameButton data-take-back textKey="takeBack">{english.takeBack}</GameButton>
+    <GameButton data-resign textKey="resign">{english.resign}</GameButton>
+    <GameButton data-new-game textKey="newGame">{english.newGame}</GameButton>
+  </div>
+</div>
+
+<style>
+  /* A display set here would otherwise override the hidden attribute. */
+  .choices:not([hidden]),
+  .buttons:not([hidden]) {
+    display: grid;
+    gap: 10px;
+  }
+
+  .clock-choice {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 20px;
+    margin: 0 0 8px;
+    padding: 0;
+    border: 0;
+  }
+
+  .clock-choice legend {
+    width: 100%;
+    margin-bottom: 10px;
+    padding: 0;
+  }
+
+  .buttons :global(.game-button) {
+    width: 100%;
+  }
+
+  /* On a phone the buttons of a game in progress stand side by side under
+     the board, to keep the moves close below. */
+  @media (max-width: 959px) {
+    [data-controls]:not([hidden]) {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    [data-controls] :global(.plate) {
+      padding: 8px 8px;
+      font-size: 11px;
+    }
+
+    [data-controls] :global(.hatch-box) {
+      display: none;
+    }
+  }
+</style>

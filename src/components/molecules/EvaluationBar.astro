@@ -1,0 +1,66 @@
+---
+// The evaluation bar beside the board in analysis mode: White's share in
+// paper, Black's in ink, the line between them at Stockfish's score of the
+// position on display, and the score written at that line. The game's script
+// finds it by data-evaluation-bar, sets White's share as --white-share, turns
+// it with the board, and marks it unknown while the position has no score.
+---
+
+<div class="evaluation-bar" data-evaluation-bar role="img" hidden>
+  <div class="white-part"></div>
+  <span class="score" data-evaluation-score aria-hidden="true"></span>
+</div>
+
+<style>
+  /* White fills from the bottom, the visitor's side, when the board shows
+     White there; the script marks it black-below otherwise. */
+  .evaluation-bar {
+    --white-share: 0.5;
+    position: relative;
+    flex: none;
+    width: var(--evaluation-bar-width);
+    border: var(--line);
+    background: var(--ink);
+  }
+
+  .white-part {
+    position: absolute;
+    inset: auto 0 0;
+    height: calc(var(--white-share) * 100%);
+    background: var(--paper-light);
+    transition: height 0.4s ease-out;
+  }
+
+  .evaluation-bar.black-below .white-part {
+    inset: 0 0 auto;
+  }
+
+  /* The score sits on the line, kept inside the bar at either end. */
+  .score {
+    position: absolute;
+    left: 50%;
+    bottom: clamp(10px, calc(var(--white-share) * 100%), calc(100% - 10px));
+    z-index: 1;
+    transform: translate(-50%, 50%);
+    padding: 1px 4px;
+    border: var(--line);
+    background: var(--paper-light);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1.4;
+    white-space: nowrap;
+    transition: bottom 0.4s ease-out;
+  }
+
+  .evaluation-bar.black-below .score {
+    bottom: clamp(10px, calc((1 - var(--white-share)) * 100%), calc(100% - 10px));
+  }
+
+  /* Before Stockfish has scored the position the bar stays level, faded. */
+  .evaluation-bar.unknown .white-part,
+  .evaluation-bar.unknown .score {
+    opacity: 0.4;
+  }
+</style>

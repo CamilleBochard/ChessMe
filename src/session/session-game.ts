@@ -12,14 +12,24 @@ import {
   resign,
   sideToMove,
   takeBack,
+  timeOut,
   type Game,
   type MoveRequest,
 } from '../game/game';
+import { newClock, remainingTime, startTurn, stopClock, type Clock } from '../game/clock';
 import { describeTurn, gameStatus } from '../game/game-status';
-import type { BotMove, MoveSource } from '../engine/move-selection';
+import type { MoveSource } from '../engine/move-selection';
+import type { Language } from '../i18n/language';
+import { TEXTS } from '../i18n/texts';
+
+/** A move of the Bot and where it came from: all the session needs of the Bot's reply. */
+export interface SourcedMove {
+  move: MoveRequest;
+  source: MoveSource;
+}
 
 /** How the Bot chooses its move: a position as FEN in, one move out, with where it came from. */
-export type ChooseMove = (fen: string) => Promise<BotMove>;
+export type ChooseMove = (fen: string) => Promise<SourcedMove>;
 
 /** One move of a finished game. The Bot's moves also say where they came from. */
 export interface PlayedMove {
@@ -34,6 +44,14 @@ export interface FinishedGame {
   moves: PlayedMove[];
   /** True when the visitor resigned, rather than the game ending on the board. */
   visitorResigned: boolean;
+  /** The side whose clock ran out, or null when the game ended otherwise. */
+  timedOut: Colour | null;
+  /**
+   * True when analysis mode was on at any point during the game: an engine's
+   * evaluation shows the visitor where the Bot went wrong, so such a game
+   * says less about how the Bot plays against an unaided player.
+   */
+  assisted: boolean;
 }
 
 export interface SessionGameOptions {
@@ -48,18 +66,34 @@ export interface SessionGameOptions {
   onGameEnd?: (finished: FinishedGame) => void;
 }
 
+/** How a game is played, chosen by the visitor before it starts. */
+export interface GameSettings {
+  /** True for ten minutes a side, false for a game with no clock at all. */
+  timed: boolean;
+}
+
 export interface SessionGame {
   /** The game as it stands now. */
   game(): Game;
   /** The visitor's side, or null while waiting for the visitor to pick one. */
   visitor(): Colour | null;
-  /** The line shown under the board: whose turn it is, or how the game ended. */
-  status(): string;
+  /** The line shown under the board, in the language given (English if none): whose turn it is, or how the game ended. */
+  status(language?: Language): string;
+  /** The time the side has left on its clock right now, in milliseconds. */
+  timeLeft(side: Colour): number;
   /**
-   * Starts a fresh game with the visitor on the given side. Resolves once the
-   * Bot has played its opening move, if it has the first move.
+   * The side whose clock is running, or null before the first move, once
+   * the game has ended, and throughout an untimed game.
    */
-  start(visitor: Colour): Promise<void>;
+  runningClock(): Colour | null;
+  /** True when the game in progress is played against the clock. */
+  isTimed(): boolean;
+  /**
+   * Starts a fresh game with the visitor on the given side, timed unless the
+   * settings say otherwise. Resolves once the Bot has played its opening
+   * move, if it has the first move.
+   */
+  start(visitor: Colour, settings?: GameSettings): Promise<void>;
   /**
    * Plays the visitor's move and then the Bot's reply, if the game goes on.
    * Resolves to false when the move is refused, which is the board's signal to
@@ -76,6 +110,8 @@ export interface SessionGame {
   resign(): void;
   /** Goes back to the starting position, waiting for the visitor to pick a side. */
   startOver(): void;
+  /** Records that analysis mode is on during the game in progress, which makes it an assisted game. */
+  markAssisted(): void;
   /**
    * The position on display. Usually the current one, but the visitor may
    * step back through the game to look at earlier positions. Looking never
@@ -92,16 +128,49 @@ export interface SessionGame {
   viewForward(): void;
 }
 
+/** One clock as the page shows it: whose time it holds and the name above the time. */
+export interface ClockFace {
+  side: Colour;
+  name: string;
+}
+
+/**
+ * Which clock goes above the board and which below. The visitor's sits under
+ * the board, on the side the board is turned to, and the Bot's above. Before
+ * a side is chosen the board shows White at the bottom, and so do the clocks.
+ */
+export function clockFaces(visitor: Colour | null, language: Language = 'en'): { top: ClockFace; bottom: ClockFace } {
+  const texts = TEXTS[language];
+  if (visitor === null) {
+    return { top: { side: 'black', name: texts.side('black') }, bottom: { side: 'white', name: texts.side('white') } };
+  }
+
+  let botSide: Colour = 'white';
+  if (visitor === 'white') {
+    botSide = 'black';
+  }
+  return { top: { side: botSide, name: texts.bot }, bottom: { side: visitor, name: texts.you } };
+}
+
 export function createSessionGame(options: SessionGameOptions): SessionGame {
   let game = newGame();
   let visitor: Colour | null = null;
   // How many moves before the current position the visitor is looking.
   // Zero means the current position.
   let stepsBack = 0;
+  // Whether analysis mode has been on during the game in progress.
+  let assisted = false;
   // Where each of the Bot's moves came from, by the ply it was played at. A
   // move taken back leaves its entry behind, but the Bot's next move at that
   // ply replaces it, and only the plies of the game as it stands are read.
   const botMoveSources = new Map<number, MoveSource>();
+  let clock: Clock = newClock();
+  // Whether the game in progress is played against the clock. An untimed
+  // game never starts it, so neither side's time ever runs.
+  let timed = true;
+  // Wakes the session when the running clock reaches zero, since a flag can
+  // fall while nobody moves.
+  let flagTimer: ReturnType<typeof setTimeout> | undefined = undefined;
 
   /**
    * The only place the game is replaced, so the page never misses a change.
@@ -112,12 +181,28 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
     const wasOngoing = gameStatus(game).kind === 'ongoing';
     game = next;
     stepsBack = 0;
+
+    // However the game ended, both clocks stop where they were.
+    const hasEnded = gameStatus(game).kind !== 'ongoing';
+    if (hasEnded) {
+      stopBothClocks();
+    }
     notifyPage();
 
-    const hasEnded = gameStatus(game).kind !== 'ongoing';
     if (wasOngoing && hasEnded) {
       announceGameEnd();
     }
+  }
+
+  /** Both sides back to ten minutes, neither running until the first move. */
+  function resetBothClocks(): void {
+    stopBothClocks();
+    clock = newClock();
+  }
+
+  function stopBothClocks(): void {
+    clock = stopClock(clock, Date.now());
+    cancelFlagTimer();
   }
 
   function announceGameEnd(): void {
@@ -137,7 +222,67 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
     }
 
     const visitorResigned = game.resignedBy !== undefined;
-    options.onGameEnd({ visitor: visitor, moves: moves, visitorResigned: visitorResigned });
+    const timedOut = game.timedOutBy ?? null;
+    options.onGameEnd({
+      visitor: visitor,
+      moves: moves,
+      visitorResigned: visitorResigned,
+      timedOut: timedOut,
+      assisted: assisted,
+    });
+  }
+
+  /** Plays a move on the game and, in a timed game, passes the turn on the clock. */
+  function playOnBoard(next: Game): void {
+    if (timed) {
+      clock = startTurn(clock, sideToMove(next), Date.now());
+    }
+    setGame(next);
+    watchForFlag();
+  }
+
+  /** Arranges to end the game when the running clock reaches zero. */
+  function watchForFlag(): void {
+    cancelFlagTimer();
+    const running = clock.running;
+    if (running === null) {
+      return;
+    }
+
+    const timeUntilFlag = remainingTime(clock, running, Date.now());
+    flagTimer = setTimeout(() => {
+      flagTimer = undefined;
+      // A timer may wake a little early; the clock, not the timer, decides.
+      const flagFell = endOnTimeIfFlagFell();
+      if (!flagFell) {
+        watchForFlag();
+      }
+    }, timeUntilFlag);
+  }
+
+  /**
+   * Ends the game on time if the running clock has reached zero, and says
+   * whether it did. Asked by the timer, and again before any move lands: a
+   * timer can wake late, in a background tab for instance, and a move made
+   * once the time is gone must not count.
+   */
+  function endOnTimeIfFlagFell(): boolean {
+    const running = clock.running;
+    if (running === null) {
+      return false;
+    }
+    if (remainingTime(clock, running, Date.now()) > 0) {
+      return false;
+    }
+    setGame(timeOut(game, running));
+    return true;
+  }
+
+  function cancelFlagTimer(): void {
+    if (flagTimer !== undefined) {
+      clearTimeout(flagTimer);
+      flagTimer = undefined;
+    }
   }
 
   function notifyPage(): void {
@@ -188,11 +333,26 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
 
   async function playBotMove(): Promise<void> {
     const askedAbout = game;
-    const reply = await options.chooseMove(currentFen(askedAbout));
+    let reply: SourcedMove;
+    try {
+      reply = await options.chooseMove(currentFen(askedAbout));
+    } catch (error) {
+      // A Bot that failed cannot go on, and its clock must not run out for
+      // it: the game would be reported as won on time against a Bot that
+      // never played. The page says the game cannot continue.
+      if (game === askedAbout) {
+        stopBothClocks();
+      }
+      throw error;
+    }
 
     // While the Bot was choosing, the visitor may have resigned or started
     // over. The reply answers a game that is gone.
     if (game !== askedAbout) {
+      return;
+    }
+    // Or its time ran out while it chose, and the timer has yet to say so.
+    if (endOnTimeIfFlagFell()) {
       return;
     }
 
@@ -203,7 +363,7 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
     }
     const ply = movesOf(next).length;
     botMoveSources.set(ply, reply.source);
-    setGame(next);
+    playOnBoard(next);
   }
 
   return {
@@ -211,15 +371,26 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
 
     visitor: () => visitor,
 
-    status(): string {
+    status(language: Language = 'en'): string {
       if (visitor === null) {
-        return 'Choose a side to start.';
+        return TEXTS[language].chooseASide;
       }
-      return describeTurn(game, visitor);
+      return describeTurn(game, visitor, language);
     },
 
-    async start(side: Colour): Promise<void> {
+    timeLeft(side: Colour): number {
+      return remainingTime(clock, side, Date.now());
+    },
+
+    runningClock: () => clock.running,
+
+    isTimed: () => timed,
+
+    async start(side: Colour, settings: GameSettings = { timed: true }): Promise<void> {
       visitor = side;
+      timed = settings.timed;
+      assisted = false;
+      resetBothClocks();
       setGame(newGame());
 
       if (sideToMove(game) !== visitor) {
@@ -233,6 +404,9 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
       // game must still be going, since the position does not show a
       // resignation; and the current position must be the one on display,
       // or the move would land somewhere other than where it was made.
+      if (endOnTimeIfFlagFell()) {
+        return false;
+      }
       const isVisitorsTurn = sideToMove(game) === visitor;
       const isViewingCurrent = stepsBack === 0;
       if (!isGameInProgress() || !isVisitorsTurn || !isViewingCurrent) {
@@ -243,7 +417,7 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
       if (next === null) {
         return false;
       }
-      setGame(next);
+      playOnBoard(next);
 
       if (gameStatus(game).kind === 'ongoing') {
         await playBotMove();
@@ -261,6 +435,13 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
         return;
       }
       setGame(earlier);
+      // Taking back a move that ended the game, a checkmate or a draw,
+      // reopens it, and the clock that stopped with it runs again for the
+      // side to move. No time comes back.
+      if (timed && clock.running === null && gameStatus(game).kind === 'ongoing') {
+        clock = startTurn(clock, sideToMove(game), Date.now());
+        watchForFlag();
+      }
     },
 
     canResign: isGameInProgress,
@@ -296,7 +477,13 @@ export function createSessionGame(options: SessionGameOptions): SessionGame {
 
     startOver(): void {
       visitor = null;
+      assisted = false;
+      resetBothClocks();
       setGame(newGame());
+    },
+
+    markAssisted(): void {
+      assisted = true;
     },
   };
 }

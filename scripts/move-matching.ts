@@ -41,7 +41,7 @@ const baseModel = await loadBaseModel(await readFile(modelPath), { rating: ratin
 const testSet = readPositions(await readFile(testSetPath, 'utf-8'));
 
 const startedAt = performance.now();
-const report = await measureMoveMatching(testSet, (fen) => selectMove(fen, { baseModel }));
+const report = await measureMoveMatching(testSet, (fen) => selectMove(fen, { baseModel, temperature: 0 }));
 const seconds = (performance.now() - startedAt) / 1000;
 
 console.log(`Model          ${modelPath}`);

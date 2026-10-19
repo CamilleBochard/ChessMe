@@ -1,0 +1,74 @@
+{
+ "measuredOn": "2026-10-12",
+ "baseModel": "maia3-5m",
+ "rating": 1100,
+ "temperature": 1,
+ "topMove": {
+  "overall": {
+   "matched": 3533,
+   "positions": 7092,
+   "games": 230,
+   "standardError": 0.005732000443445659
+  },
+  "afterPly10": {
+   "matched": 2943,
+   "positions": 5942,
+   "games": 230,
+   "standardError": 0.006679724897633969
+  },
+  "byPhase": {
+   "opening": {
+    "matched": 590,
+    "positions": 1150,
+    "games": 230,
+    "standardError": 0.014595924150522657
+   },
+   "middlegame": {
+    "matched": 1041,
+    "positions": 2187,
+    "games": 230,
+    "standardError": 0.010562173615081013
+   },
+   "endgame": {
+    "matched": 1902,
+    "positions": 3755,
+    "games": 205,
+    "standardError": 0.009448366843367001
+   }
+  }
+ },
+ "drawn": {
+  "overall": {
+   "matched": 2581.704839059194,
+   "positions": 7092,
+   "games": 230,
+   "standardError": 0.0042796033259394186
+  },
+  "afterPly10": {
+   "matched": 2178.2304345705284,
+   "positions": 5942,
+   "games": 230,
+   "standardError": 0.005042202323896917
+  },
+  "byPhase": {
+   "opening": {
+    "matched": 403.4744044886657,
+    "positions": 1150,
+    "games": 230,
+    "standardError": 0.007791498067036838
+   },
+   "middlegame": {
+    "matched": 752.309345581931,
+    "positions": 2187,
+    "games": 230,
+    "standardError": 0.0058442973910909106
+   },
+   "endgame": {
+    "matched": 1425.9210889885965,
+    "positions": 3755,
+    "games": 205,
+    "standardError": 0.0070860866160712965
+   }
+  }
+ }
+}

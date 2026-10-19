@@ -4,8 +4,16 @@
 
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
-import type { MoveRequest } from '../game/game';
-import { measureMoveMatching, readPositions } from './move-matching';
+import type { MoveProbability } from '../engine/base-model';
+import { gameFromFen, legalMoves, uciName, type MoveRequest } from '../game/game';
+import {
+  compareBots,
+  measureDrawnMoveMatching,
+  measureMoveMatching,
+  phaseOfPly,
+  readPositions,
+  type PlayedPosition,
+} from './move-matching';
 
 const FIXTURE_TEST_SET = new URL('./fixtures/test-set.jsonl', import.meta.url);
 
@@ -74,5 +82,95 @@ describe('measureMoveMatching', () => {
     // 3 has 1 of 1, 2/7. Their squares sum to 6/49. With three games the
     // variance is 3/2 * (6/49) / 7^2 = 9/2401, so the standard error is 3/49.
     expect(report.overall.standardError).toBeCloseTo(3 / 49, 10);
+  });
+});
+
+/** Camille's move in the position, as one of its legal moves. */
+function camillesMove(position: PlayedPosition): MoveRequest {
+  const legal = legalMoves(gameFromFen(position.fen));
+  return legal.find((move) => uciName(move) === position.move)!;
+}
+
+/** A move other than Camille's, standing in for whatever else the Bot might play. */
+const SOME_OTHER_MOVE: MoveRequest = { from: 'a2', to: 'a3' };
+
+describe('measureDrawnMoveMatching', () => {
+  it('scores the top move by whether it is Camille\'s, and the draw by the probability it gives his move', async () => {
+    const testSet = readPositions(await readFile(FIXTURE_TEST_SET, 'utf-8'));
+    // Through ply 10 Camille's move is the most likely, at 0.6; after it, his
+    // move comes second, at 0.3.
+    const distributions = new Map<string, MoveProbability[]>();
+    for (const position of testSet) {
+      const his = camillesMove(position);
+      if (position.ply <= 10) {
+        distributions.set(position.fen, [
+          { move: his, probability: 0.6 },
+          { move: SOME_OTHER_MOVE, probability: 0.4 },
+        ]);
+      } else {
+        distributions.set(position.fen, [
+          { move: SOME_OTHER_MOVE, probability: 0.7 },
+          { move: his, probability: 0.3 },
+        ]);
+      }
+    }
+
+    const report = await measureDrawnMoveMatching(testSet, async (fen) => distributions.get(fen)!);
+
+    // Top move: the four opening positions match, the three later ones do not.
+    expect(report.topMove.overall).toMatchObject({ matched: 4, positions: 7 });
+    expect(report.topMove.byPhase.opening).toMatchObject({ matched: 4, positions: 4 });
+    // Draw: 4 x 0.6 + 3 x 0.3 = 3.3 matches expected of 7; the middlegame's
+    // two positions expect 0.6, the endgame's one 0.3.
+    expect(report.drawn.overall.matched).toBeCloseTo(3.3, 10);
+    expect(report.drawn.byPhase.opening.matched).toBeCloseTo(2.4, 10);
+    expect(report.drawn.byPhase.middlegame.matched).toBeCloseTo(0.6, 10);
+    expect(report.drawn.byPhase.endgame.matched).toBeCloseTo(0.3, 10);
+    expect(report.drawn.afterPly10.matched).toBeCloseTo(0.9, 10);
+  });
+});
+
+describe('compareBots', () => {
+  it('measures what one Bot gains over another on the same positions, top move and draw', async () => {
+    const testSet = readPositions(await readFile(FIXTURE_TEST_SET, 'utf-8'));
+    // The first Bot puts Camille's move second, at 0.3; the second Bot puts
+    // it first, at 0.6, in every position.
+    const first = new Map<string, MoveProbability[]>();
+    const second = new Map<string, MoveProbability[]>();
+    for (const position of testSet) {
+      const his = camillesMove(position);
+      first.set(position.fen, [
+        { move: SOME_OTHER_MOVE, probability: 0.7 },
+        { move: his, probability: 0.3 },
+      ]);
+      second.set(position.fen, [
+        { move: his, probability: 0.6 },
+        { move: SOME_OTHER_MOVE, probability: 0.4 },
+      ]);
+    }
+
+    const comparison = await compareBots(
+      testSet,
+      async (fen) => first.get(fen)!,
+      async (fen) => second.get(fen)!,
+    );
+
+    expect(comparison.first.topMove.overall.matched).toBe(0);
+    expect(comparison.second.topMove.overall.matched).toBe(7);
+    // Top move: seven matches gained of seven positions. Draw: 0.3 more in
+    // each, 2.1 in all; the three positions after ply 10 gain 0.9.
+    expect(comparison.gain.topMove.overall).toMatchObject({ matched: 7, positions: 7 });
+    expect(comparison.gain.drawn.overall.matched).toBeCloseTo(2.1, 10);
+    expect(comparison.gain.drawn.afterPly10.matched).toBeCloseTo(0.9, 10);
+    // Every game gains the same share, so no game strays from the mean gain.
+    expect(comparison.gain.drawn.overall.standardError).toBeCloseTo(0, 10);
+  });
+});
+
+describe('the Phase of a ply', () => {
+  it('is the opening up to ply 10, the middlegame up to ply 30, and the endgame after', () => {
+    const phases = [1, 10, 11, 30, 31, 120].map(phaseOfPly);
+
+    expect(phases).toEqual(['opening', 'opening', 'middlegame', 'middlegame', 'endgame', 'endgame']);
   });
 });

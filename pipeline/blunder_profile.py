@@ -37,6 +37,9 @@ class MoveLoss:
     ply: int
     phase: str
     centipawn_loss: int
+    # Whether the move could still be a mistake: False once the game was
+    # decided, where the cap reads any move as losing nothing.
+    open_position: bool
 
 
 def build_blunder_profile(moves: list[MoveLoss]) -> dict:
@@ -51,6 +54,24 @@ def build_blunder_profile(moves: list[MoveLoss]) -> dict:
 
     every_loss = [move.centipawn_loss for move in moves]
     return {"phases": phases, "all_phases": _distribution(every_loss)}
+
+
+def in_open_positions(moves: list[MoveLoss]) -> list[MoveLoss]:
+    """The moves made while the game was still open, the only ones that could be a mistake."""
+    return [move for move in moves if move.open_position]
+
+
+def share_in_decided_positions(moves: list[MoveLoss]) -> dict[str, float | None]:
+    """Per Phase, the share of moves made once the game was decided; None for a Phase with no move."""
+    shares = {}
+    for phase in PHASES:
+        moves_in_phase = [move for move in moves if move.phase == phase]
+        if not moves_in_phase:
+            shares[phase] = None
+            continue
+        decided = [move for move in moves_in_phase if not move.open_position]
+        shares[phase] = len(decided) / len(moves_in_phase)
+    return shares
 
 
 def _distribution(losses: list[int]) -> dict:
@@ -123,6 +144,19 @@ def centipawn_loss(best: Score, played: Score) -> int:
     if loss < 0:
         return 0
     return loss
+
+
+def position_already_decided(best: Score, played: Score) -> bool:
+    """Whether both moves score at the cap or beyond for the same side, so the cap reads the move as losing nothing.
+
+    Both scores are from the point of view of the player who moved. Such a
+    move cannot be a mistake by the profile's measure, whatever it gave up.
+    """
+    best_centipawns = _capped_centipawns(best)
+    played_centipawns = _capped_centipawns(played)
+    both_winning = best_centipawns == EVALUATION_CAP and played_centipawns == EVALUATION_CAP
+    both_losing = best_centipawns == -EVALUATION_CAP and played_centipawns == -EVALUATION_CAP
+    return both_winning or both_losing
 
 
 def _capped_centipawns(score: Score) -> int:

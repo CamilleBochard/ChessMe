@@ -11,7 +11,7 @@
 // page while its text is rewritten; renaming the file to write-up.astro
 // publishes it at /write-up/.
 import { readFileSync } from 'node:fs';
-import SessionGameSummary from '../components/SessionGameSummary.astro';
+import SessionGameSummary from '../components/organisms/SessionGameSummary.astro';
 import Page from '../layouts/Page.astro';
 import type { SweepRecord } from '../evaluation/base-model-sweep';
 import { PHASES, type Phase } from '../evaluation/move-matching';
@@ -335,7 +335,7 @@ function fingerprintRow(statistic: string): FingerprintRow {
       the Bot's moves came from the Opening Book or the Base Model. These counts are read as you open the page.
     </p>
     <div class="visitor-figures">
-      <SessionGameSummary readOn="page-load" />
+      <SessionGameSummary />
     </div>
     <p>
       A score counts a win as one point and a draw as half. The people who play here chose to, and anyone can report a

@@ -15,6 +15,10 @@ cookie or address is stored, and the service's own output names no client.
 A game the visitor did not finish is never sent, and the service refuses
 one that has not ended. A game the visitor resigned counts as finished: it
 is stored as the Bot's win, its PGN marked `[Termination "Visitor resigned"]`.
+So does a game in which a clock ran out: the report names the side, which
+loses unless the other side could not have mated, in which case it is a
+draw, and the PGN is marked `[Termination "Time forfeit"]`. A loss on time
+is refused for a game that had already ended on the board.
 
 ## On the VPS
 
@@ -22,7 +26,9 @@ The site and the service run as two containers, built from
 `docker/web.Dockerfile` and `docker/api.Dockerfile` and published on GHCR by
 `.github/workflows/deploy.yml` on every push to master. The VPS
 configuration (Compose file, routing, rate limits) lives in the
-infrastructure repository, not here.
+infrastructure repository, not here. The service image holds the openings
+table from `data/openings`, with which the service names the openings of
+the Bot's games.
 
 The service container listens on every interface of the container, so the
 reverse proxy can reach it, and publishes no port: the proxy is the only
@@ -35,9 +41,10 @@ the host:
 - requests under `/api/` go to the service, everything else to the site;
 - game reports are limited to ten a minute from one address, with a burst
   of five, and a request body to 64 KB;
-- `GET /api/session-games/counts` has a limit of its own, thirty a minute
-  with a burst of ten, so that a reader who reloads a page showing the
-  counts cannot use up the limit their next game report needs;
+- `GET /api/session-games/counts` and `GET /api/session-games/record` share
+  a limit of their own, thirty a minute with a burst of ten, so that a
+  reader who reloads a page showing them cannot use up the limit their next
+  game report needs;
 - no access log is written for `/api/`, since it would record the visitor's
   address. The service keeps its own log, without addresses, in
   `docker logs`.
@@ -46,15 +53,21 @@ The rate limits hold addresses in memory only, to count requests.
 
 ## Reading the counts
 
-The game page shows the aggregate counts as they stand once a game ends,
-and the write-up page whenever it is read, both from
-`GET /api/session-games/counts`, which answers them as JSON. Its rate limit
-above is separate from the one on game reports: a reader who reloads the
-page more than thirty times a minute sees the counts as unavailable, and
-can still report the game they play next.
+The game page's Bot tab shows the aggregate counts and the Bot's record, read
+when the tab is opened and again once a game ends, and the write-up page
+shows the counts whenever it is read. They come from
+`GET /api/session-games/counts` and `GET /api/session-games/record`, which
+answer them as JSON, the record in the shape of Camille's in
+`src/record/player-record.json`. Their rate limit above is separate from the
+one on game reports: a reader who reloads the page more than thirty times a
+minute sees the counts as unavailable, and can still report the game they
+play next.
 
 To read them offline, copy the database off the VPS (from the `/data`
-volume of the service container) and print the same counts:
+volume of the service container) and print the same counts, split in two:
+the games played without analysis mode, then the assisted ones, during which
+the visitor turned on the engine's evaluation at some point and could see
+where the Bot went wrong. The endpoint answers the counts over every game.
 
 ```sh
 python -m pipeline.report_session_games --database data/session-games.sqlite

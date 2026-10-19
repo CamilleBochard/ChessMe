@@ -184,14 +184,15 @@ def _percent(share: float | None) -> str:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Measure the Style Fingerprint of Camille and of the Bot.")
     parser.add_argument("--bot-games", type=Path, default=BOT_GAMES_PATH, help="the games npm run bot-games wrote")
+    parser.add_argument("--out", type=Path, default=FINGERPRINT_PATH, help=f"where to write the fingerprints (default {FINGERPRINT_PATH})")
     add_stockfish_arguments(parser)
     arguments = parser.parse_args()
 
     with running_stockfish(arguments.depth, arguments.workers) as (stockfish_processes, cache_path):
         fingerprints = extract(
-            DATASET_DIR, arguments.bot_games, cache_path, FINGERPRINT_PATH, stockfish_processes, ProgressPrinter()
+            DATASET_DIR, arguments.bot_games, cache_path, arguments.out, stockfish_processes, ProgressPrinter()
         )
 
-    print(f"Written to {FINGERPRINT_PATH}")
+    print(f"Written to {arguments.out}")
     print()
     print(side_by_side_table(fingerprints))

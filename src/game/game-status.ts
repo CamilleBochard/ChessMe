@@ -5,16 +5,20 @@
 
 import type { Colour } from '../board/starting-position';
 import type { Game } from './game';
+import type { Language } from '../i18n/language';
+import { TEXTS } from '../i18n/texts';
 
-/** Every way a game can stand. Only checkmate and resignation have a winner. */
+/** Every way a game can stand. Only checkmate, resignation and a loss on time have a winner. */
 export type GameStatus =
   | { kind: 'ongoing' }
   | { kind: 'checkmate'; winner: Colour }
   | { kind: 'resignation'; winner: Colour }
+  | { kind: 'time-forfeit'; winner: Colour }
   | { kind: 'stalemate' }
   | { kind: 'insufficient-material' }
   | { kind: 'fifty-move-rule' }
-  | { kind: 'threefold-repetition' };
+  | { kind: 'threefold-repetition' }
+  | { kind: 'draw-on-time' };
 
 /**
  * How the game stands right now. The draw rules end the game automatically
@@ -25,6 +29,16 @@ export function gameStatus(game: Game): GameStatus {
 
   if (game.resignedBy !== undefined) {
     return { kind: 'resignation', winner: opponentOf(game.resignedBy) };
+  }
+
+  if (game.timedOutBy !== undefined) {
+    // Running out of time loses only to an opponent who could still mate;
+    // against one who never could, whatever the other side did, it is a draw.
+    const opponent = opponentOf(game.timedOutBy);
+    if (position.hasInsufficientMaterial(opponent)) {
+      return { kind: 'draw-on-time' };
+    }
+    return { kind: 'time-forfeit', winner: opponent };
   }
 
   if (position.isCheckmate()) {
@@ -53,29 +67,28 @@ export function gameStatus(game: Game): GameStatus {
   return { kind: 'ongoing' };
 }
 
-/** The sentence the page shows when the game ends. Null while the game is ongoing. */
-export function describeResult(status: GameStatus): string | null {
+/** The sentence the page shows when the game ends, in the language given. Null while the game is ongoing. */
+export function describeResult(status: GameStatus, language: Language = 'en'): string | null {
+  const texts = TEXTS[language];
   switch (status.kind) {
     case 'ongoing':
       return null;
     case 'checkmate':
-      if (status.winner === 'white') {
-        return 'Checkmate. White wins.';
-      }
-      return 'Checkmate. Black wins.';
+      return texts.checkmate(status.winner);
     case 'resignation':
-      if (status.winner === 'white') {
-        return 'Black resigns. White wins.';
-      }
-      return 'White resigns. Black wins.';
+      return texts.resignation(status.winner);
+    case 'time-forfeit':
+      return texts.timeForfeit(status.winner);
     case 'stalemate':
-      return 'Draw by stalemate.';
+      return texts.stalemate;
     case 'insufficient-material':
-      return 'Draw by insufficient material.';
+      return texts.insufficientMaterial;
     case 'fifty-move-rule':
-      return 'Draw by the fifty-move rule.';
+      return texts.fiftyMoveRule;
     case 'threefold-repetition':
-      return 'Draw by threefold repetition.';
+      return texts.threefoldRepetition;
+    case 'draw-on-time':
+      return texts.drawOnTime;
   }
 }
 
@@ -83,23 +96,17 @@ export function describeResult(status: GameStatus): string | null {
  * The line the page shows under the board, as seen by the visitor playing the
  * given side: whose turn it is while the game goes on, how it ended once over.
  */
-export function describeTurn(game: Game, visitor: Colour): string {
-  const result = describeResult(gameStatus(game));
+export function describeTurn(game: Game, visitor: Colour, language: Language = 'en'): string {
+  const result = describeResult(gameStatus(game), language);
   if (result !== null) {
     return result;
   }
 
   const toMove = game.position.turn;
-
-  let sideName = 'White';
-  if (toMove === 'black') {
-    sideName = 'Black';
-  }
-
   if (toMove === visitor) {
-    return `${sideName} to move: your turn.`;
+    return TEXTS[language].yourTurn(toMove);
   }
-  return `${sideName} to move: the Bot is thinking…`;
+  return TEXTS[language].botThinking(toMove);
 }
 
 function opponentOf(side: Colour): Colour {

@@ -2,7 +2,13 @@ from chess.engine import Cp, Mate
 
 import pytest
 
-from pipeline.blunder_profile import MoveLoss, build_blunder_profile, centipawn_loss, share_losing_at_least
+from pipeline.blunder_profile import (
+    MoveLoss,
+    build_blunder_profile,
+    centipawn_loss,
+    position_already_decided,
+    share_losing_at_least,
+)
 
 
 def test_centipawn_loss_is_how_far_the_played_move_falls_below_the_best_move():
@@ -17,11 +23,18 @@ def test_missing_a_mate_counts_the_mate_as_a_decisive_ten_pawn_evaluation():
     assert centipawn_loss(best=Mate(3), played=Cp(200)) == 800
 
 
+def test_a_position_is_already_decided_when_the_best_and_the_played_move_both_score_beyond_the_cap_for_one_side():
+    assert position_already_decided(best=Cp(1500), played=Cp(1100))
+    assert position_already_decided(best=Cp(-1100), played=Mate(-2))
+    assert not position_already_decided(best=Mate(3), played=Cp(200))
+    assert not position_already_decided(best=Cp(1200), played=Cp(-1200))
+
+
 
 def losses(phase: str, centipawn_losses: list[int]) -> list[MoveLoss]:
     moves = []
     for index, loss in enumerate(centipawn_losses):
-        moves.append(MoveLoss(game_id=f"lichess:{index}", ply=index + 1, phase=phase, centipawn_loss=loss))
+        moves.append(MoveLoss(game_id=f"lichess:{index}", ply=index + 1, phase=phase, centipawn_loss=loss, open_position=True))
     return moves
 
 

@@ -19,6 +19,7 @@ import { openingBookFrom, type OpeningBookFile } from '../src/engine/opening-boo
 import { gameFromFen } from '../src/game/game';
 import {
   measureMoveMatching,
+  PHASE_LABELS,
   PHASES,
   readPositions,
   type MoveMatchingReport,
@@ -34,11 +35,6 @@ import {
 const DEFAULT_TEST_SET = 'data/dataset/test.jsonl';
 const DEFAULT_BOOK = 'data/dataset/opening-book.json';
 
-const PHASE_LABELS: Record<Phase, string> = {
-  opening: 'Opening (1-10)',
-  middlegame: 'Middlegame (11-30)',
-  endgame: 'Endgame (31+)',
-};
 
 const { values: flags, positionals } = parseArgs({
   options: {
@@ -68,16 +64,16 @@ const testSet = readPositions(await readFile(testSetPath, 'utf-8'));
 const coverage = measureBookCoverage(testSet, openingBook);
 
 progress('Measuring the Base Model alone');
-const baseModelAlone = await measureMoveMatching(testSet, (fen) => selectMove(fen, { baseModel }));
+const baseModelAlone = await measureMoveMatching(testSet, (fen) => selectMove(fen, { baseModel, temperature: 0 }));
 progress('Measuring the book, then the Base Model');
-const withBook = await measureMoveMatching(testSet, (fen) => selectMove(fen, { openingBook, baseModel }));
+const withBook = await measureMoveMatching(testSet, (fen) => selectMove(fen, { openingBook, baseModel, temperature: 0 }));
 
 // The two runs differ only where the book answers, so those positions are
 // also scored on their own: the book's move against the Base Model's.
 const answeredByBook = testSet.filter((position) => openingBook.move(gameFromFen(position.fen)) !== undefined);
 progress('Measuring the positions the book answers');
-const answeredBaseModel = await measureMoveMatching(answeredByBook, (fen) => selectMove(fen, { baseModel }));
-const answeredBook = await measureMoveMatching(answeredByBook, (fen) => selectMove(fen, { openingBook, baseModel }));
+const answeredBaseModel = await measureMoveMatching(answeredByBook, (fen) => selectMove(fen, { baseModel, temperature: 0 }));
+const answeredBook = await measureMoveMatching(answeredByBook, (fen) => selectMove(fen, { openingBook, baseModel, temperature: 0 }));
 
 let modelLine = `Model: ${modelPath}`;
 if (rating !== undefined) {

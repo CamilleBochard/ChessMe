@@ -1,0 +1,12 @@
+Anarcandy chess pieces
+
+Author: caderek (https://github.com/caderek)
+Source: https://github.com/lichess-org/lila/tree/master/public/piece/anarcandy
+License: Creative Commons Attribution-NonCommercial-ShareAlike 4.0
+International (CC BY-NC-SA 4.0),
+https://creativecommons.org/licenses/by-nc-sa/4.0/
+as listed in https://github.com/lichess-org/lila/blob/master/COPYING.md.
+
+The twelve images are used unmodified. They keep this licence, not the
+licence of the rest of this repository: they may not be used for commercial
+purposes, and any adaptation of them must be shared under the same licence.

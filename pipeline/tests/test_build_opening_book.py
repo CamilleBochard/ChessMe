@@ -28,4 +28,5 @@ def test_writes_the_book_built_from_the_dataset_files_as_json(tmp_path):
     assert written == {
         "min_occurrences": 2,
         "positions": {"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -": "e2e4"},
+        "counts": {"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq -": {"reached": 2, "played": 2}},
     }

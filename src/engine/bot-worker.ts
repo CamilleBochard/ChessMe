@@ -8,6 +8,7 @@ import type { BaseModel } from './base-model';
 import { loadBaseModel } from './base-model';
 import type { BotPort, ModelSource, PageMessage, WorkerMessage } from './bot-protocol';
 import type { DownloadProgress } from './model-download';
+import type { MoveCut } from './move-cut';
 import { selectMoveWithSource } from './move-selection';
 import type { OpeningBook } from './opening-book';
 
@@ -17,6 +18,12 @@ export interface WorkerDependencies {
   download(model: ModelSource, onProgress: (progress: DownloadProgress) => void): Promise<Uint8Array>;
   /** Camille's own replies, which need no model and so can answer during the download. */
   openingBook?: OpeningBook;
+  /** Returns a number in [0, 1), like Math.random, which it defaults to; tests fix it. */
+  random?: () => number;
+  /** The temperature the Base Model's move is drawn at; the engine's default of 1 if left out. */
+  temperature?: number;
+  /** The moves the Base Model's draw keeps in the opening; every legal move if left out. */
+  openingCut?: MoveCut;
 }
 
 /** Answers the page's messages arriving on the port. */
@@ -42,6 +49,9 @@ export function serveBot(port: BotPort, dependencies: WorkerDependencies): void 
         const botMove = await selectMoveWithSource(message.fen, {
           openingBook: dependencies.openingBook,
           baseModel: baseModel!,
+          random: dependencies.random,
+          temperature: dependencies.temperature,
+          openingCut: dependencies.openingCut,
         });
         send(port, { kind: 'move', id: message.id, botMove: botMove });
       } catch (error) {

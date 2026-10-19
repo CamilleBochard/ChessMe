@@ -1,0 +1,51 @@
+---
+// The Bot's model on its way: a gauge of the download and a line saying where
+// it stands, or why the Bot could not be loaded. Hidden once the Bot is ready.
+// The game's script drives it through its data attributes.
+---
+
+<div class="model-status" data-model-status hidden>
+  <progress data-model-progress></progress>
+  <p data-model-message></p>
+</div>
+
+<style>
+  .model-status:not([hidden]) {
+    display: grid;
+    gap: 6px;
+  }
+
+  /* A flat gauge: an ink outline filled with accent hatching. A bar with no
+     value, while the size of the download is unknown, stays empty. */
+  progress {
+    appearance: none;
+    width: 100%;
+    height: 10px;
+    border: var(--line);
+    background: var(--paper-light);
+  }
+
+  progress::-webkit-progress-bar {
+    background: var(--paper-light);
+  }
+
+  progress::-webkit-progress-value {
+    background: var(--hatch-accent);
+  }
+
+  progress::-moz-progress-bar {
+    background: var(--hatch-accent);
+  }
+
+  p {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-soft);
+  }
+
+  .model-status.failed p {
+    font-weight: 700;
+    color: var(--ink);
+  }
+</style>

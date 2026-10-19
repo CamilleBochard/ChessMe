@@ -1,0 +1,20 @@
+---
+// A hatched ink surface: the box beside a game button, or a band that fills
+// the space left on a line. It carries no
+// meaning, so screen readers skip it. Its size comes from where it is placed,
+// through the class passed to it.
+interface Props {
+  class?: string;
+}
+
+const { class: className } = Astro.props;
+---
+
+<span class:list={['hatch-block', className]} aria-hidden="true"></span>
+
+<style>
+  .hatch-block {
+    display: block;
+    background: var(--hatch);
+  }
+</style>

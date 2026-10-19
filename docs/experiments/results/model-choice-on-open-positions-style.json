@@ -1,0 +1,81 @@
+{
+ "format_version": 1,
+ "min_moves_read": 10,
+ "groups": {
+  "camille_test_set": {
+   "games": 207,
+   "mean_score": 0.506418506339332,
+   "mean_score_interval": [
+    0.4933215860821629,
+    0.51999215113516
+   ],
+   "share_scored_as_camille": 0.5507246376811594
+  },
+  "other_players_test_split": {
+   "games": 522,
+   "mean_score": 0.4796341361001623,
+   "mean_score_interval": [
+    0.4711842647749789,
+    0.4881381967758308
+   ],
+   "share_scored_as_camille": 0.43103448275862066
+  },
+  "original": {
+   "games": 381,
+   "mean_score": 0.46329561667291463,
+   "mean_score_interval": [
+    0.4531996784287953,
+    0.4734601782107788
+   ],
+   "share_scored_as_camille": 0.38320209973753283
+  },
+  "fine_tuned": {
+   "games": 384,
+   "mean_score": 0.5086899724495254,
+   "mean_score_interval": [
+    0.49956918732803224,
+    0.5177288204537894
+   ],
+   "share_scored_as_camille": 0.5338541666666666
+  }
+ },
+ "test_set_separation": {
+  "candidate_games": 207,
+  "other_games": 522,
+  "area_under_curve": 0.5732504118311215,
+  "area_under_curve_interval": [
+   0.5271061228644937,
+   0.6199999537268402
+  ]
+ },
+ "original_against_other_players": {
+  "candidate_games": 381,
+  "other_games": 522,
+  "area_under_curve": 0.4540229885057471,
+  "area_under_curve_interval": [
+   0.41655692822879903,
+   0.4910220633340372
+  ]
+ },
+ "fine_tuned_against_other_players": {
+  "candidate_games": 384,
+  "other_games": 522,
+  "area_under_curve": 0.5789880667305236,
+  "area_under_curve_interval": [
+   0.5435669101213283,
+   0.6154502664032567
+  ]
+ },
+ "fine_tuned_against_original": {
+  "mean_score_difference": 0.04539435577661077,
+  "mean_score_difference_interval": [
+   0.03213295823033979,
+   0.05881525638411646
+  ],
+  "area_under_curve": 0.6259979221347332,
+  "area_under_curve_interval": [
+   0.5871035651793526,
+   0.6632096525043745
+  ]
+ }
+}

@@ -1,0 +1,93 @@
+{
+ "measuredOn": "2026-10-14",
+ "reference": "Stockfish 19 at depth 18",
+ "browser": "Stockfish 19 Lite WASM at depth 14",
+ "moves": 30860,
+ "phases": {
+  "opening": {
+   "reference": {
+    "openMoves": 5224,
+    "averageLoss": 25.704632465543646,
+    "shareLosingAPawn": 0.05379019908116386,
+    "shareLosingThreePawns": 0.010719754977029096,
+    "perGame": null
+   },
+   "browser": {
+    "openMoves": 5225,
+    "averageLoss": 21.908325358851673,
+    "shareLosingAPawn": 0.04344497607655502,
+    "shareLosingThreePawns": 0.008995215311004785,
+    "perGame": null
+   },
+   "agreement": {
+    "movesOpenForBoth": 5224,
+    "averageAbsoluteDifference": 8.974349157733538,
+    "shareWithin10": 0.7241577335375191,
+    "shareSameOnLosingAPawn": 0.9843032159264931,
+    "movesOpenForOneOnly": 1
+   }
+  },
+  "middlegame": {
+   "reference": {
+    "openMoves": 9730,
+    "averageLoss": 104.11089414182939,
+    "shareLosingAPawn": 0.27913669064748203,
+    "shareLosingThreePawns": 0.10739979445015416,
+    "perGame": {
+     "games": 938,
+     "low": 24.9,
+     "high": 192.875
+    }
+   },
+   "browser": {
+    "openMoves": 9749,
+    "averageLoss": 88.17273566519643,
+    "shareLosingAPawn": 0.2570520053338804,
+    "shareLosingThreePawns": 0.08421376551441173,
+    "perGame": {
+     "games": 938,
+     "low": 24.4,
+     "high": 160
+    }
+   },
+   "agreement": {
+    "movesOpenForBoth": 9725,
+    "averageAbsoluteDifference": 29.777275064267354,
+    "shareWithin10": 0.5104370179948586,
+    "shareSameOnLosingAPawn": 0.9274035989717224,
+    "movesOpenForOneOnly": 29
+   }
+  },
+  "endgame": {
+   "reference": {
+    "openMoves": 12890,
+    "averageLoss": 128.13832428238945,
+    "shareLosingAPawn": 0.2986035686578743,
+    "shareLosingThreePawns": 0.13095422808378587,
+    "perGame": {
+     "games": 601,
+     "low": 37.56521739130435,
+     "high": 239.84615384615384
+    }
+   },
+   "browser": {
+    "openMoves": 13315,
+    "averageLoss": 114.77529102515959,
+    "shareLosingAPawn": 0.3019151333082989,
+    "shareLosingThreePawns": 0.11475779196395043,
+    "perGame": {
+     "games": 609,
+     "low": 46.53846153846154,
+     "high": 216.75
+    }
+   },
+   "agreement": {
+    "movesOpenForBoth": 12761,
+    "averageAbsoluteDifference": 44.997962542120526,
+    "shareWithin10": 0.4487892798370034,
+    "shareSameOnLosingAPawn": 0.8949141916777682,
+    "movesOpenForOneOnly": 683
+   }
+  }
+ }
+}
