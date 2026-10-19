@@ -3,6 +3,7 @@ from datetime import date
 
 import pytest
 
+from pipeline.player_record import opening_table
 from pipeline.session_games import (
     RejectedGame,
     RejectedImpression,
@@ -11,6 +12,7 @@ from pipeline.session_games import (
     record_session_game,
     session_game_counts,
     session_game_pgns,
+    session_game_record,
 )
 
 PLAYED_ON = date(2026, 10, 5)
@@ -447,3 +449,20 @@ def test_reads_the_games_of_a_store_made_before_analysis_mode_as_unassisted(tmp_
 
     assert session_game_counts(store, assisted=False)["games"] == 2
     assert session_game_counts(store, assisted=True)["games"] == 0
+
+
+def test_gives_the_bots_record_with_each_colour_and_the_openings_it_reached(tmp_path):
+    store = open_store(tmp_path / "session-games.sqlite")
+    record_session_game(store, fools_mate_reported_by_the_page(), played_on=PLAYED_ON)
+    record_session_game(store, fools_mate_with_the_bot_as_white(), played_on=PLAYED_ON)
+    table = opening_table([("Barnes Opening", "1. f3"), ("Barnes Opening: Fool's Mate", "1. f3 e5 2. g4 Qh4#")])
+
+    record = session_game_record(store, table)
+
+    assert record["games"] == 2
+    assert record["results"] == {"wins": 1, "draws": 0, "losses": 1}
+    assert record["white"]["results"] == {"wins": 0, "draws": 0, "losses": 1}
+    assert record["black"]["results"] == {"wins": 1, "draws": 0, "losses": 0}
+    assert record["black"]["openings"] == [
+        {"name": "Barnes Opening", "games": 1, "results": {"wins": 1, "draws": 0, "losses": 0}}
+    ]

@@ -4,10 +4,16 @@ with each colour, how they went, and the openings he plays most.
 The page shows it as it is; every figure is worked out here.
 """
 
+import csv
 import io
+from pathlib import Path
 
 import chess
 import chess.pgn
+
+# Lichess's openings table, which names the openings of Camille's games and
+# of the Bot's alike.
+OPENINGS_DIR = Path(__file__).resolve().parent.parent / "data" / "openings"
 
 # How many openings the record lists with each colour.
 OPENINGS_LISTED = 5
@@ -73,6 +79,16 @@ def _results(games: list[chess.pgn.Game], colour: chess.Color) -> dict:
         else:
             results["losses"] += 1
     return results
+
+
+def read_opening_table(openings_dir: Path) -> dict[str, str]:
+    """The openings table from the files of openings_dir: eco, name and pgn columns, tab-separated, with a header."""
+    lines = []
+    for path in sorted(openings_dir.glob("*.tsv")):
+        with open(path, encoding="utf-8", newline="") as table_file:
+            for row in csv.DictReader(table_file, delimiter="\t", quoting=csv.QUOTE_NONE):
+                lines.append((row["name"], row["pgn"]))
+    return opening_table(lines)
 
 
 def opening_table(lines: list[tuple[str, str]]) -> dict[str, str]:

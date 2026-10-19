@@ -5,6 +5,7 @@ import urllib.request
 
 import pytest
 
+from pipeline.player_record import opening_table
 from pipeline.serve_session_games import make_server
 from pipeline.session_games import open_store, session_game_counts, session_game_pgns
 
@@ -21,11 +22,16 @@ FOOLS_MATE = {
 }
 
 
+# The openings the service names the Bot's games after: a table of one line is
+# enough to see a game named.
+OPENINGS = opening_table([("Barnes Opening", "1. f3")])
+
+
 @pytest.fixture
 def service(tmp_path):
     """The service running on a free local port, and the database it writes to."""
     database = tmp_path / "session-games.sqlite"
-    server = make_server(database, host="127.0.0.1", port=0)
+    server = make_server(database, OPENINGS, host="127.0.0.1", port=0)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
 
@@ -81,6 +87,27 @@ def test_answers_the_counts_of_the_stored_games(service):
     assert reply["games"] == 1
     assert reply["bot_wins"] == 1
     assert reply["bot_moves_from_opening_book"] == 1
+
+
+def test_answers_the_bots_record_over_the_stored_games(service):
+    post(service["url"] + "/api/session-games", FOOLS_MATE)
+
+    status, reply = get(service["url"] + "/api/session-games/record")
+
+    assert status == 200
+    assert reply["games"] == 1
+    assert reply["black"]["results"] == {"wins": 1, "draws": 0, "losses": 0}
+    assert reply["black"]["openings"][0]["name"] == "Barnes Opening"
+
+
+def test_answers_a_record_that_counts_a_game_stored_after_it_was_last_read(service):
+    post(service["url"] + "/api/session-games", FOOLS_MATE)
+    get(service["url"] + "/api/session-games/record")
+
+    post(service["url"] + "/api/session-games", FOOLS_MATE)
+    status, reply = get(service["url"] + "/api/session-games/record")
+
+    assert reply["games"] == 2
 
 
 def test_answers_a_refused_game_with_the_reason(service):

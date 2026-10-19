@@ -1,0 +1,436 @@
+---
+// The stats of both players, a tab each, so that one set of figures is in
+// view at a time: Camille's record over the games the Bot is built from,
+// built into JSON by pipeline/build_player_record.py, and the Bot's over the
+// games visitors finished on the site, read from the Session Game service
+// when its tab is first opened and again once a game on the page ends. Both
+// are laid out by record-view.ts. The panel sits in a dialog shown in place
+// on a wide screen and over the board on a phone, where any button marked
+// data-open-stats opens it. The tabs follow the WAI-ARIA tabs pattern: the
+// arrow keys move between them.
+import BracketLabel from '../atoms/BracketLabel.astro';
+import AdaptiveDialog from '../molecules/AdaptiveDialog.astro';
+import { TEXTS } from '../../i18n/texts';
+
+const english = TEXTS.en.page;
+
+const tabs = [
+  { name: 'camille', textKey: 'camilleTab' },
+  { name: 'bot', textKey: 'botTab' },
+] as const;
+---
+
+<AdaptiveDialog titleKey="stats" data-stats-dialog>
+  <div class="stats">
+    <div class="in-place-title">
+      <BracketLabel as="p" textKey="stats" />
+    </div>
+
+    <div class="tabs" role="tablist" aria-label={english.stats} data-text-label="stats">
+      {
+        tabs.map((tab, index) => (
+          <button
+            type="button"
+            role="tab"
+            id={`stats-tab-${tab.name}`}
+            aria-controls={`stats-panel-${tab.name}`}
+            aria-selected={index === 0 ? 'true' : 'false'}
+            tabindex={index === 0 ? 0 : -1}
+            data-stats-tab={tab.name}
+            data-text={tab.textKey}
+          >
+            {english[tab.textKey]}
+          </button>
+        ))
+      }
+    </div>
+
+    {
+      tabs.map((tab, index) => (
+        <div
+          class="tab-panel"
+          role="tabpanel"
+          id={`stats-panel-${tab.name}`}
+          aria-labelledby={`stats-tab-${tab.name}`}
+          tabindex="0"
+          data-stats-panel={tab.name}
+          hidden={index !== 0}
+        />
+      ))
+    }
+  </div>
+</AdaptiveDialog>
+
+<script>
+  import { adaptiveDialog } from '../adaptive-dialog';
+  import { recordView, type ExtraFigure } from '../record-view';
+  import { LANGUAGE_CHANGED, pageLanguage, pageTexts } from '../../i18n/page-language';
+  import { readBotRecord, type PlayerRecord } from '../../record/player-record';
+  import builtRecord from '../../record/player-record.json';
+  import {
+    readSessionGameSummary,
+    SESSION_GAMES_CHANGED,
+    type SessionGameSummary,
+  } from '../../telemetry/session-game-summary';
+
+  const dialog = adaptiveDialog(document.querySelector<HTMLDialogElement>('[data-stats-dialog]')!, true);
+  for (const opener of document.querySelectorAll<HTMLButtonElement>('[data-open-stats]')) {
+    opener.addEventListener('click', () => {
+      dialog.openOnPhone();
+    });
+  }
+
+  const camilleRecord: PlayerRecord = builtRecord;
+  const tabs = [...document.querySelectorAll<HTMLButtonElement>('[data-stats-tab]')];
+  const camillePanel = document.querySelector<HTMLElement>('[data-stats-panel="camille"]')!;
+  const botPanel = document.querySelector<HTMLElement>('[data-stats-panel="bot"]')!;
+
+  /**
+   * Whether the Bot's figures on show are those of the service as it last
+   * answered. They are read only once its tab is opened, and read again when
+   * a game ends while it is open, or the next time it is opened.
+   */
+  let isBotRead = false;
+
+  for (const [index, tab] of tabs.entries()) {
+    tab.addEventListener('click', () => {
+      select(tab);
+    });
+    tab.addEventListener('keydown', (event) => {
+      let next: HTMLButtonElement | undefined;
+      if (event.key === 'ArrowRight') {
+        next = tabs[(index + 1) % tabs.length];
+      } else if (event.key === 'ArrowLeft') {
+        next = tabs[(index - 1 + tabs.length) % tabs.length];
+      } else if (event.key === 'Home') {
+        next = tabs[0];
+      } else if (event.key === 'End') {
+        next = tabs[tabs.length - 1];
+      }
+      if (next === undefined) {
+        return;
+      }
+      event.preventDefault();
+      select(next);
+      next.focus();
+    });
+  }
+
+  showCamille();
+  document.addEventListener(LANGUAGE_CHANGED, () => {
+    showCamille();
+    // The Bot's figures come from the service already written out, so they
+    // are read again in the new language.
+    if (isBotRead) {
+      void showBot();
+    }
+  });
+  document.addEventListener(SESSION_GAMES_CHANGED, () => {
+    isBotRead = false;
+    if (!botPanel.hidden) {
+      void showBot();
+    }
+  });
+
+  /** Shows the tab's panel and hides the other's. */
+  function select(chosen: HTMLButtonElement): void {
+    for (const tab of tabs) {
+      const isChosen = tab === chosen;
+      tab.setAttribute('aria-selected', String(isChosen));
+      tab.tabIndex = isChosen ? 0 : -1;
+      const panel = document.getElementById(tab.getAttribute('aria-controls')!)!;
+      panel.hidden = !isChosen;
+    }
+    if (chosen.dataset.statsTab === 'bot' && !isBotRead) {
+      void showBot();
+    }
+  }
+
+  function showCamille(): void {
+    const texts = pageTexts();
+    camillePanel.replaceChildren(recordView(camilleRecord, texts, [], texts.page.recordScope));
+  }
+
+  /**
+   * Reads the Bot's record and the counts that go with it, then shows them.
+   * Until the first answer the panel says they are being read, and if either
+   * cannot be read, that they are unavailable.
+   */
+  async function showBot(): Promise<void> {
+    const texts = pageTexts();
+    if (botPanel.childElementCount === 0) {
+      botPanel.replaceChildren(message(texts.page.readingTheCounts));
+    }
+    isBotRead = true;
+
+    const [record, summary] = await Promise.all([
+      readBotRecord(fetch),
+      readSessionGameSummary(fetch, pageLanguage()),
+    ]);
+    // The language may have changed while the service answered.
+    const shownTexts = pageTexts();
+    if (record === undefined || summary === undefined) {
+      botPanel.replaceChildren(message(shownTexts.summaryUnavailable));
+      // Read again the next time the tab is opened.
+      isBotRead = false;
+      return;
+    }
+    if (record.games === 0) {
+      botPanel.replaceChildren(message(shownTexts.page.noBotGameYet));
+      return;
+    }
+    botPanel.replaceChildren(recordView(record, shownTexts, botFigures(summary), shownTexts.page.botScope));
+  }
+
+  /** The figures only the Bot has: where its moves came from, and what visitors made of it. */
+  function botFigures(summary: SessionGameSummary): ExtraFigure[] {
+    const texts = pageTexts();
+    return [
+      { label: texts.page.fromOpeningBook, value: summary.fromOpeningBook ?? texts.page.noMoveYet },
+      { label: texts.page.feltReal, value: summary.feltLikeARealPlayer ?? texts.page.noAnswerYet },
+    ];
+  }
+
+  function message(text: string): HTMLElement {
+    const paragraph = document.createElement('p');
+    paragraph.className = 'message';
+    paragraph.textContent = text;
+    return paragraph;
+  }
+</script>
+
+<style>
+  /* One column no wider than the dialog: the left-hand column of a wide
+     screen is narrow, and the tables must wrap their names to fit it. */
+  .stats {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  /* On a phone the dialog's own head names the panel. */
+  .in-place-title {
+    display: none;
+  }
+
+  @media (min-width: 960px) {
+    .in-place-title {
+      display: block;
+    }
+  }
+
+  /* The tabs as the language switch's buttons: mono capitals in one ink
+     frame, the chosen one in the accent colour. */
+  .tabs {
+    display: flex;
+  }
+
+  .tabs button {
+    flex: 1;
+    padding: 6px 10px;
+    border: var(--line);
+    background: var(--paper-light);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  .tabs button + button {
+    border-left: 0;
+  }
+
+  .tabs button:hover,
+  .tabs button:focus-visible {
+    outline: none;
+    background: var(--paper-deep);
+  }
+
+  .tabs button[aria-selected='true'] {
+    background: var(--accent);
+  }
+
+  .tab-panel:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+  }
+
+  /* What record-view.ts builds, so the selectors reach past this
+     component's scope. */
+  .tab-panel :global(.record-view) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .tab-panel :global(.message) {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+
+  .tab-panel :global(.total) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px;
+    margin: 0;
+  }
+
+  .tab-panel :global(.total-figure) {
+    font-family: var(--font-title);
+    font-size: 40px;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--accent);
+  }
+
+  .tab-panel :global(.total-unit) {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .tab-panel :global(dl) {
+    margin: 0;
+  }
+
+  .tab-panel :global(dd) {
+    margin: 0;
+  }
+
+  .tab-panel :global(.by-colour) {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .tab-panel :global(.by-colour dt),
+  .tab-panel :global(.results-counts dt),
+  .tab-panel :global(.extras dt) {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+
+  .tab-panel :global(.by-colour dd) {
+    font-family: var(--font-mono);
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .tab-panel :global(.results-bar) {
+    display: flex;
+    height: 10px;
+    border: var(--line);
+  }
+
+  .tab-panel :global(.results-bar .wins) {
+    background: var(--accent);
+  }
+
+  .tab-panel :global(.results-bar .draws) {
+    background: var(--paper-light);
+  }
+
+  .tab-panel :global(.results-bar .losses) {
+    background: var(--ink);
+  }
+
+  .tab-panel :global(.results-counts) {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 6px;
+  }
+
+  .tab-panel :global(.results-counts dd),
+  .tab-panel :global(.extras dd) {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .tab-panel :global(.results-counts .wins dd) {
+    color: var(--accent);
+  }
+
+  .tab-panel :global(.extras) {
+    display: grid;
+    gap: 8px;
+  }
+
+  .tab-panel :global(.openings) {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-size: 12px;
+  }
+
+  .tab-panel :global(.openings th:nth-child(2)),
+  .tab-panel :global(.openings th:nth-child(3)) {
+    width: 4.5em;
+  }
+
+  .tab-panel :global(.openings caption) {
+    margin-bottom: 6px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-align: left;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+
+  .tab-panel :global(.openings .colour-name) {
+    color: var(--ink);
+  }
+
+  .tab-panel :global(.openings th) {
+    padding: 0 0 4px;
+    border-bottom: var(--line);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 400;
+    text-align: right;
+    color: var(--ink-soft);
+  }
+
+  .tab-panel :global(.openings td) {
+    padding: 4px 0;
+    border-bottom: 1px solid var(--ink-faint);
+    font-family: var(--font-mono);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tab-panel :global(.openings th:first-child),
+  .tab-panel :global(.openings td:first-child) {
+    padding-right: 8px;
+    font-family: var(--font-body);
+    text-align: left;
+  }
+
+  .tab-panel :global(.openings td + td),
+  .tab-panel :global(.openings th + th) {
+    padding-left: 8px;
+  }
+
+  /* The page's micro text, as the other notes in the column. */
+  .tab-panel :global(.scope) {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    line-height: 1.5;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+</style>

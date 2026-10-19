@@ -9,6 +9,7 @@ Nothing about the visitor is stored: no account, no address, not even the
 time of day, only the date the game was played.
 """
 
+import io
 import re
 import sqlite3
 import uuid
@@ -17,6 +18,8 @@ from pathlib import Path
 
 import chess
 import chess.pgn
+
+from pipeline.player_record import player_record
 
 BOT_NAME = "ChessMe Bot"
 VISITOR_NAME = "Visitor"
@@ -297,6 +300,18 @@ def session_game_pgns(connection: sqlite3.Connection) -> list[str]:
     rows = connection.execute("SELECT pgn FROM session_games ORDER BY rowid").fetchall()
     pgns = [row[0] for row in rows]
     return pgns
+
+
+def session_game_record(connection: sqlite3.Connection, table: dict[str, str]) -> dict:
+    """
+    The Bot's record over every stored game, worked out as Camille's is, so
+    the page shows both the same way: games and results with each colour,
+    and the openings it reached most, named from table.
+    """
+    games = []
+    for pgn in session_game_pgns(connection):
+        games.append(chess.pgn.read_game(io.StringIO(pgn)))
+    return player_record(games, BOT_NAME, table)
 
 
 def session_game_counts(connection: sqlite3.Connection, assisted: bool | None = None) -> dict[str, int]:

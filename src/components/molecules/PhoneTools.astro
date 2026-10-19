@@ -1,9 +1,9 @@
 ---
 // The buttons a phone shows under the board, since its narrow screen has no
 // room for the left-hand column: one opens the settings of a new game,
-// another the choice of pieces, the last Camille's record. The game's
-// script, the piece choice and the record find them by data-open-setup,
-// data-open-pieces and data-open-record. A wide screen hides them: the
+// another the choice of pieces, the last the stats. The game's script, the
+// piece choice and the stats panel find them by data-open-setup,
+// data-open-pieces and data-open-stats. A wide screen hides them: the
 // settings are in view on the left.
 import { TEXTS } from '../../i18n/texts';
 
@@ -41,11 +41,11 @@ const english = TEXTS.en.page;
   </button>
   <button
     type="button"
-    data-open-record
-    aria-label={english.record}
-    title={english.record}
-    data-text-label="record"
-    data-text-title="record"
+    data-open-stats
+    aria-label={english.stats}
+    title={english.stats}
+    data-text-label="stats"
+    data-text-title="stats"
   >
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M5 20V12M10 20V6M15 20V9M20 20V4"></path>
