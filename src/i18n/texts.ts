@@ -35,6 +35,9 @@ export interface Texts {
   impressionRecorded: string;
   impressionNotRecorded: string;
   impressionQuestion(rating: number): string;
+  /** The evaluation bar, for a screen reader, with the score as the bar writes it. */
+  evaluation(label: string): string;
+  evaluationUnknown: string;
   summaryUnavailable: string;
   wins(count: number): string;
   draws(count: number): string;
@@ -127,6 +130,7 @@ export type PageText =
   | 'analysisNoteBefore'
   | 'analysisNoteAfter'
   | 'analysisExampleLoss'
+  | 'analysisExampleScore'
   | 'analysisShows'
   | 'analysisWarning'
   | 'turnOn'
@@ -226,9 +230,13 @@ const ENGLISH: Texts = {
     analysisNoteBefore: 'Chart by ',
     analysisNoteAfter: ' (GPL-3.0), in your browser.',
     analysisExampleLoss: 'Stockfish: the move lost 85 centipawns against the best move.',
-    analysisShows: "Shows how much evaluation each of the Bot's moves lost, and its whole curve on the chart, as the game goes.",
+    analysisExampleScore: '+0.8',
+    analysisShows:
+      "Shows who stands better on a bar beside the board, how much evaluation each of the Bot's moves lost, " +
+      'and its whole curve on the chart, as the game goes.',
     analysisWarning:
-      'Turned on during a game, it shows you where the Bot goes wrong: an advantage. The game is then recorded as assisted.',
+      'Turned on during a game, it shows you who is winning and where the Bot goes wrong: an advantage. ' +
+      'The game is then recorded as assisted.',
     turnOn: 'Turn on',
     cancel: 'Cancel',
     pieces: 'Pieces',
@@ -275,6 +283,8 @@ const ENGLISH: Texts = {
   impressionRecorded: 'Thank you, your answer has been recorded.',
   impressionNotRecorded: 'Your answer could not be recorded.',
   impressionQuestion: (rating) => `Did the Bot feel like a real player of about ${rating} on Lichess?`,
+  evaluation: (label) => `Evaluation from White's side: ${label}`,
+  evaluationUnknown: 'Evaluation not known yet',
   summaryUnavailable: 'The counts could not be read just now. Try again in a minute.',
   wins: (count) => english(count, 'win', 'wins'),
   draws: (count) => english(count, 'draw', 'draws'),
@@ -377,10 +387,12 @@ const FRENCH: Texts = {
     analysisNoteBefore: 'Graphique calculé par ',
     analysisNoteAfter: ' (GPL-3.0), dans votre navigateur.',
     analysisExampleLoss: `Stockfish${NO_BREAK}: le coup a perdu 85 centipions par rapport au meilleur coup.`,
+    analysisExampleScore: '+0,8',
     analysisShows:
-      'Montre combien chaque coup du Bot a perdu à l’évaluation, et toute sa courbe sur le graphique, au fil de la partie.',
+      'Montre qui est mieux sur une barre à côté de l’échiquier, combien chaque coup du Bot a perdu à l’évaluation, ' +
+      'et toute sa courbe sur le graphique, au fil de la partie.',
     analysisWarning:
-      `Activé pendant une partie, il vous montre où le Bot se trompe${NO_BREAK}: un avantage. ` +
+      `Activé pendant une partie, il vous montre qui gagne et où le Bot se trompe${NO_BREAK}: un avantage. ` +
       'La partie est alors enregistrée comme assistée.',
     turnOn: 'Activer',
     cancel: 'Annuler',
@@ -428,6 +440,8 @@ const FRENCH: Texts = {
   impressionRecorded: 'Merci, votre réponse a été enregistrée.',
   impressionNotRecorded: 'Votre réponse n’a pas pu être enregistrée.',
   impressionQuestion: (rating) => `Le Bot vous a-t-il paru être un vrai joueur d’environ ${rating} sur Lichess${NO_BREAK}?`,
+  evaluation: (label) => `Évaluation du point de vue des Blancs${NO_BREAK}: ${label}`,
+  evaluationUnknown: 'Évaluation pas encore connue',
   summaryUnavailable: 'Les chiffres n’ont pas pu être lus. Réessayez dans une minute.',
   wins: (count) => french(count, 'victoire', 'victoires'),
   draws: (count) => french(count, 'nulle', 'nulles'),
