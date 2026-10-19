@@ -1,30 +1,16 @@
 ---
 // The Session Game summary: how many games visitors have finished on the site,
 // the Bot's record in them, and what visitors made of it. The figures are read
-// from the Session Game service; this component only places them on the page,
-// in the page's language.
-import BracketLabel from '../atoms/BracketLabel.astro';
-import { TEXTS, type PageText } from '../../i18n/texts';
+// from the Session Game service as the page opens; this component only places
+// them on the page, in the page's language.
+import { TEXTS } from '../../i18n/texts';
 
-interface Props {
-  /**
-   * When the counts are read: as the page opens, or each time a game on the
-   * page ends, when the summary first appears and the counts have just changed.
-   */
-  readOn: 'page-load' | 'game-end';
-  /** A heading for the summary, named among the page's texts, for a page that does not introduce it in its own words. */
-  titleKey?: PageText;
-}
-
-const { readOn, titleKey } = Astro.props;
 // Written in English here; the page's script rewrites every data-text in the
 // visitor's language.
 const english = TEXTS.en.page;
-const hiddenUntilAGameEnds = readOn === 'game-end';
 ---
 
-<section class="session-game-summary" data-session-game-summary data-read-on={readOn} hidden={hiddenUntilAGameEnds}>
-  {titleKey !== undefined && <BracketLabel as="h2" textKey={titleKey} />}
+<section class="session-game-summary" data-session-game-summary>
   <p data-summary-status data-text="readingTheCounts">{english.readingTheCounts}</p>
   <dl hidden data-summary-figures>
     <dt data-text="gamesFinished">{english.gamesFinished}</dt>
@@ -41,29 +27,16 @@ const hiddenUntilAGameEnds = readOn === 'game-end';
 </section>
 
 <script>
-  import {
-    readSessionGameSummary,
-    SESSION_GAMES_CHANGED,
-    type SessionGameSummary,
-  } from '../../telemetry/session-game-summary';
+  import { readSessionGameSummary, type SessionGameSummary } from '../../telemetry/session-game-summary';
   import { LANGUAGE_CHANGED, pageLanguage, pageTexts } from '../../i18n/page-language';
 
   const summaries = document.querySelectorAll<HTMLElement>('[data-session-game-summary]');
   for (const summary of summaries) {
-    if (summary.dataset.readOn === 'game-end') {
-      document.addEventListener(SESSION_GAMES_CHANGED, () => {
-        summary.hidden = false;
-        void showSummary(summary);
-      });
-    } else {
-      void showSummary(summary);
-    }
-    // The figures are written in the page's language, so a summary on show
-    // is read again in the new one.
+    void showSummary(summary);
+    // The figures are written in the page's language, so they are read
+    // again in the new one.
     document.addEventListener(LANGUAGE_CHANGED, () => {
-      if (!summary.hidden) {
-        void showSummary(summary);
-      }
+      void showSummary(summary);
     });
   }
 
@@ -98,10 +71,6 @@ const hiddenUntilAGameEnds = readOn === 'game-end';
 <style>
   .session-game-summary {
     font-size: 13px;
-  }
-
-  .session-game-summary > :global(h2) {
-    margin-bottom: 12px;
   }
 
   p {

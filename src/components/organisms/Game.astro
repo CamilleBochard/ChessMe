@@ -1,14 +1,13 @@
 ---
 // A game against the Bot, in three columns on a wide screen: on the left the
-// settings of a game, its controls, the choice of pieces and Camille's
-// record; in the middle
-// the board between the two clocks, with the status under it; on the right
-// the moves, always in view, the end-of-game question and the panel
-// explaining the Bot's moves. On a phone the board comes first, the settings,
-// the pieces and the record open over it from buttons under it, and the moves follow
-// right below. The page puts its title in the header slot and what appears
-// once a game has ended in the after-game slot. The rules live in src/game/, the Bot's choice
-// in src/engine/ and what the visitor may do when in src/session/; the script
+// settings of a game, its controls, the choice of pieces and the stats of
+// Camille and the Bot; in the middle the board between the two clocks, with
+// the status under it; on the right the moves, always in view, the
+// end-of-game question and the panel explaining the Bot's moves. On a phone
+// the board comes first, the settings, the pieces and the stats open over it
+// from buttons under it, and the moves follow right below. The page puts its
+// title in the header slot. The rules live in src/game/, the Bot's choice in
+// src/engine/ and what the visitor may do when in src/session/; the script
 // below only translates between them, chessground (which draws the board and
 // handles dragging and clicking) and the markup of the components, which it
 // reaches through their data attributes.
@@ -28,7 +27,7 @@ import ExplanationPanel from './ExplanationPanel.astro';
 import GameControls from './GameControls.astro';
 import MoveList from './MoveList.astro';
 import PieceSetChoice from './PieceSetChoice.astro';
-import PlayerRecord from './PlayerRecord.astro';
+import StatsPanel from './StatsPanel.astro';
 
 // The model the page downloads, found where scripts/stage-model.ts put it. Its
 // size is read here, at build time, because the server sends it compressed and
@@ -67,7 +66,7 @@ const english = TEXTS.en.page;
       <PieceSetChoice />
     </section>
     <section class="side-section">
-      <PlayerRecord />
+      <StatsPanel />
     </section>
   </aside>
 
@@ -92,7 +91,6 @@ const english = TEXTS.en.page;
     </section>
     <section class="side-section after-game">
       <EndOfGameQuestion />
-      <slot name="after-game" />
     </section>
     <section class="side-section">
       <ExplanationPanel />
@@ -1047,9 +1045,9 @@ const english = TEXTS.en.page;
     gap: 20px;
   }
 
-  /* The question and the summary of the site's games only appear once a
-     game has ended; until then their section takes no room. Astro may place
-     a component's script beside it, which never counts as shown. */
+  /* The question only appears once a game has ended; until then its
+     section takes no room. Astro may place a component's script beside it,
+     which never counts as shown. */
   .after-game:not(:has(> :not([hidden], script))) {
     display: none;
   }

@@ -98,7 +98,6 @@ export interface PanelTexts {
 /** The page's fixed words, each placed where an element's data-text names it. */
 export type PageText =
   | 'intro'
-  | 'summaryTitle'
   | 'language'
   | 'close'
   | 'gameSettings'
@@ -140,7 +139,9 @@ export type PageText =
   | 'creditBy'
   | 'creditFrom'
   | 'creditLicence'
-  | 'record'
+  | 'stats'
+  | 'camilleTab'
+  | 'botTab'
   | 'games'
   | 'withWhite'
   | 'withBlack'
@@ -151,6 +152,8 @@ export type PageText =
   | 'opening'
   | 'score'
   | 'recordScope'
+  | 'botScope'
+  | 'noBotGameYet'
   | 'readingTheCounts'
   | 'gamesFinished'
   | 'botRecord'
@@ -209,7 +212,6 @@ const NO_BREAK = ' ';
 const ENGLISH: Texts = {
   page: {
     intro: 'Play a game against a bot that imitates Camille.',
-    summaryTitle: 'Games on this site',
     language: 'Language',
     close: 'Close',
     gameSettings: 'Game settings',
@@ -255,7 +257,9 @@ const ENGLISH: Texts = {
     creditBy: 'Anarcandy by ',
     creditFrom: ', from ',
     creditLicence: ', used unmodified under ',
-    record: "Camille's games",
+    stats: 'Stats',
+    camilleTab: 'Camille',
+    botTab: 'Bot',
     games: 'Games',
     withWhite: 'With White',
     withBlack: 'With Black',
@@ -268,6 +272,10 @@ const ENGLISH: Texts = {
     recordScope:
       'Ten-minute games since June 2025, on Lichess and Chess.com, the games the Bot learned from. ' +
       'Score: wins plus half the draws.',
+    botScope:
+      'The games visitors have finished against the Bot on this site, counted from its side. ' +
+      'Score: wins plus half the draws.',
+    noBotGameYet: 'No game has been finished on this site yet.',
     readingTheCounts: 'Reading the counts…',
     gamesFinished: 'Games finished',
     botRecord: "The Bot's record",
@@ -379,7 +387,6 @@ function englishTimes(count: number): string {
 const FRENCH: Texts = {
   page: {
     intro: 'Jouez une partie contre un bot qui imite Camille.',
-    summaryTitle: 'Les parties jouées sur ce site',
     language: 'Langue',
     close: 'Fermer',
     gameSettings: 'Réglages de la partie',
@@ -425,7 +432,9 @@ const FRENCH: Texts = {
     creditBy: 'Anarcandy par ',
     creditFrom: ', tiré de ',
     creditLicence: ', utilisé sans modification sous licence ',
-    record: 'Les parties de Camille',
+    stats: 'Statistiques',
+    camilleTab: 'Camille',
+    botTab: 'Bot',
     games: 'Parties',
     withWhite: 'Avec les Blancs',
     withBlack: 'Avec les Noirs',
@@ -438,6 +447,10 @@ const FRENCH: Texts = {
     recordScope:
       'Parties de 10 minutes depuis juin 2025, sur Lichess et Chess.com, celles dont le Bot a appris. ' +
       `Score${NO_BREAK}: les victoires plus la moitié des nulles.`,
+    botScope:
+      'Les parties que les visiteurs ont terminées contre le Bot sur ce site, comptées de son côté. ' +
+      `Score${NO_BREAK}: les victoires plus la moitié des nulles.`,
+    noBotGameYet: 'Aucune partie n’a encore été terminée sur ce site.',
     readingTheCounts: 'Lecture des chiffres…',
     gamesFinished: 'Parties terminées',
     botRecord: 'Le bilan du Bot',

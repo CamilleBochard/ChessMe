@@ -1,12 +1,10 @@
 ---
-// The page a visitor lands on to play the Bot. Once a game has ended, the
-// summary of every game played on the site appears beside the board. The page
-// is written in English and switches to French with the buttons in its header.
+// The page a visitor lands on to play the Bot. The page is written in English
+// and switches to French with the buttons in its header.
 import GameLayout from '../components/templates/GameLayout.astro';
 import Game from '../components/organisms/Game.astro';
 import MicroText from '../components/atoms/MicroText.astro';
 import LanguageSwitch from '../components/molecules/LanguageSwitch.astro';
-import SessionGameSummary from '../components/organisms/SessionGameSummary.astro';
 ---
 
 <GameLayout title="ChessMe" description="Play a game of chess against a bot that imitates Camille.">
@@ -16,7 +14,6 @@ import SessionGameSummary from '../components/organisms/SessionGameSummary.astro
       <MicroText as="p" textKey="intro">Play a game against a bot that imitates Camille.</MicroText>
       <LanguageSwitch />
     </header>
-    <SessionGameSummary slot="after-game" readOn="game-end" titleKey="summaryTitle" />
   </Game>
 </GameLayout>
 
