@@ -1,8 +1,9 @@
 # syntax=docker/dockerfile:1
 
 # The Session Game service: the standard library's HTTP server and SQLite,
-# plus python-chess to replay each reported game. Nothing else from the
-# pipeline is installed. Base image pinned by digest: a tag can be moved, a
+# plus python-chess to replay each reported game and the openings table to
+# name the openings of the Bot's games. Nothing else from the pipeline is
+# installed. Base image pinned by digest: a tag can be moved, a
 # digest cannot.
 FROM python:3.12.15-alpine3.24@sha256:1b668429b3511ab407d8e00648891631b0b1a4d7e15e3ca70f38ab5b91ad4ab4
 
@@ -18,7 +19,9 @@ RUN adduser -D -H -u 10001 chessme \
   && install -d -o chessme -g chessme /data
 
 WORKDIR /app
-COPY pipeline/__init__.py pipeline/session_games.py pipeline/serve_session_games.py ./pipeline/
+COPY pipeline/__init__.py pipeline/session_games.py pipeline/serve_session_games.py pipeline/player_record.py ./pipeline/
+# Found beside the pipeline, as in the repository: /app/data/openings.
+COPY data/openings/*.tsv ./data/openings/
 
 USER chessme
 EXPOSE 8787
