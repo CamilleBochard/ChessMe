@@ -37,8 +37,16 @@ import LanguageSwitch from '../components/molecules/LanguageSwitch.astro';
   }
 
   /* The line that says what the page is for, in full ink: micro text's soft
-     ink lies under 4.5:1 against the paper at this size. */
+     ink lies under 4.5:1 against the paper at this size. On a phone, held
+     at arm's length, it is also bold and larger. */
   .intro :global(.intro-line) {
     color: var(--ink);
+  }
+
+  @media (max-width: 959px) {
+    .intro :global(.intro-line) {
+      font-size: 12px;
+      font-weight: 700;
+    }
   }
 </style>
