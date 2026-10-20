@@ -2,7 +2,7 @@
 
 The site is static, and stays so. Finished Session Games are received by
 `pipeline/serve_session_games.py`, which runs beside it on the VPS and is
-reached through the web server under `/api/`. ADR-0002 records why.
+reached through the reverse proxy under `/api/`. ADR-0002 records why.
 
 ## What it stores
 
@@ -22,76 +22,34 @@ is refused for a game that had already ended on the board.
 
 ## On the VPS
 
-The service needs Python 3.12 and python-chess, installed from this
-repository with `pip install .` in a virtual environment. It names the
-openings of the Bot's games with the table in `data/openings`, read from the
-checkout it runs in. It listens on
-127.0.0.1 only, and creates its database on the first request, in a
-directory the service's user must be able to write:
+The site and the service run as two containers, built from
+`docker/web.Dockerfile` and `docker/api.Dockerfile` and published on GHCR by
+`.github/workflows/deploy.yml` on every push to master. The VPS
+configuration (Compose file, routing, rate limits) lives in the
+infrastructure repository, not here. The service image holds the openings
+table from `data/openings`, with which the service names the openings of
+the Bot's games.
 
-```sh
-sudo install -d -o chessme -g chessme /srv/chessme/data
-```
+The service container listens on every interface of the container, so the
+reverse proxy can reach it, and publishes no port: the proxy is the only
+way in. It runs as an unprivileged user on a read-only filesystem, and
+writes its database to a named volume mounted on `/data`.
 
-A systemd unit, for instance `/etc/systemd/system/chessme-session-games.service`:
+The reverse proxy (Traefik) does what nginx did in front of a service on
+the host:
 
-```ini
-[Unit]
-Description=ChessMe Session Game service
-After=network.target
+- requests under `/api/` go to the service, everything else to the site;
+- game reports are limited to ten a minute from one address, with a burst
+  of five, and a request body to 64 KB;
+- `GET /api/session-games/counts` and `GET /api/session-games/record` share
+  a limit of their own, thirty a minute with a burst of ten, so that a
+  reader who reloads a page showing them cannot use up the limit their next
+  game report needs;
+- no access log is written for `/api/`, since it would record the visitor's
+  address. The service keeps its own log, without addresses, in
+  `docker logs`.
 
-[Service]
-User=chessme
-WorkingDirectory=/srv/chessme
-ExecStart=/srv/chessme/.venv/bin/python -m pipeline.serve_session_games --database /srv/chessme/data/session-games.sqlite --port 8787
-Restart=on-failure
-
-[Install]
-WantedBy=multi-user.target
-```
-
-In the nginx server block that serves the site:
-
-```nginx
-# Ten reports a minute from one address is far more than a person playing.
-# The zone holds addresses in memory only, to count requests; nothing is
-# written to disk.
-limit_req_zone $binary_remote_addr zone=session_games:1m rate=10r/m;
-
-# Reading the counts has a limit of its own, so that a reader who reloads
-# a page showing them cannot use up the limit their next game report needs.
-limit_req_zone $binary_remote_addr zone=session_game_counts:1m rate=30r/m;
-
-location = /api/session-games/counts {
-    access_log off;
-    error_log /dev/null;
-    limit_req zone=session_game_counts burst=10 nodelay;
-    proxy_pass http://127.0.0.1:8787;
-}
-
-location = /api/session-games/record {
-    access_log off;
-    error_log /dev/null;
-    limit_req zone=session_game_counts burst=10 nodelay;
-    proxy_pass http://127.0.0.1:8787;
-}
-
-location /api/ {
-    # No access log, and no error log: both record the visitor's address,
-    # the error log for each request the rate limit turns away and each one
-    # that fails while the service is down. The service keeps its own log,
-    # without addresses, in the system journal.
-    access_log off;
-    error_log /dev/null;
-    limit_req zone=session_games burst=5 nodelay;
-    client_max_body_size 64k;
-    proxy_pass http://127.0.0.1:8787;
-}
-```
-
-Both `limit_req_zone` lines belong in the `http` block, outside the server
-block. The exact-match locations for the counts and the record take
-precedence over the `/api/` prefix, and share the reading limit.
+The rate limits hold addresses in memory only, to count requests.
 
 ## Reading the counts
 
@@ -100,16 +58,16 @@ when the tab is opened and again once a game ends, and the write-up page
 shows the counts whenever it is read. They come from
 `GET /api/session-games/counts` and `GET /api/session-games/record`, which
 answer them as JSON, the record in the shape of Camille's in
-`src/record/player-record.json`. Its rate limit
-above is separate from the one on game reports: a reader who reloads the
-page more than thirty times a minute sees the counts as unavailable, and
-can still report the game they play next.
+`src/record/player-record.json`. Their rate limit above is separate from the
+one on game reports: a reader who reloads the page more than thirty times a
+minute sees the counts as unavailable, and can still report the game they
+play next.
 
-To read them offline, copy the database off the VPS and print the same
-counts, split in two: the games played without analysis mode, then the
-assisted ones, during which the visitor turned on the engine's evaluation
-at some point and could see where the Bot went wrong. The endpoint answers
-the counts over every game.
+To read them offline, copy the database off the VPS (from the `/data`
+volume of the service container) and print the same counts, split in two:
+the games played without analysis mode, then the assisted ones, during which
+the visitor turned on the engine's evaluation at some point and could see
+where the Bot went wrong. The endpoint answers the counts over every game.
 
 ```sh
 python -m pipeline.report_session_games --database data/session-games.sqlite

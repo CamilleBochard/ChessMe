@@ -1,0 +1,7 @@
+# Allowlist: only the files the service runs.
+*
+!pipeline/__init__.py
+!pipeline/session_games.py
+!pipeline/serve_session_games.py
+!pipeline/player_record.py
+!data/openings/*.tsv

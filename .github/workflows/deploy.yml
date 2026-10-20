@@ -1,0 +1,133 @@
+# Production delivery: every push on master builds both images, publishes
+# them on GHCR, then deploys them on the VPS.
+name: Deploy
+
+on:
+  push:
+    branches: [master]
+
+# No permission by default: each job asks only for what it needs.
+permissions: {}
+
+# One delivery at a time, and never cancel one halfway through.
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+env:
+  # The release holding the Base Model and the Opening Book, which the
+  # repository does not hold. Their checksums are in docker/bot-data.sha256.
+  BOT_DATA_RELEASE: bot-data-2
+
+jobs:
+  publish:
+    name: Build and publish ${{ matrix.image }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Read the code, write the images to GHCR. Nothing else.
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        image: [web, api]
+
+    steps:
+      # Actions pinned by commit SHA: a tag can be moved, a SHA cannot.
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The checksums come from the repository, not from the release: a file
+      # replaced in the release fails the build instead of being shipped.
+      - name: Download the Base Model and the Opening Book
+        if: matrix.image == 'web'
+        run: |
+          base_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${BOT_DATA_RELEASE}"
+          mkdir -p models/onnx data/dataset
+          curl --fail --silent --show-error --location -o models/onnx/maia3-5m-fine-tuned.onnx "$base_url/maia3-5m-fine-tuned.onnx"
+          curl --fail --silent --show-error --location -o data/dataset/opening-book.json "$base_url/opening-book.json"
+          sha256sum --check docker/bot-data.sha256
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Log in to GHCR
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Tags: sha-<short commit> to deploy or roll back a precise version,
+      # latest for a manual pull.
+      - name: Compute image tags
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ghcr.io/camillebochard/chessme-${{ matrix.image }}
+          tags: |
+            type=sha
+            type=raw,value=latest
+
+      # One layer cache per image, kept by GitHub Actions.
+      - name: Build and push
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: docker/${{ matrix.image }}.Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+  deploy:
+    name: Deploy on the VPS
+    needs: publish
+    runs-on: ubuntu-latest
+    # Covers two services, each with two pulls and two health checks if the
+    # script rolls back.
+    timeout-minutes: 15
+    # The SSH secrets live in this environment, not in the repository.
+    environment:
+      name: production
+      url: https://echecs.camillebochard.fr
+    # Talks to the VPS only: no access to the repository or the registry.
+    permissions: {}
+
+    steps:
+      # The key and the server fingerprint come from secrets, through env
+      # variables rather than inline expressions in the script.
+      - name: Set up SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          umask 077
+          printf '%s\n' "$DEPLOY_SSH_KEY" > "$RUNNER_TEMP/deploy_key"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$RUNNER_TEMP/known_hosts"
+
+      # The forced command on the VPS passes what is sent as arguments to its
+      # deploy script: "<service> sha-<short commit>". The service comes
+      # first, so the page never calls a service older than itself.
+      # The user name is a variable, not a secret: GitHub masks every
+      # occurrence of a secret in the logs, and a common word would be
+      # hidden everywhere.
+      - name: Run the deploy script
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER }}
+        run: |
+          image_tag="sha-${GITHUB_SHA::7}"
+          for service in chessme-api chessme-web; do
+            ssh \
+              -i "$RUNNER_TEMP/deploy_key" \
+              -o IdentitiesOnly=yes \
+              -o BatchMode=yes \
+              -o StrictHostKeyChecking=yes \
+              -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" \
+              "$DEPLOY_USER@$DEPLOY_HOST" \
+              "$service" "$image_tag"
+          done
