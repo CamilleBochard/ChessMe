@@ -66,6 +66,46 @@ export function sessionGameReport(model: PlayedModel, finished: FinishedGame): S
   };
 }
 
+/** The ratings a visitor gives once a game is over, each left undefined if they gave none. */
+export interface VisitorRatings {
+  readonly lichess: number | undefined;
+  readonly chesscom: number | undefined;
+}
+
+/** The ratings a player can have on Lichess or Chess.com, as the service accepts them. */
+const LOWEST_RATING = 100;
+const HIGHEST_RATING = 3500;
+
+/**
+ * The ratings in the popup's two fields, as the visitor typed them, or
+ * undefined when there is nothing to send: both fields empty, or one
+ * holding something that is no rating.
+ */
+export function ratingsFromFields(lichessField: string, chesscomField: string): VisitorRatings | undefined {
+  const lichess = ratingFromField(lichessField);
+  const chesscom = ratingFromField(chesscomField);
+  if (lichess === null || chesscom === null) {
+    return undefined;
+  }
+  if (lichess === undefined && chesscom === undefined) {
+    return undefined;
+  }
+  return { lichess: lichess, chesscom: chesscom };
+}
+
+/** The rating in a field: undefined when it is empty, null when it holds something that is no rating. */
+function ratingFromField(field: string): number | undefined | null {
+  const typed = field.trim();
+  if (typed === '') {
+    return undefined;
+  }
+  const rating = Number(typed);
+  if (!Number.isInteger(rating) || rating < LOWEST_RATING || rating > HIGHEST_RATING) {
+    return null;
+  }
+  return rating;
+}
+
 /** The page's way of reporting to the service. */
 export interface Telemetry {
   /**
@@ -74,10 +114,10 @@ export interface Telemetry {
    */
   reportGame(report: SessionGameReport): Promise<string | undefined>;
   /**
-   * Sends the visitor's answer to whether the Bot felt like a real player at
-   * that level, resolving with whether the service recorded it.
+   * Sends the ratings the visitor gave after that game, resolving with
+   * whether the service recorded them.
    */
-  reportImpression(gameId: string, feltLikeARealPlayer: boolean): Promise<boolean>;
+  reportRatings(gameId: string, ratings: VisitorRatings): Promise<boolean>;
 }
 
 /** Reports through the fetch given, which the page passes as the browser's own. */
@@ -103,12 +143,14 @@ export function connectTelemetry(fetchFunction: typeof fetch): Telemetry {
       }
     },
 
-    reportImpression: async (gameId, feltLikeARealPlayer) => {
+    reportRatings: async (gameId, ratings) => {
+      // JSON has no undefined: a rating left out is sent as null.
+      const body = { lichess: ratings.lichess ?? null, chesscom: ratings.chesscom ?? null };
       try {
-        const response = await fetchFunction(`${SESSION_GAMES_URL}/${gameId}/impression`, {
+        const response = await fetchFunction(`${SESSION_GAMES_URL}/${gameId}/ratings`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ feltLikeARealPlayer: feltLikeARealPlayer }),
+          body: JSON.stringify(body),
         });
         return response.ok;
       } catch {

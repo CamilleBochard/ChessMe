@@ -2,11 +2,11 @@
 // A game against the Bot, in three columns on a wide screen: on the left the
 // settings of a game, its controls, the choice of pieces and the stats of
 // Camille and the Bot; in the middle the board between the two clocks, with
-// the status under it; on the right the moves, always in view, the
-// end-of-game question and the panel explaining the Bot's moves. On a phone
-// the board comes first, the settings, the pieces and the stats open over it
-// from buttons under it, and the moves follow right below. The page puts its
-// title in the header slot. The rules live in src/game/, the Bot's choice in
+// the status under it; on the right the moves, always in view, and the
+// panel explaining the Bot's moves. On a phone the board comes first, the
+// settings, the pieces and the stats open over it from buttons under it, and
+// the moves follow right below. Once a game is over and stored, a popup asks
+// the visitor for their ratings. The page puts its title in the header slot. The rules live in src/game/, the Bot's choice in
 // src/engine/ and what the visitor may do when in src/session/; the script
 // below only translates between them, chessground (which draws the board and
 // handles dragging and clicking) and the markup of the components, which it
@@ -22,11 +22,11 @@ import Clock from '../molecules/Clock.astro';
 import ModelStatus from '../molecules/ModelStatus.astro';
 import PhoneTools from '../molecules/PhoneTools.astro';
 import ChessBoard from './ChessBoard.astro';
-import EndOfGameQuestion from './EndOfGameQuestion.astro';
 import ExplanationPanel from './ExplanationPanel.astro';
 import GameControls from './GameControls.astro';
 import MoveList from './MoveList.astro';
 import PieceSetChoice from './PieceSetChoice.astro';
+import RatingDialog from './RatingDialog.astro';
 import StatsPanel from './StatsPanel.astro';
 
 // The model the page downloads, found where scripts/stage-model.ts put it. Its
@@ -89,13 +89,12 @@ const english = TEXTS.en.page;
     <section class="side-section moves">
       <MoveList />
     </section>
-    <section class="side-section after-game">
-      <EndOfGameQuestion />
-    </section>
     <section class="side-section">
       <ExplanationPanel />
     </section>
   </div>
+
+  <RatingDialog />
 </div>
 
 <script>
@@ -121,7 +120,7 @@ const english = TEXTS.en.page;
   import type { BotStatus } from '../../engine/bot-protocol';
   import type { BotMove } from '../../engine/move-selection';
   import { clockFaces, createSessionGame, type ClockFace, type FinishedGame } from '../../session/session-game';
-  import { connectTelemetry, sessionGameReport } from '../../telemetry/session-game';
+  import { connectTelemetry, ratingsFromFields, sessionGameReport } from '../../telemetry/session-game';
   import { SESSION_GAMES_CHANGED } from '../../telemetry/session-game-summary';
   import { startBrowserAnalyser, type BrowserAnalyser } from '../../analysis/browser-analyser';
   import { moveLoss, type Score } from '../../analysis/engine-analysis';
@@ -136,6 +135,12 @@ const english = TEXTS.en.page;
    * returning visitor skips the entrance animation.
    */
   const MODEL_CACHED_KEY = 'chessme.model-cached';
+
+  /**
+   * What the visitor typed in the ratings popup last time, kept in their
+   * browser only, so that the next game's popup is one click to answer.
+   */
+  const RATINGS_KEY = 'chessme.visitor-ratings';
 
   /** How long the entrance animation runs, matching the CSS below. */
   const ENTRANCE_MILLISECONDS = 1400;
@@ -169,13 +174,11 @@ const english = TEXTS.en.page;
     const viewBackButton = frame.querySelector<HTMLButtonElement>('[data-view-back]')!;
     const viewForwardButton = frame.querySelector<HTMLButtonElement>('[data-view-forward]')!;
     const promotionDialog = frame.querySelector<HTMLDialogElement>('[data-promotion]')!;
-    const impression = frame.querySelector<HTMLElement>('[data-impression]')!;
-    const impressionChoices = impression.querySelector<HTMLElement>('[data-impression-choices]')!;
-    const impressionButtons = impressionChoices.querySelectorAll<HTMLButtonElement>('button');
-    const impressionThanks = impression.querySelector<HTMLElement>('[data-impression-thanks]')!;
-    const impressionQuestion = impression.querySelector<HTMLElement>('[data-impression-question]')!;
-    // Whether the visitor's answer was recorded, once they have given one.
-    let impressionRecorded: boolean | null = null;
+    const ratingDialog = frame.querySelector<HTMLDialogElement>('[data-rating-dialog]')!;
+    const ratingForm = ratingDialog.querySelector<HTMLFormElement>('[data-rating-form]')!;
+    const lichessField = ratingDialog.querySelector<HTMLInputElement>('[data-rating-field="lichess"]')!;
+    const chesscomField = ratingDialog.querySelector<HTMLInputElement>('[data-rating-field="chesscom"]')!;
+    const ratingProblem = ratingDialog.querySelector<HTMLElement>('[data-rating-problem]')!;
     const moveExplanation = frame.querySelector<HTMLElement>('[data-move-explanation]')!;
     const lossChartElement = frame.querySelector<HTMLElement>('[data-loss-chart]')!;
     const analysisSwitch = frame.querySelector<HTMLInputElement>('[data-analysis-switch]')!;
@@ -187,7 +190,7 @@ const english = TEXTS.en.page;
     const telemetry = connectTelemetry((input, init) => window.fetch(input, init));
     const servedModel = { baseModel: frame.dataset.baseModel!, rating: Number(frame.dataset.modelRating) };
     // The id the service stored the game on the board under, once it has
-    // ended and been stored: the game the end-of-game question is about.
+    // ended and been stored: the game the visitor's ratings are sent for.
     let storedGameId: string | undefined = undefined;
 
     let botStatus: BotStatus = { kind: 'downloading', progress: { receivedBytes: 0, totalBytes: undefined } };
@@ -234,11 +237,9 @@ const english = TEXTS.en.page;
     showGame();
     // A phone opens on the settings of a game, over the board.
     setup.openOnPhone();
-    showImpressionText();
     // A new language redraws every text the script writes; the fixed words
     // were rewritten by the switch itself.
     document.addEventListener(LANGUAGE_CHANGED, () => {
-      showImpressionText();
       showModelStatus(modelStatus, botStatus);
       showGame();
     });
@@ -305,11 +306,14 @@ const english = TEXTS.en.page;
       });
     }
 
-    for (const button of impressionButtons) {
-      button.addEventListener('click', () => {
-        void sendImpression(button.dataset.feltReal === 'yes');
-      });
-    }
+    ratingDialog.querySelector<HTMLButtonElement>('[data-rating-close]')!.addEventListener('click', () => {
+      ratingDialog.close();
+    });
+    ratingForm.addEventListener('submit', (event) => {
+      // The dialog closes only once the fields hold something to send.
+      event.preventDefault();
+      sendRatings();
+    });
 
     // Turning analysis mode on is asked first, since during a game it shows
     // where the Bot goes wrong. The click that would tick the switch is held
@@ -374,10 +378,10 @@ const english = TEXTS.en.page;
     }
 
     /**
-     * Reports the finished game and, once it is stored, asks the visitor what
-     * they made of the Bot. A game left unfinished is never reported. The
-     * question is only asked if the game is still the one on the board: the
-     * visitor may have started another while the report was on its way.
+     * Reports the finished game and, once it is stored, asks the visitor for
+     * their ratings. A game left unfinished is never reported. The popup only
+     * opens if the game is still the one on the board: the visitor may have
+     * started another while the report was on its way.
      */
     function reportFinishedGame(finished: FinishedGame): void {
       const endedGame = session.game();
@@ -389,59 +393,46 @@ const english = TEXTS.en.page;
         const isStillOnTheBoard = session.game() === endedGame;
         if (gameId !== undefined && isStillOnTheBoard) {
           storedGameId = gameId;
-          askImpression();
+          askRatings();
         }
       });
     }
 
     /**
-     * Shows the end-of-game question. It only appears for a game the service
-     * stored, since an answer needs a game to be attached to.
+     * Opens the popup asking for the visitor's ratings. It only opens for a
+     * game the service stored, since the ratings are kept with it. The
+     * fields hold what the visitor gave last time, if anything.
      */
-    function askImpression(): void {
-      impressionRecorded = null;
-      for (const button of impressionButtons) {
-        button.disabled = false;
-      }
-      impressionChoices.hidden = false;
-      impressionThanks.hidden = true;
-      impression.hidden = false;
+    function askRatings(): void {
+      const remembered = rememberedRatings();
+      lichessField.value = remembered.lichess;
+      chesscomField.value = remembered.chesscom;
+      ratingProblem.hidden = true;
+      ratingDialog.showModal();
     }
 
-    async function sendImpression(feltLikeARealPlayer: boolean): Promise<void> {
-      const gameId = storedGameId;
-      if (gameId === undefined) {
+    /**
+     * Sends what the fields hold for the stored game and closes the popup,
+     * or says what is wrong and leaves it open. A report that fails costs
+     * one answer and is not shown, as with the game's own report.
+     */
+    function sendRatings(): void {
+      const ratings = ratingsFromFields(lichessField.value, chesscomField.value);
+      if (ratings === undefined) {
+        ratingProblem.hidden = false;
         return;
       }
-      for (const button of impressionButtons) {
-        button.disabled = true;
-      }
-      const recorded = await telemetry.reportImpression(gameId, feltLikeARealPlayer);
-
-      impressionChoices.hidden = true;
-      impressionThanks.hidden = false;
-      impressionRecorded = recorded;
-      showImpressionText();
-      if (recorded) {
-        announceSessionGamesChanged();
+      rememberRatings({ lichess: lichessField.value.trim(), chesscom: chesscomField.value.trim() });
+      ratingDialog.close();
+      const gameId = storedGameId;
+      if (gameId !== undefined) {
+        void telemetry.reportRatings(gameId, ratings);
       }
     }
 
-    /** The end-of-game question and, once answered, whether the answer was recorded, in the page's language. */
-    function showImpressionText(): void {
-      const texts = pageTexts();
-      impressionQuestion.textContent = texts.impressionQuestion(Number(frame.dataset.modelRating));
-      if (impressionRecorded === true) {
-        impressionThanks.textContent = texts.impressionRecorded;
-      } else if (impressionRecorded === false) {
-        impressionThanks.textContent = texts.impressionNotRecorded;
-      }
-    }
-
-    /** Hides the question about a game that is over, as the visitor moves on from it. */
+    /** Forgets the game that is over, as the visitor moves on from it. */
     function forgetEndedGame(): void {
       storedGameId = undefined;
-      impression.hidden = true;
     }
 
     /**
@@ -836,6 +827,37 @@ const english = TEXTS.en.page;
    * refused, in which case every visit counts as a first one: the animation
    * plays again, which costs the visitor nothing.
    */
+  /** The ratings the visitor last typed, as text, empty when there are none or the browser keeps nothing. */
+  function rememberedRatings(): { lichess: string; chesscom: string } {
+    const none = { lichess: '', chesscom: '' };
+    try {
+      const kept = window.localStorage.getItem(RATINGS_KEY);
+      if (kept === null) {
+        return none;
+      }
+      const parsed = JSON.parse(kept) as { lichess?: unknown; chesscom?: unknown };
+      let lichess = '';
+      if (typeof parsed.lichess === 'string') {
+        lichess = parsed.lichess;
+      }
+      let chesscom = '';
+      if (typeof parsed.chesscom === 'string') {
+        chesscom = parsed.chesscom;
+      }
+      return { lichess: lichess, chesscom: chesscom };
+    } catch {
+      return none;
+    }
+  }
+
+  function rememberRatings(ratings: { lichess: string; chesscom: string }): void {
+    try {
+      window.localStorage.setItem(RATINGS_KEY, JSON.stringify(ratings));
+    } catch {
+      // A browser that keeps nothing asks with empty fields next time.
+    }
+  }
+
   function isFirstVisit(): boolean {
     try {
       return window.localStorage.getItem(MODEL_CACHED_KEY) === null;
@@ -1038,18 +1060,6 @@ const english = TEXTS.en.page;
      portfolio marks the region a visitor acts in. */
   .controls {
     position: relative;
-  }
-
-  .after-game {
-    display: grid;
-    gap: 20px;
-  }
-
-  /* The question only appears once a game has ended; until then its
-     section takes no room. Astro may place a component's script beside it,
-     which never counts as shown. */
-  .after-game:not(:has(> :not([hidden], script))) {
-    display: none;
   }
 
   @media (min-width: 960px) {
