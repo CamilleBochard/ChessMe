@@ -2,7 +2,8 @@
 // The controls that run a game. The settings of a new one, whether to play
 // with a clock and then the choice of a side, which starts it, sit in a
 // dialog: in place on a wide screen until the game starts, over the board on
-// a phone. Once a game is on, take back, resign and start over. The game's
+// a phone. Once a game is on, take back, resign and start over, and once it
+// is over, open its report again. The game's
 // script opens the dialog, shows the buttons, reads the clock choice through
 // data-clock-choice, and enables only what the Session Game allows right now.
 import BracketLabel from '../atoms/BracketLabel.astro';
@@ -34,6 +35,7 @@ const english = TEXTS.en.page;
     <GameButton data-take-back textKey="takeBack">{english.takeBack}</GameButton>
     <GameButton data-resign textKey="resign">{english.resign}</GameButton>
     <GameButton data-new-game textKey="newGame">{english.newGame}</GameButton>
+    <GameButton data-open-report textKey="gameReport" hidden>{english.gameReport}</GameButton>
   </div>
 </div>
 

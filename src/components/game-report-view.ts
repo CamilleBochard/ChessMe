@@ -1,0 +1,165 @@
+// Lays out the end-of-game report in the page's language: the share of the
+// Bot's moves Camille could have played in large, where it followed him, its
+// losses per Phase beside the range of his games, its costly moves and the
+// moves he rarely plays. src/explanation/game-report.ts works out every
+// figure; this only writes them out, each beside Camille's own.
+
+import type { CamilleFigures, GameReport } from '../explanation/game-report';
+import { PHASES } from '../evaluation/move-matching';
+import type { Texts } from '../i18n/texts';
+import improbabilityFile from '../explanation/improbability-yardstick.json';
+import lossFile from '../explanation/loss-yardstick.json';
+import { camilleFigures } from '../explanation/game-report';
+import type { ShippedImprobabilityYardstick, ShippedLossYardstick } from '../explanation/yardsticks';
+
+const lossYardstick = lossFile as ShippedLossYardstick;
+const camille: CamilleFigures = camilleFigures(lossYardstick, improbabilityFile as ShippedImprobabilityYardstick);
+
+/** Where the reading of Camille's positions stands. */
+export type PositionsState = 'reading' | 'read' | 'unavailable';
+
+/** Writes the report into body, replacing what it held. */
+export function showGameReport(body: HTMLElement, report: GameReport, positions: PositionsState, texts: Texts): void {
+  const words = texts.report;
+  const sections: HTMLElement[] = [];
+
+  sections.push(headline(report, texts));
+
+  const followed = section(words.followed);
+  followed.append(paragraph(words.fromBook(report.fromOpeningBook)));
+  followed.append(paragraph(reachedText(report, positions, texts)));
+  sections.push(followed);
+
+  const losses = section(words.losses);
+  losses.append(lossTable(report, texts));
+  if (report.overThreePawns.of > 0) {
+    const share = texts.percent(report.overThreePawns.count / report.overThreePawns.of, 0);
+    const camilleShare = texts.percent(camille.overThreePawnsShare, 0);
+    losses.append(paragraph(words.costly(report.overThreePawns.count, report.overThreePawns.of, share, camilleShare)));
+  }
+  sections.push(losses);
+
+  const improbable = section(words.improbable);
+  if (report.improbable.length === 0) {
+    improbable.append(paragraph(words.noImprobable));
+  } else {
+    const list = document.createElement('ul');
+    list.className = 'improbable-moves';
+    for (const move of report.improbable) {
+      const item = document.createElement('li');
+      let pawnsLost: string | null = null;
+      if (move.loss !== null) {
+        pawnsLost = texts.decimal(move.loss / 100, 1);
+      }
+      const named = `${moveNumber(move.ply)}${texts.writeMove(move.san)}`;
+      item.textContent = words.improbableMove(named, texts.percent(move.probability, 1), pawnsLost);
+      list.append(item);
+    }
+    improbable.append(list);
+  }
+  sections.push(improbable);
+
+  if (report.pending > 0) {
+    const pending = paragraph(words.pending(report.pending));
+    pending.classList.add('pending');
+    sections.push(pending);
+  }
+
+  const source = paragraph(words.source(lossYardstick.games));
+  source.classList.add('source');
+  sections.push(source);
+
+  body.replaceChildren(...sections);
+}
+
+/** The share in large, its meaning, and Camille's own share under it. */
+function headline(report: GameReport, texts: Texts): HTMLElement {
+  const block = document.createElement('div');
+  block.className = 'headline';
+  const figure = document.createElement('p');
+  figure.className = 'share';
+  if (report.moves > 0) {
+    figure.textContent = texts.percent(report.plausible / report.moves, 0);
+  } else {
+    figure.textContent = texts.report.notMeasured;
+  }
+  const meaning = paragraph(texts.report.plausible);
+  const camilleLine = paragraph(texts.report.camilleShare(texts.percent(camille.plausibleShare, 0)));
+  camilleLine.classList.add('camille');
+  block.append(figure, meaning, camilleLine);
+  return block;
+}
+
+function reachedText(report: GameReport, positions: PositionsState, texts: Texts): string {
+  if (positions === 'reading') {
+    return texts.report.readingPositions;
+  }
+  if (positions === 'unavailable' || report.reachedByCamille === null) {
+    return texts.report.positionsUnavailable;
+  }
+  if (report.reachedByCamille.of === 0) {
+    return texts.report.noEarlyModelMove;
+  }
+  return texts.report.reached(report.reachedByCamille.count, report.reachedByCamille.of);
+}
+
+/** Per Phase, the Bot's average loss this game beside the range 8 in 10 of Camille's games cover. */
+function lossTable(report: GameReport, texts: Texts): HTMLTableElement {
+  const words = texts.report;
+  const table = document.createElement('table');
+  table.className = 'losses';
+  const head = document.createElement('thead');
+  head.append(row('th', [words.phase, words.thisGame, words.camilleRange]));
+  const body = document.createElement('tbody');
+  for (const phase of PHASES) {
+    const losses = report.phases[phase];
+    let botCell = words.notMeasured;
+    if (losses.averageLoss !== null) {
+      botCell = words.centipawns(losses.averageLoss);
+    }
+    let camilleCell = words.notMeasured;
+    const range = camille.lossRanges[phase];
+    if (range !== null) {
+      camilleCell = words.range(range.low, range.high);
+    }
+    body.append(row('td', [words.phaseName[phase], botCell, camilleCell]));
+  }
+  table.append(head, body);
+  return table;
+}
+
+function row(cellName: 'th' | 'td', texts: string[]): HTMLTableRowElement {
+  const tableRow = document.createElement('tr');
+  for (const text of texts) {
+    const cell = document.createElement(cellName);
+    if (cellName === 'th') {
+      (cell as HTMLTableCellElement).scope = 'col';
+    }
+    cell.textContent = text;
+    tableRow.append(cell);
+  }
+  return tableRow;
+}
+
+function section(title: string): HTMLElement {
+  const element = document.createElement('section');
+  const heading = document.createElement('h3');
+  heading.textContent = title;
+  element.append(heading);
+  return element;
+}
+
+function paragraph(text: string): HTMLParagraphElement {
+  const element = document.createElement('p');
+  element.textContent = text;
+  return element;
+}
+
+/** "12." for White's twelfth move, "12…" for Black's. */
+function moveNumber(ply: number): string {
+  const number = Math.ceil(ply / 2);
+  if (ply % 2 === 1) {
+    return `${number}.`;
+  }
+  return `${number}…`;
+}

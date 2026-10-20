@@ -5,10 +5,11 @@
 // the status under it; on the right the moves, always in view, and the
 // panel explaining the Bot's moves. On a phone the board comes first, the
 // settings, the pieces and the stats open over it from buttons under it, and
-// the moves follow right below. Once a game is over and stored, a popup asks
-// the visitor for their ratings. The page puts its title in the header slot,
-// a bar across the top on plain paper, above the columns. The rules live in src/game/, the Bot's choice in
-// src/engine/ and what the visitor may do when in src/session/; the script
+// the moves follow right below. Once a game is over, its report slides in
+// from the right, and asks the visitor for their ratings. The page puts its
+// title in the header slot, a bar across the top on plain paper, above the
+// columns. The rules live in src/game/, the Bot's choice in src/engine/ and
+// what the visitor may do when in src/session/; the script
 // below only translates between them, chessground (which draws the board and
 // handles dragging and clicking) and the markup of the components, which it
 // reaches through their data attributes.
@@ -27,7 +28,7 @@ import ExplanationPanel from './ExplanationPanel.astro';
 import GameControls from './GameControls.astro';
 import MoveList from './MoveList.astro';
 import PieceSetChoice from './PieceSetChoice.astro';
-import RatingDialog from './RatingDialog.astro';
+import GameReport from './GameReport.astro';
 import StatsPanel from './StatsPanel.astro';
 
 // The model the page downloads, found where scripts/stage-model.ts put it. Its
@@ -77,9 +78,7 @@ const english = TEXTS.en.page;
 
   <div class="stage">
     <Clock position="top" />
-    <ChessBoard>
-      <RatingDialog />
-    </ChessBoard>
+    <ChessBoard />
     <Clock position="bottom" />
     <div class="stage-foot">
       <p class="status" data-status aria-live="polite"></p>
@@ -97,6 +96,8 @@ const english = TEXTS.en.page;
       <ExplanationPanel />
     </section>
   </div>
+
+  <GameReport />
 
 </div>
 
@@ -124,6 +125,8 @@ const english = TEXTS.en.page;
   import type { BotMove } from '../../engine/move-selection';
   import { clockFaces, createSessionGame, type ClockFace, type FinishedGame } from '../../session/session-game';
   import { connectTelemetry, ratingsFromFields, sessionGameReport } from '../../telemetry/session-game';
+  import { gameReport, reportedMovesOf } from '../../explanation/game-report';
+  import { showGameReport, type PositionsState } from '../game-report-view';
   import { SESSION_GAMES_CHANGED } from '../../telemetry/session-game-summary';
   import { startBrowserAnalyser, type BrowserAnalyser } from '../../analysis/browser-analyser';
   import { moveLoss, type Score } from '../../analysis/engine-analysis';
@@ -140,7 +143,7 @@ const english = TEXTS.en.page;
   const MODEL_CACHED_KEY = 'chessme.model-cached';
 
   /**
-   * What the visitor typed in the ratings popup last time, kept in their
+   * What the visitor typed in the rating fields last time, kept in their
    * browser only, so that the next game's popup is one click to answer.
    */
   const RATINGS_KEY = 'chessme.visitor-ratings';
@@ -180,11 +183,22 @@ const english = TEXTS.en.page;
     const viewBackButton = frame.querySelector<HTMLButtonElement>('[data-view-back]')!;
     const viewForwardButton = frame.querySelector<HTMLButtonElement>('[data-view-forward]')!;
     const promotionDialog = frame.querySelector<HTMLDialogElement>('[data-promotion]')!;
-    const ratingDialog = frame.querySelector<HTMLDialogElement>('[data-rating-dialog]')!;
-    const ratingForm = ratingDialog.querySelector<HTMLFormElement>('[data-rating-form]')!;
-    const lichessField = ratingDialog.querySelector<HTMLInputElement>('[data-rating-field="lichess"]')!;
-    const chesscomField = ratingDialog.querySelector<HTMLInputElement>('[data-rating-field="chesscom"]')!;
-    const ratingProblem = ratingDialog.querySelector<HTMLElement>('[data-rating-problem]')!;
+    const reportDialog = frame.querySelector<HTMLDialogElement>('[data-game-report]')!;
+    const reportBody = reportDialog.querySelector<HTMLElement>('[data-report-body]')!;
+    const openReportButton = frame.querySelector<HTMLButtonElement>('[data-open-report]')!;
+    const ratingSection = reportDialog.querySelector<HTMLElement>('[data-rating-section]')!;
+    const ratingForm = reportDialog.querySelector<HTMLFormElement>('[data-rating-form]')!;
+    const lichessField = reportDialog.querySelector<HTMLInputElement>('[data-rating-field="lichess"]')!;
+    const chesscomField = reportDialog.querySelector<HTMLInputElement>('[data-rating-field="chesscom"]')!;
+    const ratingProblem = reportDialog.querySelector<HTMLElement>('[data-rating-problem]')!;
+    const ratingThanks = reportDialog.querySelector<HTMLElement>('[data-rating-thanks]')!;
+    // Whether the game on the board is over and has a report to show.
+    let hasReport = false;
+    // Camille's positions, read once, the first time a game ends.
+    let camillePositions: Set<string> | null = null;
+    let positionsState: PositionsState = 'reading';
+    // Whether the visitor's ratings for the stored game have been sent.
+    let ratingsSent = false;
     const moveExplanation = frame.querySelector<HTMLElement>('[data-move-explanation]')!;
     const lossChartElement = frame.querySelector<HTMLElement>('[data-loss-chart]')!;
     const analysisSwitch = frame.querySelector<HTMLInputElement>('[data-analysis-switch]')!;
@@ -312,17 +326,19 @@ const english = TEXTS.en.page;
       });
     }
 
-    ratingDialog.querySelector<HTMLButtonElement>('[data-rating-close]')!.addEventListener('click', () => {
-      ratingDialog.close();
+    reportDialog.querySelector<HTMLButtonElement>('[data-report-close]')!.addEventListener('click', () => {
+      closeReport();
     });
     // A dialog that is not a modal does not close on Escape by itself.
-    ratingDialog.addEventListener('keydown', (event) => {
+    reportDialog.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') {
-        ratingDialog.close();
+        closeReport();
       }
     });
+    openReportButton.addEventListener('click', () => {
+      openReport();
+    });
     ratingForm.addEventListener('submit', (event) => {
-      // The dialog closes only once the fields hold something to send.
       event.preventDefault();
       sendRatings();
     });
@@ -390,12 +406,19 @@ const english = TEXTS.en.page;
     }
 
     /**
-     * Reports the finished game and, once it is stored, asks the visitor for
-     * their ratings. A game left unfinished is never reported. The popup only
-     * opens if the game is still the one on the board: the visitor may have
-     * started another while the report was on its way.
+     * Opens the game's report at once, and reports the finished game; once it
+     * is stored, the report asks the visitor for their ratings. A game left
+     * unfinished is never reported. The ratings are only asked if the game is
+     * still the one on the board: the visitor may have started another while
+     * the report was on its way.
      */
     function reportFinishedGame(finished: FinishedGame): void {
+      hasReport = true;
+      ratingsSent = false;
+      ratingSection.hidden = true;
+      openReport();
+      void readCamillePositions();
+
       const endedGame = session.game();
       const report = sessionGameReport(servedModel, finished);
       void telemetry.reportGame(report).then((gameId) => {
@@ -411,24 +434,107 @@ const english = TEXTS.en.page;
     }
 
     /**
-     * Opens the popup asking for the visitor's ratings. It only opens for a
-     * game the service stored, since the ratings are kept with it. The
-     * fields hold what the visitor gave last time, if anything.
+     * Reads Camille's positions the first time a game ends; they are only
+     * needed for the report, and every game after reads them from here.
+     */
+    async function readCamillePositions(): Promise<void> {
+      if (camillePositions !== null) {
+        return;
+      }
+      positionsState = 'reading';
+      try {
+        const response = await window.fetch('/data/camille-positions.json');
+        if (!response.ok) {
+          throw new Error(`answered ${response.status}`);
+        }
+        const positions = (await response.json()) as string[];
+        camillePositions = new Set(positions);
+        positionsState = 'read';
+      } catch {
+        positionsState = 'unavailable';
+      }
+      showReport();
+    }
+
+    /** Slides the report in from the right edge. It is no modal: the page around it stays in use. */
+    function openReport(): void {
+      if (!hasReport) {
+        return;
+      }
+      showReport();
+      if (!reportDialog.open) {
+        reportDialog.show();
+      }
+      // The panel starts off the screen, and slides in once the browser has
+      // drawn it there.
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          reportDialog.classList.add('is-in');
+        });
+      });
+    }
+
+    /** Slides the report out, and closes it once it has left the screen. */
+    function closeReport(): void {
+      if (!reportDialog.open) {
+        return;
+      }
+      reportDialog.classList.remove('is-in');
+      const slidesOut = !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (!slidesOut) {
+        reportDialog.close();
+        return;
+      }
+      reportDialog.addEventListener(
+        'transitionend',
+        () => {
+          if (!reportDialog.classList.contains('is-in')) {
+            reportDialog.close();
+          }
+        },
+        { once: true },
+      );
+    }
+
+    /** Writes the report of the game on the board, as Stockfish has measured it so far. */
+    function showReport(): void {
+      openReportButton.hidden = !hasReport;
+      const visitor = session.visitor();
+      if (!hasReport || visitor === null) {
+        return;
+      }
+      let botColour: Colour = 'white';
+      if (visitor === 'white') {
+        botColour = 'black';
+      }
+      const botMoves = botMovesOf(session.game(), botColour, replies);
+      const report = gameReport(reportedMovesOf(botMoves, evaluations), camillePositions);
+      const texts = pageTexts();
+      showGameReport(reportBody, report, positionsState, texts);
+      if (ratingsSent) {
+        ratingThanks.textContent = texts.report.ratingSent;
+      }
+    }
+
+    /**
+     * Shows the rating fields at the bottom of the report. They are only
+     * shown for a game the service stored, since the ratings are kept with
+     * it, and hold what the visitor gave last time, if anything.
      */
     function askRatings(): void {
       const remembered = rememberedRatings();
       lichessField.value = remembered.lichess;
       chesscomField.value = remembered.chesscom;
       ratingProblem.hidden = true;
-      // Not a modal: it stands on the board, and the rest of the page stays
-      // free to scroll and use.
-      ratingDialog.show();
+      ratingForm.hidden = false;
+      ratingThanks.hidden = true;
+      ratingSection.hidden = false;
     }
 
     /**
-     * Sends what the fields hold for the stored game and closes the popup,
-     * or says what is wrong and leaves it open. A report that fails costs
-     * one answer and is not shown, as with the game's own report.
+     * Sends what the fields hold for the stored game and thanks the visitor,
+     * or says what is wrong. A report that fails costs one answer and is not
+     * shown, as with the game's own report.
      */
     function sendRatings(): void {
       const ratings = ratingsFromFields(lichessField.value, chesscomField.value);
@@ -437,16 +543,25 @@ const english = TEXTS.en.page;
         return;
       }
       rememberRatings({ lichess: lichessField.value.trim(), chesscom: chesscomField.value.trim() });
-      ratingDialog.close();
+      ratingsSent = true;
+      ratingForm.hidden = true;
+      ratingThanks.textContent = pageTexts().report.ratingSent;
+      ratingThanks.hidden = false;
       const gameId = storedGameId;
       if (gameId !== undefined) {
         void telemetry.reportRatings(gameId, ratings);
       }
     }
 
-    /** Forgets the game that is over, as the visitor moves on from it. */
+    /** Forgets the game that is over, and closes its report, as the visitor moves on from it. */
     function forgetEndedGame(): void {
       storedGameId = undefined;
+      hasReport = false;
+      openReportButton.hidden = true;
+      reportDialog.classList.remove('is-in');
+      if (reportDialog.open) {
+        reportDialog.close();
+      }
     }
 
     /**
@@ -650,6 +765,8 @@ const english = TEXTS.en.page;
         evaluations: evaluations,
         texts: pageTexts(),
       });
+      // The report reads the same evaluations, and fills in as they arrive.
+      showReport();
     }
 
     /**

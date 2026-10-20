@@ -1,0 +1,312 @@
+---
+// The report of a game once it is over, in a panel that slides in from the
+// right edge: across a phone's screen, along the right of a wide one. It is
+// no modal, so the page around it stays in use. Its figures are written by
+// src/components/game-report-view.ts into data-report-body; under them, once
+// the game has been stored, the visitor may give their rating on Lichess or
+// Chess.com. The game's script opens and closes it, finds it by
+// data-game-report, and reads and sends the rating fields.
+import BracketLabel from '../atoms/BracketLabel.astro';
+import GameButton from '../molecules/GameButton.astro';
+import { TEXTS } from '../../i18n/texts';
+
+const english = TEXTS.en.page;
+
+const fields = [
+  { name: 'lichess', textKey: 'lichessRating' },
+  { name: 'chesscom', textKey: 'chesscomRating' },
+] as const;
+---
+
+<dialog class="game-report" data-game-report aria-label={english.gameReport} data-text-label="gameReport">
+  <div class="report-head">
+    <BracketLabel as="h2" textKey="gameReport" />
+    <button type="button" class="report-close" data-report-close aria-label={english.close} data-text-label="close">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+    </button>
+  </div>
+
+  <div class="report-body" data-report-body></div>
+
+  <section class="rating" data-rating-section hidden>
+    <!-- The page checks the fields itself, so the message is in its language
+         rather than the browser's. -->
+    <form novalidate data-rating-form>
+      <h3 data-text="ratingTitle">{english.ratingTitle}</h3>
+      <p class="question" data-text="ratingQuestion">{english.ratingQuestion}</p>
+
+      <div class="fields">
+        {
+          fields.map((field) => (
+            <label>
+              <span class="field-name" data-text={field.textKey}>
+                {english[field.textKey]}
+              </span>
+              <input
+                type="text"
+                inputmode="numeric"
+                name={field.name}
+                autocomplete="off"
+                maxlength="4"
+                placeholder="1500"
+                data-rating-field={field.name}
+              />
+            </label>
+          ))
+        }
+      </div>
+
+      <p class="problem" data-text="ratingProblem" data-rating-problem role="alert" hidden>{english.ratingProblem}</p>
+
+      <div class="choices">
+        <GameButton accent type="submit" textKey="send">{english.send}</GameButton>
+      </div>
+    </form>
+    <p class="thanks" data-rating-thanks hidden></p>
+  </section>
+</dialog>
+
+<style>
+  /* Along the right edge, the full height of the screen, and off it until
+     shown: the game's script adds is-in once the dialog is open, and the
+     panel slides in. */
+  .game-report {
+    position: fixed;
+    inset: 0 0 0 auto;
+    z-index: 50;
+    width: min(400px, 100vw);
+    height: 100dvh;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    padding: 18px 20px 24px;
+    overflow-y: auto;
+    border: 0;
+    border-left: var(--line);
+    border-radius: 0;
+    background: var(--paper-light);
+    color: var(--ink);
+    transform: translateX(100%);
+    transition: transform 320ms ease-out;
+  }
+
+  .game-report.is-in {
+    transform: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .game-report {
+      transition: none;
+    }
+  }
+
+  .report-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .report-head :global(h2) {
+    margin: 0;
+  }
+
+  .report-close {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: var(--line);
+    background: var(--paper);
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  .report-close svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+  }
+
+  .report-close:hover,
+  .report-close:focus-visible {
+    background: var(--accent);
+    outline: none;
+  }
+
+  /* What game-report-view.ts writes, so the selectors reach past this
+     component's scope. */
+  .report-body {
+    display: grid;
+    gap: 18px;
+    font-size: 13px;
+  }
+
+  .report-body :global(p) {
+    margin: 0;
+  }
+
+  .report-body :global(.headline) {
+    display: grid;
+    gap: 6px;
+  }
+
+  .report-body :global(.share) {
+    font-family: var(--font-title);
+    font-size: 48px;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--accent);
+  }
+
+  .report-body :global(.camille) {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .report-body :global(section) {
+    display: grid;
+    gap: 8px;
+  }
+
+  .report-body :global(h3),
+  .rating h3 {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+
+  .report-body :global(.losses) {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  .report-body :global(.losses th) {
+    padding: 0 0 4px;
+    border-bottom: var(--line);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 400;
+    text-align: right;
+    color: var(--ink-soft);
+  }
+
+  .report-body :global(.losses td) {
+    padding: 4px 0;
+    border-bottom: 1px solid var(--ink-faint);
+    font-family: var(--font-mono);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .report-body :global(.losses th:first-child),
+  .report-body :global(.losses td:first-child) {
+    font-family: var(--font-body);
+    text-align: left;
+  }
+
+  .report-body :global(.losses td + td),
+  .report-body :global(.losses th + th) {
+    padding-left: 8px;
+  }
+
+  .report-body :global(.improbable-moves) {
+    display: grid;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+
+  .report-body :global(.pending) {
+    padding-left: 10px;
+    border-left: 3px solid var(--accent);
+  }
+
+  .report-body :global(.source) {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    line-height: 1.5;
+    color: var(--ink-soft);
+  }
+
+  .rating {
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: var(--line);
+  }
+
+  .rating form {
+    display: grid;
+    gap: 10px;
+  }
+
+  .question {
+    margin: 0;
+    font-size: 13px;
+  }
+
+  .fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  label {
+    display: grid;
+    gap: 4px;
+  }
+
+  .field-name {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+
+  input {
+    width: 100%;
+    min-width: 0;
+    padding: 8px;
+    border: var(--line);
+    border-radius: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 16px;
+  }
+
+  input:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  .problem {
+    margin: 0;
+    padding-left: 10px;
+    border-left: 3px solid var(--accent);
+    font-size: 12px;
+  }
+
+  .choices {
+    display: flex;
+  }
+
+  .thanks {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+</style>
