@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { currentFen, newGame, playMove } from '../game/game';
 import type { BotMove } from '../engine/move-selection';
-import { camilleFigures, gameReport, reportedMovesOf, type ReportedMove } from './game-report';
+import { camilleFigures, gameReport, moveMatching, reportedMovesOf, type ReportedMove } from './game-report';
 import { botMovesOf, replyKey } from './explained-moves';
 import { RARITY_LADDER, type ShippedImprobabilityYardstick, type ShippedLossYardstick } from './yardsticks';
 
@@ -177,5 +177,17 @@ describe("the Bot's moves as the report reads them", () => {
     expect(reported.modelProbability).toBe(0.3);
     expect(reported.positionAfter).toBe('rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq');
     expect(reported.evaluation).toBe('pending');
+  });
+});
+
+describe('how often the model guesses Camille\'s move', () => {
+  it('reads the fine-tuned model and the untrained one on the Test Set, as times in 100', () => {
+    const results = {
+      rating: 1100,
+      baseline: { overall: { matched: 3533, positions: 7092, games: 230 } },
+      variants: { full: { testSet: { overall: { matched: 3822, positions: 7092, games: 230 } } } },
+    };
+
+    expect(moveMatching(results)).toEqual({ games: 230, fineTuned: 54, untrained: 50, rating: 1100 });
   });
 });

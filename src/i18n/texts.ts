@@ -98,6 +98,7 @@ export interface ReportTexts {
   /** What the share in large counts. */
   plausible: string;
   camilleShare(share: string): string;
+  moveMatching(games: number, fineTuned: number, untrained: number, rating: number): string;
   followed: string;
   fromBook(moves: number): string;
   reached(count: number, of: number): string;
@@ -365,6 +366,9 @@ const ENGLISH: Texts = {
       "of the Bot's moves are moves Camille could have played: either from his opening repertoire, or moves that, " +
       'going by his games, he would play at least once in 100 in that position.',
     camilleShare: (share) => `Camille's own moves: ${share}.`,
+    moveMatching: (games, fineTuned, untrained, rating) =>
+      `On ${games} of Camille's games it never saw, the model guesses his exact move ${fineTuned} times in 100. ` +
+      `Any player at ${rating}: ${untrained}.`,
     followed: 'Where it followed Camille',
     fromBook: (moves) => `${english(moves, 'move', 'moves')} from Camille's opening repertoire.`,
     reached: (count, of) => `${count} of its ${english(of, 'other move', 'other moves')} up to move 15 led to a position Camille reached himself.`,
@@ -578,6 +582,9 @@ const FRENCH: Texts = {
       `des coups du Bot sont des coups que Camille aurait pu jouer${NO_BREAK}: soit tirés de son répertoire d’ouverture, ` +
       'soit des coups que, d’après ses parties, il jouerait au moins une fois sur 100 dans cette position.',
     camilleShare: (share) => `Les coups de Camille lui-même${NO_BREAK}: ${share}.`,
+    moveMatching: (games, fineTuned, untrained, rating) =>
+      `Sur ${games} parties de Camille qu’il n’a jamais vues, le modèle devine son coup exact ${fineTuned} fois sur 100. ` +
+      `Un joueur de ${rating} quelconque${NO_BREAK}: ${untrained}.`,
     followed: 'Où il a suivi Camille',
     fromBook: (moves) => `${french(moves, 'coup tiré', 'coups tirés')} du répertoire d’ouverture de Camille.`,
     reached: (count, of) =>

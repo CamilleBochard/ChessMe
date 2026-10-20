@@ -4,16 +4,25 @@
 // moves he rarely plays. src/explanation/game-report.ts works out every
 // figure; this only writes them out, each beside Camille's own.
 
-import type { CamilleFigures, GameReport } from '../explanation/game-report';
-import { PHASES } from '../evaluation/move-matching';
-import type { Texts } from '../i18n/texts';
+import fineTuningResults from '../../docs/experiments/results/fine-tuning.json';
+import {
+  camilleFigures,
+  moveMatching,
+  type CamilleFigures,
+  type FineTuningResults,
+  type GameReport,
+} from '../explanation/game-report';
 import improbabilityFile from '../explanation/improbability-yardstick.json';
 import lossFile from '../explanation/loss-yardstick.json';
-import { camilleFigures } from '../explanation/game-report';
 import type { ShippedImprobabilityYardstick, ShippedLossYardstick } from '../explanation/yardsticks';
+import { PHASES } from '../evaluation/move-matching';
+import type { Texts } from '../i18n/texts';
 
 const lossYardstick = lossFile as ShippedLossYardstick;
 const camille: CamilleFigures = camilleFigures(lossYardstick, improbabilityFile as ShippedImprobabilityYardstick);
+// Read from the fine-tuning experiment's own results, so the report follows
+// them if the model is trained again.
+const matching = moveMatching(fineTuningResults as FineTuningResults);
 
 /** Where the reading of Camille's positions stands. */
 export type PositionsState = 'reading' | 'read' | 'unavailable';
@@ -86,7 +95,11 @@ function headline(report: GameReport, texts: Texts): HTMLElement {
   const meaning = paragraph(texts.report.plausible);
   const camilleLine = paragraph(texts.report.camilleShare(texts.percent(camille.plausibleShare, 0)));
   camilleLine.classList.add('camille');
-  block.append(figure, meaning, camilleLine);
+  const matchingLine = paragraph(
+    texts.report.moveMatching(matching.games, matching.fineTuned, matching.untrained, matching.rating),
+  );
+  matchingLine.classList.add('matching');
+  block.append(figure, meaning, camilleLine, matchingLine);
   return block;
 }
 

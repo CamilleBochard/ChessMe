@@ -168,6 +168,14 @@ const fields = [
     font-weight: 700;
   }
 
+  /* The measure that says how much the model knows him, set apart from the
+     game's own figures. */
+  .report-body :global(.matching) {
+    margin-top: 4px;
+    padding-left: 10px;
+    border-left: 3px solid var(--accent);
+  }
+
   .report-body :global(section) {
     display: grid;
     gap: 8px;

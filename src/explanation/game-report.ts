@@ -232,3 +232,44 @@ export function camilleFigures(losses: ShippedLossYardstick, improbability: Ship
 
   return { plausibleShare: plausibleShare, overThreePawnsShare: overThreePawnsShare, lossRanges: lossRanges };
 }
+
+/** The parts of docs/experiments/results/fine-tuning.json the report reads. */
+export interface FineTuningResults {
+  rating: number;
+  baseline: { overall: MatchedCount };
+  variants: { full: { testSet: { overall: MatchedCount } } };
+}
+
+interface MatchedCount {
+  matched: number;
+  positions: number;
+  games: number;
+}
+
+/** How often a model's first choice is Camille's move on his Test Set, in times in 100. */
+export interface MoveMatching {
+  /** How many of his games the Test Set holds: none of them was trained on. */
+  games: number;
+  /** The model the Bot plays, fine-tuned on his other games. */
+  fineTuned: number;
+  /** The same model before it saw any of his games: any player at his rating. */
+  untrained: number;
+  rating: number;
+}
+
+/**
+ * Move-Matching on the Test Set, as the fine-tuning experiment measured it:
+ * the model alone, on its first choice. The untrained model's figure is
+ * what a player at his rating gets without knowing him, so the gap between
+ * the two is what his games taught it.
+ */
+export function moveMatching(results: FineTuningResults): MoveMatching {
+  const fineTuned = results.variants.full.testSet.overall;
+  const untrained = results.baseline.overall;
+  return {
+    games: fineTuned.games,
+    fineTuned: Math.round((100 * fineTuned.matched) / fineTuned.positions),
+    untrained: Math.round((100 * untrained.matched) / untrained.positions),
+    rating: results.rating,
+  };
+}
