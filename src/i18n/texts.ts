@@ -364,7 +364,7 @@ const ENGLISH: Texts = {
     lost: (centipawns) => `Stockfish: the move lost ${centipawns} centipawns against the best move.`,
     legendCamille: (moves) => `Camille, ${moves.toLocaleString('en')} moves`,
     legendBot: (moves) => `The Bot this game, ${english(moves, 'move', 'moves')}`,
-    legendBand: (moves) => `Where chance alone puts Camille on ${english(moves, 'move', 'moves')}`,
+    legendBand: (moves) => `Margin of chance for Camille over ${english(moves, 'move', 'moves')}`,
     chartReading:
       'Share of moves that lost at most so many centipawns, in positions still open. ' +
       'Higher and further left: fewer and smaller mistakes.',
@@ -549,7 +549,7 @@ const FRENCH: Texts = {
     lost: (centipawns) => `Stockfish${NO_BREAK}: le coup a perdu ${centipawns} centipions par rapport au meilleur coup.`,
     legendCamille: (moves) => `Camille, ${moves.toLocaleString('fr')} coups`,
     legendBot: (moves) => `Le Bot dans cette partie, ${french(moves, 'coup', 'coups')}`,
-    legendBand: (moves) => `Où le seul hasard place Camille sur ${french(moves, 'coup', 'coups')}`,
+    legendBand: (moves) => `Marge du hasard pour Camille sur ${french(moves, 'coup', 'coups')}`,
     chartReading:
       'Part des coups qui ont perdu au plus tant de centipions, dans les positions encore ouvertes. ' +
       `Plus haut et plus à gauche${NO_BREAK}: des erreurs moins nombreuses et plus petites.`,
