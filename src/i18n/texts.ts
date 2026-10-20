@@ -361,7 +361,9 @@ const ENGLISH: Texts = {
   decimal: (value, decimals) => value.toFixed(decimals),
   writeMove: (san) => notation(san, 'en'),
   report: {
-    plausible: "of the Bot's moves are moves Camille could have played: from his opening repertoire, or ones the model trained on his games gave at least 1%.",
+    plausible:
+      "of the Bot's moves are moves Camille could have played: either from his opening repertoire, or moves that, " +
+      'going by his games, he would play at least once in 100 in that position.',
     camilleShare: (share) => `Camille's own moves: ${share}.`,
     followed: 'Where it followed Camille',
     fromBook: (moves) => `${english(moves, 'move', 'moves')} from Camille's opening repertoire.`,
@@ -379,14 +381,14 @@ const ENGLISH: Texts = {
     notMeasured: '–',
     costly: (count, of, share, camilleShare) =>
       `${count} of ${english(of, 'move', 'moves')} lost more than 3 pawns (${share}). Camille: ${camilleShare}.`,
-    improbable: 'Moves Camille rarely plays, under 1%',
+    improbable: 'Moves Camille plays less than once in 100',
     improbableMove: (move, probability, pawnsLost) => {
       if (pawnsLost === null) {
         return `${move}: ${probability}`;
       }
       return `${move}: ${probability}, lost ${pawnsLost} pawns`;
     },
-    noImprobable: 'None: every move was one Camille plays at least 1% of the time.',
+    noImprobable: 'None: Camille plays each of its moves at least once in 100 in that position.',
     pending: (moves) => `Stockfish is still measuring ${english(moves, 'move', 'moves')} of the Bot's.`,
     source: (games) =>
       `Camille's figures: his ${games} games for the losses, the games the model was not trained on for the moves.`,
@@ -573,8 +575,8 @@ const FRENCH: Texts = {
   writeMove: (san) => notation(san, 'fr'),
   report: {
     plausible:
-      `des coups du Bot sont des coups que Camille aurait pu jouer${NO_BREAK}: tirés de son répertoire d’ouverture, ` +
-      `ou auxquels le modèle entraîné sur ses parties donnait au moins 1${NO_BREAK}%.`,
+      `des coups du Bot sont des coups que Camille aurait pu jouer${NO_BREAK}: soit tirés de son répertoire d’ouverture, ` +
+      'soit des coups que, d’après ses parties, il jouerait au moins une fois sur 100 dans cette position.',
     camilleShare: (share) => `Les coups de Camille lui-même${NO_BREAK}: ${share}.`,
     followed: 'Où il a suivi Camille',
     fromBook: (moves) => `${french(moves, 'coup tiré', 'coups tirés')} du répertoire d’ouverture de Camille.`,
@@ -598,14 +600,14 @@ const FRENCH: Texts = {
       }
       return `${french(count, 'coup', 'coups')} sur ${of} ${lost} plus de 3 pions (${share}). Camille${NO_BREAK}: ${camilleShare}.`;
     },
-    improbable: `Coups que Camille joue rarement, sous 1${NO_BREAK}%`,
+    improbable: 'Coups que Camille joue moins d’une fois sur 100',
     improbableMove: (move, probability, pawnsLost) => {
       if (pawnsLost === null) {
         return `${move}${NO_BREAK}: ${probability}`;
       }
       return `${move}${NO_BREAK}: ${probability}, a perdu ${pawnsLost} pions`;
     },
-    noImprobable: `Aucun${NO_BREAK}: chaque coup est un coup que Camille joue au moins 1${NO_BREAK}% du temps.`,
+    noImprobable: `Aucun${NO_BREAK}: Camille joue chacun de ses coups au moins une fois sur 100 dans cette position.`,
     pending: (moves) => `Stockfish mesure encore ${french(moves, 'coup', 'coups')} du Bot.`,
     source: (games) =>
       `Les chiffres de Camille${NO_BREAK}: ses ${games} parties pour les pertes, les parties sur lesquelles le modèle n’a pas été entraîné pour les coups.`,
