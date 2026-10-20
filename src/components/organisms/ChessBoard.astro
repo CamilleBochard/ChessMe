@@ -8,7 +8,9 @@ import { TEXTS } from '../../i18n/texts';
 // its base stylesheet for layout and dragging; everything it would take from a
 // board or piece theme comes from the portfolio's look instead, below. The
 // board is played and redrawn by the game's script, which finds the drawing
-// element by data-board and the dialog by data-promotion.
+// element by data-board and the dialog by data-promotion. What the page puts
+// in the slot, and the dialogs the script moves into data-board-overlay,
+// stand over the board as part of the page, never blocking the rest of it.
 
 const english = TEXTS.en.page;
 ---
@@ -16,6 +18,7 @@ const english = TEXTS.en.page;
 <div class="board-surround">
   <EvaluationBar />
   <div class="board" data-board></div>
+  <div class="board-overlay" data-board-overlay><slot /></div>
 </div>
 
 <dialog class="promotion" data-promotion aria-label={english.choosePromotion} data-text-label="choosePromotion">
@@ -250,6 +253,24 @@ const english = TEXTS.en.page;
     .board-surround:has(:global(.evaluation-bar:not([hidden]))) {
       --bar-space: calc(var(--evaluation-bar-width) + 10px);
     }
+  }
+
+  /* Centres what stands over the board. The layer itself lets clicks
+     through to the board; only an open dialog in it takes them. */
+  .board-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    display: grid;
+    place-items: center;
+    padding: 8px;
+    pointer-events: none;
+  }
+
+  /* The dialogs come from other components, so the selector reaches past
+     this one's scope. */
+  .board-overlay > :global(dialog[open]) {
+    pointer-events: auto;
   }
 
   /* The second, dotted frame, 7 px outside the first. */

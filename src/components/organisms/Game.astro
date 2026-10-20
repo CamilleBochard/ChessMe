@@ -75,7 +75,9 @@ const english = TEXTS.en.page;
       <slot name="header" />
     </div>
     <Clock position="top" />
-    <ChessBoard />
+    <ChessBoard>
+      <RatingDialog />
+    </ChessBoard>
     <Clock position="bottom" />
     <div class="stage-foot">
       <p class="status" data-status aria-live="polite"></p>
@@ -94,7 +96,6 @@ const english = TEXTS.en.page;
     </section>
   </div>
 
-  <RatingDialog />
 </div>
 
 <script>
@@ -163,7 +164,10 @@ const english = TEXTS.en.page;
     const boardElement = frame.querySelector<HTMLElement>('[data-board]')!;
     const statusElement = frame.querySelector<HTMLElement>('[data-status]')!;
     const modelStatus = frame.querySelector<HTMLElement>('[data-model-status]')!;
-    const setup = adaptiveDialog(frame.querySelector<HTMLDialogElement>('[data-setup-dialog]')!, true);
+    // On a phone the settings of a new game stand on the board, where the
+    // game will be, and leave the rest of the page free to read.
+    const boardOverlay = frame.querySelector<HTMLElement>('[data-board-overlay]')!;
+    const setup = adaptiveDialog(frame.querySelector<HTMLDialogElement>('[data-setup-dialog]')!, true, boardOverlay);
     const setupOpeners = frame.querySelectorAll<HTMLButtonElement>('[data-open-setup]');
     const controlsElement = frame.querySelector<HTMLElement>('[data-controls]')!;
     const takeBackButton = frame.querySelector<HTMLButtonElement>('[data-take-back]')!;
@@ -309,6 +313,12 @@ const english = TEXTS.en.page;
     ratingDialog.querySelector<HTMLButtonElement>('[data-rating-close]')!.addEventListener('click', () => {
       ratingDialog.close();
     });
+    // A dialog that is not a modal does not close on Escape by itself.
+    ratingDialog.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        ratingDialog.close();
+      }
+    });
     ratingForm.addEventListener('submit', (event) => {
       // The dialog closes only once the fields hold something to send.
       event.preventDefault();
@@ -408,7 +418,9 @@ const english = TEXTS.en.page;
       lichessField.value = remembered.lichess;
       chesscomField.value = remembered.chesscom;
       ratingProblem.hidden = true;
-      ratingDialog.showModal();
+      // Not a modal: it stands on the board, and the rest of the page stays
+      // free to scroll and use.
+      ratingDialog.show();
     }
 
     /**
