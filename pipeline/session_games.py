@@ -89,6 +89,10 @@ class RejectedRatings(ValueError):
     """The ratings the visitor gave cannot be recorded for that game."""
 
 
+class RatingsAlreadyGiven(RejectedRatings):
+    """The visitor has already given ratings for that game."""
+
+
 class UnknownGame(RejectedImpression, RejectedRatings):
     """No game is stored under the id the impression names."""
 
@@ -288,7 +292,7 @@ def record_visitor_ratings(
     stored = connection.execute("SELECT 1 FROM session_games WHERE id = ?", (game_id,)).fetchone()
     if stored is None:
         raise UnknownGame(f"there is no game {game_id}")
-    raise RejectedRatings("the game has already been given ratings")
+    raise RatingsAlreadyGiven("the game has already been given ratings")
 
 
 def visitor_ratings(connection: sqlite3.Connection) -> list[dict]:

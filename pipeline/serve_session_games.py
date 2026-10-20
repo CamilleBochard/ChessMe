@@ -28,11 +28,14 @@ from pathlib import Path
 from pipeline.player_record import OPENINGS_DIR, read_opening_table
 from pipeline.session_games import (
     RejectedGame,
+    RatingsAlreadyGiven,
     RejectedImpression,
+    RejectedRatings,
     UnknownGame,
     open_store,
     record_impression,
     record_session_game,
+    record_visitor_ratings,
     scalar,
     session_game_counts,
     session_game_record,
@@ -43,6 +46,10 @@ SESSION_GAMES_PATH = "/api/session-games"
 # Where the visitor's end-of-game answer is sent, naming the game by the id
 # the service gave it when it was stored.
 IMPRESSION_PATH = re.compile(r"/api/session-games/(?P<game_id>[0-9a-f-]{36})/impression")
+
+# Where the visitor's Lichess and Chess.com ratings are sent once a game is
+# over, naming the game the same way.
+RATINGS_PATH = re.compile(r"/api/session-games/(?P<game_id>[0-9a-f-]{36})/ratings")
 
 # What the write-up page reads to show how many games have been played and
 # how the Bot fared, as they stand when the page is read.
@@ -98,6 +105,11 @@ def make_server(database: Path, table: dict[str, str], host: str, port: int) -> 
             impression_path = IMPRESSION_PATH.fullmatch(self.path)
             if impression_path is not None:
                 self.receive_impression(impression_path["game_id"])
+                return
+
+            ratings_path = RATINGS_PATH.fullmatch(self.path)
+            if ratings_path is not None:
+                self.receive_ratings(ratings_path["game_id"])
                 return
 
             self.reply(HTTPStatus.NOT_FOUND, {"error": "no such endpoint"})
@@ -165,6 +177,34 @@ def make_server(database: Path, table: dict[str, str], host: str, port: int) -> 
                 return
             except RejectedImpression as rejection:
                 self.reply(HTTPStatus.CONFLICT, {"error": str(rejection)})
+                return
+            finally:
+                store.close()
+
+            self.reply(HTTPStatus.NO_CONTENT, None)
+
+        def receive_ratings(self, game_id: str) -> None:
+            try:
+                answer = self.read_json_body()
+            except BadRequest as problem:
+                self.reply(problem.status, {"error": problem.reason})
+                return
+
+            if not isinstance(answer, dict):
+                self.reply(HTTPStatus.BAD_REQUEST, {"error": "the answer is not an object"})
+                return
+
+            store = open_store(database)
+            try:
+                record_visitor_ratings(store, game_id, lichess=answer.get("lichess"), chesscom=answer.get("chesscom"))
+            except UnknownGame as rejection:
+                self.reply(HTTPStatus.NOT_FOUND, {"error": str(rejection)})
+                return
+            except RatingsAlreadyGiven as rejection:
+                self.reply(HTTPStatus.CONFLICT, {"error": str(rejection)})
+                return
+            except RejectedRatings as rejection:
+                self.reply(HTTPStatus.BAD_REQUEST, {"error": str(rejection)})
                 return
             finally:
                 store.close()

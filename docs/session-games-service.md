@@ -7,10 +7,22 @@ reached through the reverse proxy under `/api/`. ADR-0002 records why.
 ## What it stores
 
 One row per finished game in a SQLite file: the date (not the time), which
-colour the Bot played, the result, the PGN, and the visitor's answer to the
-end-of-game question once given. A second table holds, for each of the Bot's
-moves, whether it came from the Opening Book or the Base Model. No account,
-cookie or address is stored, and the service's own output names no client.
+colour the Bot played, the result, the PGN, whether analysis mode was on,
+and the ratings the visitor gave once the game was over, on Lichess and on
+Chess.com, if they gave any. Games from before the rating was asked may also
+hold the visitor's answer to the end-of-game question the page used to ask.
+A second table holds, for each of the Bot's moves, whether it came from the
+Opening Book or the Base Model. No account, cookie or address is stored, and
+the service's own output names no client.
+
+The ratings come from `POST /api/session-games/<id>/ratings`, with
+`{"lichess": 1650, "chesscom": null}`: whole numbers from 100 to 3500, at
+least one of the two, and only the first answer for a game. It goes through
+the same rate limit as game reports. To read them offline:
+
+```sh
+python -c "from pipeline.session_games import open_store, visitor_ratings; print(visitor_ratings(open_store('data/session-games.sqlite')))"
+```
 
 A game the visitor did not finish is never sent, and the service refuses
 one that has not ended. A game the visitor resigned counts as finished: it
