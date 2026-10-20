@@ -6,7 +6,8 @@
 // panel explaining the Bot's moves. On a phone the board comes first, the
 // settings, the pieces and the stats open over it from buttons under it, and
 // the moves follow right below. Once a game is over and stored, a popup asks
-// the visitor for their ratings. The page puts its title in the header slot. The rules live in src/game/, the Bot's choice in
+// the visitor for their ratings. The page puts its title in the header slot,
+// a bar across the top on plain paper, above the columns. The rules live in src/game/, the Bot's choice in
 // src/engine/ and what the visitor may do when in src/session/; the script
 // below only translates between them, chessground (which draws the board and
 // handles dragging and clicking) and the markup of the components, which it
@@ -57,6 +58,10 @@ const english = TEXTS.en.page;
   data-base-model={baseModelName}
   data-engine-path={enginePath}
 >
+  <div class="top-bar">
+    <slot name="header" />
+  </div>
+
   <aside class="settings" aria-label={english.gameSettings} data-text-label="gameSettings">
     <section class="side-section controls">
       <CornerMarks />
@@ -71,9 +76,6 @@ const english = TEXTS.en.page;
   </aside>
 
   <div class="stage">
-    <div class="stage-head">
-      <slot name="header" />
-    </div>
     <Clock position="top" />
     <ChessBoard>
       <RatingDialog />
@@ -993,12 +995,21 @@ const english = TEXTS.en.page;
   /* On a phone everything stacks: the title, the board between the two
      clocks, the status with the buttons that open the settings, the pieces
      and the record, the buttons of a game in progress, then the moves and the
-     panel. From 960px three columns: the settings on the left at 230px, the
-     moves and the panel on the right at 320px, and the board centred
-     between them. */
+     panel. From 960px the title's bar runs across the top, over three
+     columns: the settings on the left at 230px, the moves and the panel on
+     the right at 320px, and the board centred between them. */
   .game {
     display: flex;
     flex-direction: column;
+  }
+
+  /* The title's bar, across the page and on plain paper, since the grid
+     of dots under small text makes it hard to read. */
+  .top-bar {
+    order: 0;
+    padding: 12px 16px;
+    border-bottom: var(--line);
+    background: var(--paper);
   }
 
   .stage {
@@ -1018,10 +1029,6 @@ const english = TEXTS.en.page;
     order: 3;
     border-top: var(--line);
     background: var(--paper);
-  }
-
-  .stage-head {
-    margin-bottom: 4px;
   }
 
   .stage-foot {
@@ -1078,7 +1085,13 @@ const english = TEXTS.en.page;
     .game {
       display: grid;
       grid-template-columns: 230px minmax(0, 1fr) 320px;
+      grid-template-rows: auto minmax(0, 1fr);
       height: 100dvh;
+    }
+
+    .top-bar {
+      grid-column: 1 / -1;
+      padding: 14px 32px;
     }
 
     .stage,

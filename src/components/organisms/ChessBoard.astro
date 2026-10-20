@@ -220,8 +220,8 @@ const english = TEXTS.en.page;
      above the clocks and status on a wide screen, the screen's width less a
      margin on a phone. Chessground sizes itself to its element. The 670 px
      kept free across the screen are the game's 230 px and 320 px side
-     columns and 120 px of room around the board; the 220 px kept free down
-     it hold the title, the two clocks and the status. */
+     columns and 120 px of room around the board; the 250 px kept free down
+     it hold the title's bar, the two clocks and the status. */
   /* In analysis mode the evaluation bar takes its width from the board's,
      so the frame keeps its width and the clocks above and below theirs. */
   .board-surround {
@@ -238,7 +238,7 @@ const english = TEXTS.en.page;
 
   @media (min-width: 960px) {
     .board-surround {
-      --board-size: min(640px, calc(100vw - 670px), calc(100vh - 220px));
+      --board-size: min(640px, calc(100vw - 670px), calc(100vh - 250px));
       --evaluation-bar-width: 16px;
       gap: 10px;
       padding: 10px;
