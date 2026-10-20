@@ -727,14 +727,14 @@ const english = TEXTS.en.page;
       }
     }
 
-    /** True when the visitor has chosen, or left chosen, to play with a clock. */
+    /** True when the visitor has chosen to play with a clock; a game is untimed unless they do. */
     function isClockChosen(): boolean {
       for (const choice of clockChoices) {
         if (choice.checked) {
           return choice.value === 'timed';
         }
       }
-      return true;
+      return false;
     }
 
     /**
