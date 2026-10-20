@@ -11,7 +11,7 @@ import LanguageSwitch from '../components/molecules/LanguageSwitch.astro';
   <Game>
     <header class="intro" slot="header">
       <h1>ChessMe</h1>
-      <MicroText as="p" textKey="intro">Play a game against a bot that imitates Camille.</MicroText>
+      <MicroText as="p" class="intro-line" textKey="intro">Play a game against a bot that imitates Camille.</MicroText>
       <LanguageSwitch />
     </header>
   </Game>
@@ -34,5 +34,11 @@ import LanguageSwitch from '../components/molecules/LanguageSwitch.astro';
     letter-spacing: 0.04em;
     line-height: 1.1;
     text-transform: uppercase;
+  }
+
+  /* The line that says what the page is for, in full ink: micro text's soft
+     ink lies under 4.5:1 against the paper at this size. */
+  .intro :global(.intro-line) {
+    color: var(--ink);
   }
 </style>
