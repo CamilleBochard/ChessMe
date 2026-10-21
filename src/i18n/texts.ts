@@ -101,7 +101,8 @@ export interface ReportTexts {
   guessed(games: number): string;
   followed: string;
   fromBook(moves: number): string;
-  reached(count: number, of: number): string;
+  reached(count: number): string;
+  noneReached: string;
   noEarlyModelMove: string;
   readingPositions: string;
   positionsUnavailable: string;
@@ -366,7 +367,9 @@ const ENGLISH: Texts = {
     guessed: (games) => `of Camille's moves are guessed exactly by the Bot's model, on ${games} of his games it never saw.`,
     followed: 'Where it followed Camille',
     fromBook: (moves) => `${english(moves, 'move', 'moves')} from Camille's opening repertoire.`,
-    reached: (count, of) => `${count} of its ${english(of, 'other move', 'other moves')} up to move 15 led to a position Camille reached himself.`,
+    reached: (count) =>
+      `Out of its opening repertoire, ${english(count, 'position', 'positions')} of this game already came up in Camille's games.`,
+    noneReached: "Once out of the opening, no position up to move 15 comes from a game Camille has played.",
     noEarlyModelMove: 'No other move up to move 15 to compare with his positions.',
     readingPositions: "Reading Camille's positions…",
     positionsUnavailable: "Camille's positions could not be read.",
@@ -577,8 +580,16 @@ const FRENCH: Texts = {
       `des coups de Camille sont devinés exactement par le modèle du Bot, sur ${games} de ses parties qu’il n’a jamais vues.`,
     followed: 'Où il a suivi Camille',
     fromBook: (moves) => `${french(moves, 'coup tiré', 'coups tirés')} du répertoire d’ouverture de Camille.`,
-    reached: (count, of) =>
-      `${count} de ses ${french(of, 'autre coup', 'autres coups')} jusqu’au 15e mènent à une position que Camille a lui-même atteinte.`,
+    reached: (count) => {
+      let cameUp = 'sont déjà apparues';
+      if (count < 2) {
+        cameUp = 'est déjà apparue';
+      }
+      const positions = french(count, 'position', 'positions');
+      return `Hors de son répertoire d’ouverture, ${positions} de cette partie ${cameUp} dans les parties de Camille.`;
+    },
+    noneReached:
+      'Une fois sorti de l’ouverture, aucune position jusqu’au 15e coup ne provient d’une partie déjà jouée par Camille.',
     noEarlyModelMove: 'Aucun autre coup jusqu’au 15e à comparer avec ses positions.',
     readingPositions: 'Lecture des positions de Camille…',
     positionsUnavailable: 'Les positions de Camille n’ont pas pu être lues.',

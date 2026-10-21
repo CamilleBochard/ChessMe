@@ -35,6 +35,7 @@ export function showGameReport(body: HTMLElement, report: GameReport, positions:
   sections.push(guessedBlock(texts));
 
   const followed = section(words.followed);
+  followed.classList.add('card');
   followed.append(paragraph(words.fromBook(report.fromOpeningBook)));
   followed.append(paragraph(reachedText(report, positions, texts)));
   sections.push(followed);
@@ -115,7 +116,10 @@ function reachedText(report: GameReport, positions: PositionsState, texts: Texts
   if (report.reachedByCamille.of === 0) {
     return texts.report.noEarlyModelMove;
   }
-  return texts.report.reached(report.reachedByCamille.count, report.reachedByCamille.of);
+  if (report.reachedByCamille.count === 0) {
+    return texts.report.noneReached;
+  }
+  return texts.report.reached(report.reachedByCamille.count);
 }
 
 /** Per Phase, the Bot's average loss this game beside the range 8 in 10 of Camille's games cover. */
