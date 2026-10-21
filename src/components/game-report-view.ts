@@ -12,14 +12,13 @@ import {
   type FineTuningResults,
   type GameReport,
 } from '../explanation/game-report';
-import improbabilityFile from '../explanation/improbability-yardstick.json';
 import lossFile from '../explanation/loss-yardstick.json';
-import type { ShippedImprobabilityYardstick, ShippedLossYardstick } from '../explanation/yardsticks';
+import type { ShippedLossYardstick } from '../explanation/yardsticks';
 import { PHASES } from '../evaluation/move-matching';
 import type { Texts } from '../i18n/texts';
 
 const lossYardstick = lossFile as ShippedLossYardstick;
-const camille: CamilleFigures = camilleFigures(lossYardstick, improbabilityFile as ShippedImprobabilityYardstick);
+const camille: CamilleFigures = camilleFigures(lossYardstick);
 // Read from the fine-tuning experiment's own results, so the report follows
 // them if the model is trained again.
 const matching = moveMatching(fineTuningResults as FineTuningResults);
@@ -81,7 +80,7 @@ export function showGameReport(body: HTMLElement, report: GameReport, positions:
   body.replaceChildren(...sections);
 }
 
-/** The share in large, its meaning, and Camille's own share under it. */
+/** The share in large and its meaning, then how often the model guesses his move. */
 function headline(report: GameReport, texts: Texts): HTMLElement {
   const block = document.createElement('div');
   block.className = 'headline';
@@ -93,13 +92,11 @@ function headline(report: GameReport, texts: Texts): HTMLElement {
     figure.textContent = texts.report.notMeasured;
   }
   const meaning = paragraph(texts.report.plausible);
-  const camilleLine = paragraph(texts.report.camilleShare(texts.percent(camille.plausibleShare, 0)));
-  camilleLine.classList.add('camille');
   const matchingLine = paragraph(
     texts.report.moveMatching(matching.games, matching.fineTuned, matching.untrained, matching.rating),
   );
   matchingLine.classList.add('matching');
-  block.append(figure, meaning, camilleLine, matchingLine);
+  block.append(figure, meaning, matchingLine);
   return block;
 }
 

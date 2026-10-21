@@ -10,14 +10,7 @@ import { PHASES, type Phase } from '../evaluation/move-matching';
 import { currentFen, playMove } from '../game/game';
 import { moveKeyOf, type ExplainedMove } from './explained-moves';
 import type { MoveEvaluation } from './panel';
-import {
-  IMPROBABLE_BELOW,
-  LOSS_PROFILE_EDGES,
-  moveRarity,
-  type Spread,
-  type ShippedImprobabilityYardstick,
-  type ShippedLossYardstick,
-} from './yardsticks';
+import { IMPROBABLE_BELOW, LOSS_PROFILE_EDGES, type Spread, type ShippedLossYardstick } from './yardsticks';
 
 /** One of the Bot's moves, as the report reads it. */
 export interface ReportedMove {
@@ -196,32 +189,16 @@ function isPlausible(move: ReportedMove): boolean {
   return move.modelProbability >= IMPROBABLE_BELOW;
 }
 
-/** Camille's own figures, read from his yardsticks, that the report sets the Bot's beside. */
+/** Camille's own figures, read from his loss yardstick, that the report sets the Bot's beside. */
 export interface CamilleFigures {
-  /** The share of his moves he could have played by the report's measure: from his Opening Book, or at 1% or more. */
-  plausibleShare: number;
   /** The share of his moves in open positions that lost more than three pawns. */
   overThreePawnsShare: number;
   /** Per Phase, the range of average loss 8 in 10 of his games cover; null where a game holds too few moves. */
   lossRanges: Record<Phase, Spread | null>;
 }
 
-/**
- * Camille's figures from his yardsticks. His moves are those of his Test Set,
- * which the model was not trained on.
- */
-export function camilleFigures(losses: ShippedLossYardstick, improbability: ShippedImprobabilityYardstick): CamilleFigures {
-  // His moves in Opening Book positions are not in the phases, and are
-  // plausible by the report's measure, as the Bot's book moves are. The
-  // yardstick reads his moves at or below 1%, a hair more than the Bot's
-  // under 1%: few moves sit at exactly 1%.
-  let improbable = 0;
-  for (const phase of PHASES) {
-    const phaseYardstick = improbability.phases[phase];
-    improbable += phaseYardstick.moves * moveRarity(improbability, phase, IMPROBABLE_BELOW);
-  }
-  const plausibleShare = (improbability.moves - improbable) / improbability.moves;
-
+/** Camille's figures from his loss yardstick, measured on all his games. */
+export function camilleFigures(losses: ShippedLossYardstick): CamilleFigures {
   const costlyEdge = LOSS_PROFILE_EDGES.indexOf(COSTLY_LOSS);
   const overThreePawnsShare = 1 - losses.profile.atMost[costlyEdge];
 
@@ -230,7 +207,7 @@ export function camilleFigures(losses: ShippedLossYardstick, improbability: Ship
     lossRanges[phase] = losses.phases[phase].perGame;
   }
 
-  return { plausibleShare: plausibleShare, overThreePawnsShare: overThreePawnsShare, lossRanges: lossRanges };
+  return { overThreePawnsShare: overThreePawnsShare, lossRanges: lossRanges };
 }
 
 /** The parts of docs/experiments/results/fine-tuning.json the report reads. */

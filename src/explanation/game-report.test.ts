@@ -6,7 +6,7 @@ import { currentFen, newGame, playMove } from '../game/game';
 import type { BotMove } from '../engine/move-selection';
 import { camilleFigures, gameReport, moveMatching, reportedMovesOf, type ReportedMove } from './game-report';
 import { botMovesOf, replyKey } from './explained-moves';
-import { RARITY_LADDER, type ShippedImprobabilityYardstick, type ShippedLossYardstick } from './yardsticks';
+import type { ShippedLossYardstick } from './yardsticks';
 
 /** A Base Model move in the middlegame that lost nothing, changed as each test needs. */
 function move(changes: Partial<ReportedMove> = {}): ReportedMove {
@@ -102,27 +102,7 @@ describe('the report of the Bot\'s game', () => {
   });
 });
 
-/** A curve of shares that reads share at every rung from 1% down, and 1 above it. */
-function rarityCurve(shareUnderOnePercent: number): number[] {
-  return RARITY_LADDER.map((rung) => (rung <= 0.0100001 ? shareUnderOnePercent : 1));
-}
-
 describe("Camille's figures the report sets the Bot's beside", () => {
-  const improbability: ShippedImprobabilityYardstick = {
-    measuredOn: '2026-10-14',
-    baseModel: 'model.onnx',
-    rating: 1100,
-    records: 'records.jsonl',
-    games: 3,
-    moves: 100,
-    movesOutsideOpeningBook: 80,
-    movesForAVerdict: 8,
-    phases: {
-      opening: { moves: 10, atOrBelow: rarityCurve(0), perGame: null },
-      middlegame: { moves: 40, atOrBelow: rarityCurve(0.05), perGame: null },
-      endgame: { moves: 30, atOrBelow: rarityCurve(0.1), perGame: null },
-    },
-  };
   const losses: ShippedLossYardstick = {
     measuredOn: '2026-10-15',
     engine: 'Stockfish 19 Lite WASM',
@@ -139,13 +119,8 @@ describe("Camille's figures the report sets the Bot's beside", () => {
     profile: { moves: 100, atMost: [0.4, 0.5, 0.6, 0.7, 0.8, 0.85, 0.92, 0.96, 0.99] },
   };
 
-  it('counts his Opening Book moves as plausible, and his other moves at 1% or more', () => {
-    // 20 book moves, then 0 + 2 + 3 improbable among the 80 others.
-    expect(camilleFigures(losses, improbability).plausibleShare).toBeCloseTo(0.95);
-  });
-
   it('reads the share of his moves that lost more than three pawns, and the range of his games per Phase', () => {
-    const figures = camilleFigures(losses, improbability);
+    const figures = camilleFigures(losses);
 
     // 92% of his moves lost at most 300 centipawns.
     expect(figures.overThreePawnsShare).toBeCloseTo(0.08);

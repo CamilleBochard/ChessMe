@@ -97,7 +97,6 @@ export interface PanelTexts {
 export interface ReportTexts {
   /** What the share in large counts. */
   plausible: string;
-  camilleShare(share: string): string;
   moveMatching(games: number, fineTuned: number, untrained: number, rating: number): string;
   followed: string;
   fromBook(moves: number): string;
@@ -362,10 +361,7 @@ const ENGLISH: Texts = {
   decimal: (value, decimals) => value.toFixed(decimals),
   writeMove: (san) => notation(san, 'en'),
   report: {
-    plausible:
-      "of the Bot's moves are moves Camille could have played: either from his opening repertoire, or moves that, " +
-      'going by his games, he would play at least once in 100 in that position.',
-    camilleShare: (share) => `Camille's own moves: ${share}.`,
+    plausible: "of the Bot's moves are moves Camille could have played.",
     moveMatching: (games, fineTuned, untrained, rating) =>
       `On ${games} of Camille's games it never saw, the model guesses his exact move ${fineTuned} times in 100. ` +
       `Any player at ${rating}: ${untrained}.`,
@@ -394,8 +390,7 @@ const ENGLISH: Texts = {
     },
     noImprobable: 'None: Camille plays each of its moves at least once in 100 in that position.',
     pending: (moves) => `Stockfish is still measuring ${english(moves, 'move', 'moves')} of the Bot's.`,
-    source: (games) =>
-      `Camille's figures: his ${games} games for the losses, the games the model was not trained on for the moves.`,
+    source: (games) => `Camille's losses: Stockfish on his ${games} games.`,
     ratingSent: 'Thank you, it is noted.',
   },
   panel: {
@@ -578,10 +573,7 @@ const FRENCH: Texts = {
   decimal: (value, decimals) => value.toFixed(decimals).replace('.', ','),
   writeMove: (san) => notation(san, 'fr'),
   report: {
-    plausible:
-      `des coups du Bot sont des coups que Camille aurait pu jouer${NO_BREAK}: soit tirés de son répertoire d’ouverture, ` +
-      'soit des coups que, d’après ses parties, il jouerait au moins une fois sur 100 dans cette position.',
-    camilleShare: (share) => `Les coups de Camille lui-même${NO_BREAK}: ${share}.`,
+    plausible: 'des coups du Bot sont des coups que Camille aurait pu jouer.',
     moveMatching: (games, fineTuned, untrained, rating) =>
       `Sur ${games} parties de Camille qu’il n’a jamais vues, le modèle devine son coup exact ${fineTuned} fois sur 100. ` +
       `Un joueur de ${rating} quelconque${NO_BREAK}: ${untrained}.`,
@@ -616,8 +608,7 @@ const FRENCH: Texts = {
     },
     noImprobable: `Aucun${NO_BREAK}: Camille joue chacun de ses coups au moins une fois sur 100 dans cette position.`,
     pending: (moves) => `Stockfish mesure encore ${french(moves, 'coup', 'coups')} du Bot.`,
-    source: (games) =>
-      `Les chiffres de Camille${NO_BREAK}: ses ${games} parties pour les pertes, les parties sur lesquelles le modèle n’a pas été entraîné pour les coups.`,
+    source: (games) => `Les pertes de Camille${NO_BREAK}: Stockfish sur ses ${games} parties.`,
     ratingSent: 'Merci, c’est noté.',
   },
   panel: {
