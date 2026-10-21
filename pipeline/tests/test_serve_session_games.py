@@ -7,7 +7,7 @@ import pytest
 
 from pipeline.player_record import opening_table
 from pipeline.serve_session_games import make_server
-from pipeline.session_games import open_store, session_game_counts, session_game_pgns
+from pipeline.session_games import open_store, session_game_counts, session_game_pgns, visitor_ratings
 
 FOOLS_MATE = {
     "botColour": "black",
@@ -187,3 +187,41 @@ def test_writes_no_visitor_address_to_its_output(service, capsys):
 
     assert "127.0.0.1" not in output.out
     assert "127.0.0.1" not in output.err
+
+
+def test_records_the_ratings_a_visitor_gives_for_a_stored_game(service):
+    _, stored = post(service["url"] + "/api/session-games", FOOLS_MATE)
+
+    status, _ = post(service["url"] + f"/api/session-games/{stored['id']}/ratings", {"lichess": 1650, "chesscom": None})
+
+    assert status == 204
+    ratings = visitor_ratings(open_store(service["database"]))
+    assert ratings == [{"game_id": stored["id"], "lichess": 1650, "chesscom": None}]
+
+
+def test_answers_a_second_answer_with_ratings_as_a_conflict(service):
+    _, stored = post(service["url"] + "/api/session-games", FOOLS_MATE)
+    ratings_url = service["url"] + f"/api/session-games/{stored['id']}/ratings"
+    post(ratings_url, {"lichess": 1650, "chesscom": None})
+
+    status, _ = post(ratings_url, {"lichess": None, "chesscom": 1400})
+
+    assert status == 409
+
+
+@pytest.mark.parametrize("answer", [{"lichess": 20, "chesscom": None}, {}, [1500], "1500"])
+def test_answers_ratings_that_cannot_be_recorded_as_a_bad_request(service, answer):
+    _, stored = post(service["url"] + "/api/session-games", FOOLS_MATE)
+
+    status, _ = post(service["url"] + f"/api/session-games/{stored['id']}/ratings", answer)
+
+    assert status == 400
+
+
+def test_answers_ratings_for_an_unknown_game_as_not_found(service):
+    status, _ = post(
+        service["url"] + "/api/session-games/00000000-0000-4000-8000-000000000000/ratings",
+        {"lichess": 1500, "chesscom": None},
+    )
+
+    assert status == 404

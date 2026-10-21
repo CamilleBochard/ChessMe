@@ -182,12 +182,11 @@ const tabs = [
     botPanel.replaceChildren(recordView(record, shownTexts, botFigures(summary), shownTexts.page.botScope));
   }
 
-  /** The figures only the Bot has: where its moves came from, and what visitors made of it. */
+  /** The figures only the Bot has: where its moves came from. */
   function botFigures(summary: SessionGameSummary): ExtraFigure[] {
     const texts = pageTexts();
     return [
       { label: texts.page.fromOpeningBook, value: summary.fromOpeningBook ?? texts.page.noMoveYet },
-      { label: texts.page.feltReal, value: summary.feltLikeARealPlayer ?? texts.page.noAnswerYet },
     ];
   }
 

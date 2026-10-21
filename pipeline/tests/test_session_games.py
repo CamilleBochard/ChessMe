@@ -7,12 +7,16 @@ from pipeline.player_record import opening_table
 from pipeline.session_games import (
     RejectedGame,
     RejectedImpression,
+    RejectedRatings,
+    UnknownGame,
     open_store,
     record_impression,
     record_session_game,
+    record_visitor_ratings,
     session_game_counts,
     session_game_pgns,
     session_game_record,
+    visitor_ratings,
 )
 
 PLAYED_ON = date(2026, 10, 5)
@@ -466,3 +470,50 @@ def test_gives_the_bots_record_with_each_colour_and_the_openings_it_reached(tmp_
     assert record["black"]["openings"] == [
         {"name": "Barnes Opening", "games": 1, "results": {"wins": 1, "draws": 0, "losses": 0}}
     ]
+
+
+def test_stores_the_ratings_the_visitor_gives_with_the_game(tmp_path):
+    store = open_store(tmp_path / "session-games.sqlite")
+    rated = record_session_game(store, fools_mate_reported_by_the_page(), played_on=PLAYED_ON)
+    record_session_game(store, fools_mate_reported_by_the_page(), played_on=PLAYED_ON)
+
+    record_visitor_ratings(store, rated, lichess=1650, chesscom=None)
+
+    assert visitor_ratings(store) == [{"game_id": rated, "lichess": 1650, "chesscom": None}]
+
+
+@pytest.mark.parametrize("lichess, chesscom", [(50, None), (None, 4000), (1500.5, None), (True, None), ("1500", None)])
+def test_refuses_a_rating_that_is_not_a_whole_number_in_the_range_of_real_ratings(tmp_path, lichess, chesscom):
+    store = open_store(tmp_path / "session-games.sqlite")
+    game_id = record_session_game(store, fools_mate_reported_by_the_page(), played_on=PLAYED_ON)
+
+    with pytest.raises(RejectedRatings):
+        record_visitor_ratings(store, game_id, lichess=lichess, chesscom=chesscom)
+
+    assert visitor_ratings(store) == []
+
+
+def test_refuses_an_answer_without_any_rating(tmp_path):
+    store = open_store(tmp_path / "session-games.sqlite")
+    game_id = record_session_game(store, fools_mate_reported_by_the_page(), played_on=PLAYED_ON)
+
+    with pytest.raises(RejectedRatings, match="no rating"):
+        record_visitor_ratings(store, game_id, lichess=None, chesscom=None)
+
+
+def test_refuses_ratings_for_a_game_that_was_never_stored(tmp_path):
+    store = open_store(tmp_path / "session-games.sqlite")
+
+    with pytest.raises(UnknownGame):
+        record_visitor_ratings(store, "00000000-0000-4000-8000-000000000000", lichess=1500, chesscom=None)
+
+
+def test_keeps_the_first_ratings_given_for_a_game(tmp_path):
+    store = open_store(tmp_path / "session-games.sqlite")
+    game_id = record_session_game(store, fools_mate_reported_by_the_page(), played_on=PLAYED_ON)
+    record_visitor_ratings(store, game_id, lichess=1500, chesscom=None)
+
+    with pytest.raises(RejectedRatings, match="already"):
+        record_visitor_ratings(store, game_id, lichess=None, chesscom=1300)
+
+    assert visitor_ratings(store) == [{"game_id": game_id, "lichess": 1500, "chesscom": None}]

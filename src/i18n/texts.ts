@@ -32,9 +32,6 @@ export interface Texts {
   downloadingOf(received: string, total: string): string;
   botFailed(reason: string): string;
   browserCouldNotStartIt: string;
-  impressionRecorded: string;
-  impressionNotRecorded: string;
-  impressionQuestion(rating: number): string;
   /** The evaluation bar, for a screen reader, with the score as the bar writes it. */
   evaluation(label: string): string;
   evaluationUnknown: string;
@@ -110,8 +107,6 @@ export type PageText =
   | 'takeBack'
   | 'resign'
   | 'newGame'
-  | 'yes'
-  | 'no'
   | 'moves'
   | 'previousPosition'
   | 'nextPosition'
@@ -134,6 +129,12 @@ export type PageText =
   | 'analysisWarning'
   | 'turnOn'
   | 'cancel'
+  | 'ratingTitle'
+  | 'ratingQuestion'
+  | 'lichessRating'
+  | 'chesscomRating'
+  | 'ratingProblem'
+  | 'send'
   | 'pieces'
   | 'classic'
   | 'creditBy'
@@ -224,8 +225,6 @@ const ENGLISH: Texts = {
     takeBack: 'Take back',
     resign: 'Resign',
     newGame: 'New game',
-    yes: 'Yes',
-    no: 'No',
     moves: 'Moves',
     previousPosition: 'Previous position',
     nextPosition: 'Next position',
@@ -252,6 +251,14 @@ const ENGLISH: Texts = {
       'The game is then recorded as assisted.',
     turnOn: 'Turn on',
     cancel: 'Cancel',
+    ratingTitle: 'Your rating',
+    ratingQuestion:
+      'Do you play on Lichess or Chess.com? Your rapid rating there shows how the Bot fares against each level. ' +
+      'Fill in one field or both, or close.',
+    lichessRating: 'Lichess',
+    chesscomRating: 'Chess.com',
+    ratingProblem: 'Type a whole number from 100 to 3500 in at least one field.',
+    send: 'Send',
     pieces: 'Pieces',
     classic: 'Classic',
     creditBy: 'Anarcandy by ',
@@ -312,9 +319,6 @@ const ENGLISH: Texts = {
   downloadingOf: (received, total) => `Downloading the Bot's model: ${received} of ${total} MB`,
   botFailed: (reason) => `The Bot could not be loaded: ${reason}. Reload the page to try again.`,
   browserCouldNotStartIt: 'the browser could not start it',
-  impressionRecorded: 'Thank you, your answer has been recorded.',
-  impressionNotRecorded: 'Your answer could not be recorded.',
-  impressionQuestion: (rating) => `Did the Bot feel like a real player of about ${rating} on Lichess?`,
   evaluation: (label) => `Evaluation from White's side: ${label}`,
   evaluationUnknown: 'Evaluation not known yet',
   summaryUnavailable: 'The counts could not be read just now. Try again in a minute.',
@@ -360,7 +364,7 @@ const ENGLISH: Texts = {
     lost: (centipawns) => `Stockfish: the move lost ${centipawns} centipawns against the best move.`,
     legendCamille: (moves) => `Camille, ${moves.toLocaleString('en')} moves`,
     legendBot: (moves) => `The Bot this game, ${english(moves, 'move', 'moves')}`,
-    legendBand: (moves) => `Where chance alone puts Camille on ${english(moves, 'move', 'moves')}`,
+    legendBand: (moves) => `Range where the Bot plays like Camille, over ${english(moves, 'move', 'moves')}`,
     chartReading:
       'Share of moves that lost at most so many centipawns, in positions still open. ' +
       'Higher and further left: fewer and smaller mistakes.',
@@ -399,8 +403,6 @@ const FRENCH: Texts = {
     takeBack: 'Reprendre',
     resign: 'Abandonner',
     newGame: 'Nouvelle partie',
-    yes: 'Oui',
-    no: 'Non',
     moves: 'Coups',
     previousPosition: 'Position précédente',
     nextPosition: 'Position suivante',
@@ -427,6 +429,14 @@ const FRENCH: Texts = {
       'La partie est alors enregistrée comme assistée.',
     turnOn: 'Activer',
     cancel: 'Annuler',
+    ratingTitle: 'Votre classement',
+    ratingQuestion:
+      `Vous jouez sur Lichess ou Chess.com${NO_BREAK}? Votre Elo en parties rapides y montre comment le Bot s’en sort ` +
+      'face à chaque niveau. Remplissez un champ ou les deux, ou fermez.',
+    lichessRating: 'Elo Lichess',
+    chesscomRating: 'Elo Chess.com',
+    ratingProblem: 'Indiquez un nombre entier de 100 à 3500 dans au moins un des champs.',
+    send: 'Envoyer',
     pieces: 'Pièces',
     classic: 'Classique',
     creditBy: 'Anarcandy par ',
@@ -487,9 +497,6 @@ const FRENCH: Texts = {
   downloadingOf: (received, total) => `Téléchargement du modèle du Bot${NO_BREAK}: ${received} sur ${total}${NO_BREAK}Mo`,
   botFailed: (reason) => `Le Bot n’a pas pu être chargé${NO_BREAK}: ${reason}. Rechargez la page pour réessayer.`,
   browserCouldNotStartIt: 'le navigateur n’a pas pu le démarrer',
-  impressionRecorded: 'Merci, votre réponse a été enregistrée.',
-  impressionNotRecorded: 'Votre réponse n’a pas pu être enregistrée.',
-  impressionQuestion: (rating) => `Le Bot vous a-t-il paru être un vrai joueur d’environ ${rating} sur Lichess${NO_BREAK}?`,
   evaluation: (label) => `Évaluation du point de vue des Blancs${NO_BREAK}: ${label}`,
   evaluationUnknown: 'Évaluation pas encore connue',
   summaryUnavailable: 'Les chiffres n’ont pas pu être lus. Réessayez dans une minute.',
@@ -542,7 +549,7 @@ const FRENCH: Texts = {
     lost: (centipawns) => `Stockfish${NO_BREAK}: le coup a perdu ${centipawns} centipions par rapport au meilleur coup.`,
     legendCamille: (moves) => `Camille, ${moves.toLocaleString('fr')} coups`,
     legendBot: (moves) => `Le Bot dans cette partie, ${french(moves, 'coup', 'coups')}`,
-    legendBand: (moves) => `Où le seul hasard place Camille sur ${french(moves, 'coup', 'coups')}`,
+    legendBand: (moves) => `Zone où le Bot joue comme Camille, sur ${french(moves, 'coup', 'coups')}`,
     chartReading:
       'Part des coups qui ont perdu au plus tant de centipions, dans les positions encore ouvertes. ' +
       `Plus haut et plus à gauche${NO_BREAK}: des erreurs moins nombreuses et plus petites.`,

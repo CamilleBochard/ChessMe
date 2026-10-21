@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from 'vitest';
 import type { FinishedGame } from '../session/session-game';
-import { connectTelemetry, sessionGameReport } from './session-game';
+import { connectTelemetry, ratingsFromFields, sessionGameReport } from './session-game';
 
 const SERVED_MODEL = { baseModel: 'maia3-5m', rating: 1100 };
 
@@ -145,27 +145,32 @@ describe('reporting a Session Game', () => {
   });
 });
 
-describe("reporting the visitor's impression", () => {
-  it('sends the answer to the game it is about', async () => {
+describe("reporting the visitor's ratings", () => {
+  it('sends the ratings to the game they were given after, an empty field as null', async () => {
     const service = fetchAnswering(() => new Response(null, { status: 204 }));
     const telemetry = connectTelemetry(service.fetch);
 
-    const recorded = await telemetry.reportImpression('game-1', false);
+    const recorded = await telemetry.reportRatings('game-1', { lichess: 1650, chesscom: undefined });
 
     expect(recorded).toBe(true);
     expect(service.sent).toEqual([
-      { url: '/api/session-games/game-1/impression', method: 'POST', body: { feltLikeARealPlayer: false } },
+      { url: '/api/session-games/game-1/ratings', method: 'POST', body: { lichess: 1650, chesscom: null } },
     ]);
   });
+});
 
-  it('says the answer was not recorded when the service cannot be reached', async () => {
-    const unreachable = (async () => {
-      throw new TypeError('Failed to fetch');
-    }) as typeof fetch;
-    const telemetry = connectTelemetry(unreachable);
+describe("the visitor's ratings read from the popup's fields", () => {
+  it('takes a rating from each field, and an empty field as no rating', () => {
+    expect(ratingsFromFields('1650', '')).toEqual({ lichess: 1650, chesscom: undefined });
+  });
 
-    const recorded = await telemetry.reportImpression('game-1', true);
+  it('is no answer when both fields are empty', () => {
+    expect(ratingsFromFields('', ' ')).toBeUndefined();
+  });
 
-    expect(recorded).toBe(false);
+  it('is no answer when a field holds no rating a player can have', () => {
+    expect(ratingsFromFields('1650', '20')).toBeUndefined();
+    expect(ratingsFromFields('1650.5', '')).toBeUndefined();
+    expect(ratingsFromFields('', 'abc')).toBeUndefined();
   });
 });

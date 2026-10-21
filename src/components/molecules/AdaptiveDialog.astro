@@ -35,7 +35,7 @@ const english = TEXTS.en.page;
 
 <style>
   /* In place: no box, no margin, the column's own colours. */
-  .adaptive-dialog:not(:modal) {
+  .adaptive-dialog:not(:modal):not(.over-board) {
     position: static;
     width: auto;
     max-width: none;
@@ -46,8 +46,24 @@ const english = TEXTS.en.page;
     color: inherit;
   }
 
-  .adaptive-dialog:not(:modal) .dialog-head {
+  .adaptive-dialog:not(:modal):not(.over-board) .dialog-head {
     display: none;
+  }
+
+  /* Standing on the board, part of the page: a light box no larger than the
+     board, which scrolls with it. */
+  .adaptive-dialog.over-board {
+    position: relative;
+    width: min(360px, 100%);
+    max-width: none;
+    max-height: 100%;
+    margin: 0;
+    overflow-y: auto;
+    padding: 16px;
+    border: var(--line);
+    border-radius: 0;
+    background: var(--paper-light);
+    color: var(--ink);
   }
 
   /* Over the board: a light box across the phone's width. */

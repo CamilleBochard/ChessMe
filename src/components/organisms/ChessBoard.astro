@@ -8,7 +8,9 @@ import { TEXTS } from '../../i18n/texts';
 // its base stylesheet for layout and dragging; everything it would take from a
 // board or piece theme comes from the portfolio's look instead, below. The
 // board is played and redrawn by the game's script, which finds the drawing
-// element by data-board and the dialog by data-promotion.
+// element by data-board and the dialog by data-promotion. What the page puts
+// in the slot, and the dialogs the script moves into data-board-overlay,
+// stand over the board as part of the page, never blocking the rest of it.
 
 const english = TEXTS.en.page;
 ---
@@ -16,6 +18,7 @@ const english = TEXTS.en.page;
 <div class="board-surround">
   <EvaluationBar />
   <div class="board" data-board></div>
+  <div class="board-overlay" data-board-overlay><slot /></div>
 </div>
 
 <dialog class="promotion" data-promotion aria-label={english.choosePromotion} data-text-label="choosePromotion">
@@ -217,8 +220,8 @@ const english = TEXTS.en.page;
      above the clocks and status on a wide screen, the screen's width less a
      margin on a phone. Chessground sizes itself to its element. The 670 px
      kept free across the screen are the game's 230 px and 320 px side
-     columns and 120 px of room around the board; the 220 px kept free down
-     it hold the title, the two clocks and the status. */
+     columns and 120 px of room around the board; the 250 px kept free down
+     it hold the title's bar, the two clocks and the status. */
   /* In analysis mode the evaluation bar takes its width from the board's,
      so the frame keeps its width and the clocks above and below theirs. */
   .board-surround {
@@ -235,7 +238,7 @@ const english = TEXTS.en.page;
 
   @media (min-width: 960px) {
     .board-surround {
-      --board-size: min(640px, calc(100vw - 670px), calc(100vh - 220px));
+      --board-size: min(640px, calc(100vw - 670px), calc(100vh - 250px));
       --evaluation-bar-width: 16px;
       gap: 10px;
       padding: 10px;
@@ -250,6 +253,24 @@ const english = TEXTS.en.page;
     .board-surround:has(:global(.evaluation-bar:not([hidden]))) {
       --bar-space: calc(var(--evaluation-bar-width) + 10px);
     }
+  }
+
+  /* Centres what stands over the board. The layer itself lets clicks
+     through to the board; only an open dialog in it takes them. */
+  .board-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    display: grid;
+    place-items: center;
+    padding: 8px;
+    pointer-events: none;
+  }
+
+  /* The dialogs come from other components, so the selector reaches past
+     this one's scope. */
+  .board-overlay > :global(dialog[open]) {
+    pointer-events: auto;
   }
 
   /* The second, dotted frame, 7 px outside the first. */

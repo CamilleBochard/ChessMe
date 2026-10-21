@@ -1,14 +1,16 @@
 // A dialog that sits in the page on a wide screen and opens over the board on
-// a phone: the settings of a game and the choice of pieces. On a wide screen
-// it is shown in place, as part of the left-hand column; on a phone it stays
-// closed until the visitor asks for it, then opens as a modal. The breakpoint
-// is the one the stylesheets switch to three columns at.
+// a phone: the settings of a game, the choice of pieces and the stats. On a
+// wide screen it is shown in place, as part of the left-hand column; on a
+// phone it stays closed until it is asked for. It then opens as a modal, or,
+// given a place over the board, stands on the board as part of the page, so
+// the visitor can still scroll and use the rest of it. The breakpoint is the
+// one the stylesheets switch to three columns at.
 
 /** The media query of a screen wide enough for the three columns. */
 export const WIDE_SCREEN = '(min-width: 960px)';
 
 export interface AdaptiveDialog {
-  /** On a phone, opens the dialog over the page; on a wide screen it is already in view. */
+  /** On a phone, opens the dialog over the board or the page; on a wide screen it is already in view. */
   openOnPhone(): void;
   /** On a phone, closes it, once the visitor has chosen. */
   closeOnPhone(): void;
@@ -18,12 +20,26 @@ export interface AdaptiveDialog {
 
 /**
  * Takes charge of the dialog, shown in place on a wide screen to begin with
- * when asked. The dialog's button marked data-dialog-close closes it; the
- * stylesheet shows that button only while the dialog is a modal.
+ * when asked. On a phone it opens in overBoard when one is given, as a modal
+ * otherwise. The dialog's button marked data-dialog-close closes it; the
+ * stylesheet shows that button only while the dialog stands apart from the
+ * column, as a modal or over the board.
  */
-export function adaptiveDialog(dialog: HTMLDialogElement, shownOnWideScreen: boolean): AdaptiveDialog {
+export function adaptiveDialog(
+  dialog: HTMLDialogElement,
+  shownOnWideScreen: boolean,
+  overBoard?: HTMLElement,
+): AdaptiveDialog {
   const wideScreen = window.matchMedia(WIDE_SCREEN);
   let isShownInPlace = shownOnWideScreen;
+  // Marks where the dialog sits in the column, so that it goes back there
+  // when a phone turns into a wide screen.
+  const home = document.createComment('adaptive dialog');
+  dialog.before(home);
+
+  function isOverBoard(): boolean {
+    return dialog.classList.contains('over-board');
+  }
 
   /**
    * Puts the dialog in the state the screen calls for. In place it is opened
@@ -36,10 +52,14 @@ export function adaptiveDialog(dialog: HTMLDialogElement, shownOnWideScreen: boo
       if (isModal) {
         dialog.close();
       }
+      if (isOverBoard()) {
+        dialog.classList.remove('over-board');
+        home.after(dialog);
+      }
       dialog.toggleAttribute('open', isShownInPlace);
       return;
     }
-    if (dialog.open && !isModal) {
+    if (dialog.open && !isModal && !isOverBoard()) {
       dialog.removeAttribute('open');
     }
   }
@@ -54,9 +74,17 @@ export function adaptiveDialog(dialog: HTMLDialogElement, shownOnWideScreen: boo
 
   return {
     openOnPhone(): void {
-      if (!wideScreen.matches && !dialog.open) {
-        dialog.showModal();
+      if (wideScreen.matches || dialog.open) {
+        return;
       }
+      if (overBoard === undefined) {
+        dialog.showModal();
+        return;
+      }
+      overBoard.append(dialog);
+      dialog.classList.add('over-board');
+      // Through its attribute, as in place: the page may have just loaded.
+      dialog.toggleAttribute('open', true);
     },
     closeOnPhone(): void {
       if (!wideScreen.matches && dialog.open) {

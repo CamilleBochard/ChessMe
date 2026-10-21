@@ -5,8 +5,10 @@ marked with where it came from. The store replays the moves itself and writes
 the PGN from the replay, so what is kept is a legal game whose result was
 worked out here rather than taken on trust from whoever sent it.
 
-Nothing about the visitor is stored: no account, no address, not even the
-time of day, only the date the game was played.
+Nothing that identifies the visitor is stored: no account, no address, not
+even the time of day, only the date the game was played. The visitor may
+give their rating on Lichess or Chess.com once the game is over, which is
+kept with the game and says nothing about who they are.
 """
 
 import io
@@ -49,7 +51,11 @@ CREATE TABLE IF NOT EXISTS session_games (
     felt_like_a_real_player INTEGER,
     -- 1 when analysis mode was on at any point during the game: an engine's
     -- evaluation showed the visitor where the Bot went wrong.
-    assisted INTEGER NOT NULL DEFAULT 0
+    assisted INTEGER NOT NULL DEFAULT 0,
+    -- The ratings the visitor gave once the game was over, on Lichess and
+    -- on Chess.com, NULL for one they left out or until they answer.
+    visitor_lichess_rating INTEGER,
+    visitor_chesscom_rating INTEGER
 );
 
 -- One row per move the Bot played, so where its moves came from can be
@@ -64,6 +70,13 @@ CREATE TABLE IF NOT EXISTS bot_moves (
 """
 
 
+# The ratings a player can have on Lichess or Chess.com, from Chess.com's
+# floor of 100 to above the best player's on either site. A figure outside
+# them is a typing mistake, not a rating.
+LOWEST_RATING = 100
+HIGHEST_RATING = 3500
+
+
 class RejectedGame(ValueError):
     """The page's report is not a finished game that can be stored."""
 
@@ -72,30 +85,46 @@ class RejectedImpression(ValueError):
     """The visitor's impression cannot be recorded for that game."""
 
 
-class UnknownGame(RejectedImpression):
+class RejectedRatings(ValueError):
+    """The ratings the visitor gave cannot be recorded for that game."""
+
+
+class RatingsAlreadyGiven(RejectedRatings):
+    """The visitor has already given ratings for that game."""
+
+
+class UnknownGame(RejectedImpression, RejectedRatings):
     """No game is stored under the id the impression names."""
+
+
+# The columns added to session_games since it was first made, with their
+# definitions. Creating the tables leaves an existing one as it was, so a
+# store made before them is given them as it is opened.
+LATER_COLUMNS = {
+    # Every game stored before analysis mode existed was played without it.
+    "assisted": "INTEGER NOT NULL DEFAULT 0",
+    # No rating was asked before.
+    "visitor_lichess_rating": "INTEGER",
+    "visitor_chesscom_rating": "INTEGER",
+}
 
 
 def open_store(path: Path) -> sqlite3.Connection:
     """Opens the database at path, creating it and its tables if needed."""
     connection = sqlite3.connect(path)
     connection.executescript(SCHEMA)
-    add_assisted_column(connection)
+    add_later_columns(connection)
     return connection
 
 
-def add_assisted_column(connection: sqlite3.Connection) -> None:
-    """
-    Gives a store made before analysis mode its assisted column. Creating the
-    tables leaves an existing one as it was, and every game it already holds
-    was played before the mode existed, so unassisted.
-    """
+def add_later_columns(connection: sqlite3.Connection) -> None:
+    """Gives a store made before some of its columns existed the ones it lacks."""
     columns = connection.execute("PRAGMA table_info(session_games)").fetchall()
     column_names = [column[1] for column in columns]
-    if "assisted" in column_names:
-        return
     with connection:
-        connection.execute("ALTER TABLE session_games ADD COLUMN assisted INTEGER NOT NULL DEFAULT 0")
+        for name, definition in LATER_COLUMNS.items():
+            if name not in column_names:
+                connection.execute(f"ALTER TABLE session_games ADD COLUMN {name} {definition}")
 
 
 def record_session_game(connection: sqlite3.Connection, report: dict, played_on: date) -> str:
@@ -228,6 +257,55 @@ def record_impression(connection: sqlite3.Connection, game_id: str, felt_like_a_
     if stored is None:
         raise UnknownGame(f"there is no game {game_id}")
     raise RejectedImpression("the game has already been given an impression")
+
+
+def record_visitor_ratings(
+    connection: sqlite3.Connection, game_id: str, lichess: int | None, chesscom: int | None
+) -> None:
+    """
+    Records the ratings the visitor gave for that game, None for one they
+    left out. Raises RejectedRatings, recording nothing, unless at least one
+    is given and each is a whole number in the range of real ratings.
+    """
+    if lichess is None and chesscom is None:
+        raise RejectedRatings("the answer gives no rating")
+    for site, rating in (("Lichess", lichess), ("Chess.com", chesscom)):
+        if rating is None:
+            continue
+        # bool is a kind of int in Python, and true is no rating.
+        if not isinstance(rating, int) or isinstance(rating, bool):
+            raise RejectedRatings(f"the {site} rating is not a whole number")
+        if not LOWEST_RATING <= rating <= HIGHEST_RATING:
+            raise RejectedRatings(f"the {site} rating {rating} is outside {LOWEST_RATING} to {HIGHEST_RATING}")
+
+    # Only the first answer for a game counts: a second one is refused
+    # rather than allowed to overwrite it.
+    with connection:
+        updated = connection.execute(
+            """UPDATE session_games SET visitor_lichess_rating = ?, visitor_chesscom_rating = ?
+               WHERE id = ? AND visitor_lichess_rating IS NULL AND visitor_chesscom_rating IS NULL""",
+            (lichess, chesscom, game_id),
+        )
+    if updated.rowcount == 1:
+        return
+
+    stored = connection.execute("SELECT 1 FROM session_games WHERE id = ?", (game_id,)).fetchone()
+    if stored is None:
+        raise UnknownGame(f"there is no game {game_id}")
+    raise RatingsAlreadyGiven("the game has already been given ratings")
+
+
+def visitor_ratings(connection: sqlite3.Connection) -> list[dict]:
+    """The ratings visitors gave, one entry per game they gave any for, oldest first."""
+    rows = connection.execute(
+        """SELECT id, visitor_lichess_rating, visitor_chesscom_rating FROM session_games
+           WHERE visitor_lichess_rating IS NOT NULL OR visitor_chesscom_rating IS NOT NULL
+           ORDER BY rowid"""
+    ).fetchall()
+    ratings = []
+    for game_id, lichess, chesscom in rows:
+        ratings.append({"game_id": game_id, "lichess": lichess, "chesscom": chesscom})
+    return ratings
 
 
 def has_ended_as_the_page_ends_it(board: chess.Board) -> bool:
