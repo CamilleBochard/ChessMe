@@ -156,13 +156,14 @@ describe("the Bot's moves as the report reads them", () => {
 });
 
 describe('how often the model guesses Camille\'s move', () => {
-  it('reads the fine-tuned model and the untrained one on the Test Set, as times in 100', () => {
+  it('reads the share of his moves the fine-tuned model guesses on the Test Set, and how many games that holds', () => {
     const results = {
-      rating: 1100,
-      baseline: { overall: { matched: 3533, positions: 7092, games: 230 } },
       variants: { full: { testSet: { overall: { matched: 3822, positions: 7092, games: 230 } } } },
     };
 
-    expect(moveMatching(results)).toEqual({ games: 230, fineTuned: 54, untrained: 50, rating: 1100 });
+    const matching = moveMatching(results);
+
+    expect(matching.games).toBe(230);
+    expect(matching.guessed).toBeCloseTo(0.539);
   });
 });

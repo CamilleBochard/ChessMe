@@ -32,6 +32,7 @@ export function showGameReport(body: HTMLElement, report: GameReport, positions:
   const sections: HTMLElement[] = [];
 
   sections.push(headline(report, texts));
+  sections.push(guessedBlock(texts));
 
   const followed = section(words.followed);
   followed.append(paragraph(words.fromBook(report.fromOpeningBook)));
@@ -80,23 +81,27 @@ export function showGameReport(body: HTMLElement, report: GameReport, positions:
   body.replaceChildren(...sections);
 }
 
-/** The share in large and its meaning, then how often the model guesses his move. */
+/** The share in large and what it counts. */
 function headline(report: GameReport, texts: Texts): HTMLElement {
+  let share = texts.report.notMeasured;
+  if (report.moves > 0) {
+    share = texts.percent(report.plausible / report.moves, 0);
+  }
+  return figureBlock(share, texts.report.plausible);
+}
+
+/** How often the model guesses his move on games it never saw, in large like the headline. */
+function guessedBlock(texts: Texts): HTMLElement {
+  const share = texts.percent(matching.guessed, 0);
+  return figureBlock(share, texts.report.guessed(matching.games));
+}
+
+function figureBlock(figureText: string, meaningText: string): HTMLElement {
   const block = document.createElement('div');
   block.className = 'headline';
-  const figure = document.createElement('p');
+  const figure = paragraph(figureText);
   figure.className = 'share';
-  if (report.moves > 0) {
-    figure.textContent = texts.percent(report.plausible / report.moves, 0);
-  } else {
-    figure.textContent = texts.report.notMeasured;
-  }
-  const meaning = paragraph(texts.report.plausible);
-  const matchingLine = paragraph(
-    texts.report.moveMatching(matching.games, matching.fineTuned, matching.untrained, matching.rating),
-  );
-  matchingLine.classList.add('matching');
-  block.append(figure, meaning, matchingLine);
+  block.append(figure, paragraph(meaningText));
   return block;
 }
 
