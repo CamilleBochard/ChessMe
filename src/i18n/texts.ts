@@ -115,9 +115,9 @@ export interface ReportTexts {
   range(low: number, high: number): string;
   notMeasured: string;
   costly(count: number, of: number, share: string, camilleShare: string): string;
-  improbable: string;
+  /** Of the Bot's moves, how many Camille plays less than once in 100. */
+  improbable(count: number, of: number): string;
   improbableMove(move: string, probability: string, pawnsLost: string | null): string;
-  noImprobable: string;
   pending(moves: number): string;
   source(games: number): string;
   ratingSent: string;
@@ -383,14 +383,20 @@ const ENGLISH: Texts = {
     notMeasured: '–',
     costly: (count, of, share, camilleShare) =>
       `${count} of ${english(of, 'move', 'moves')} lost more than 3 pawns (${share}). Camille: ${camilleShare}.`,
-    improbable: 'Moves Camille plays less than once in 100',
+    improbable: (count, of) => {
+      let howMany = String(count);
+      if (count === 0) {
+        howMany = 'none';
+      }
+      const moves = english(of, 'move', 'moves');
+      return `Of the Bot's ${moves} this game, ${howMany} had less than a 1% chance of being played by Camille.`;
+    },
     improbableMove: (move, probability, pawnsLost) => {
       if (pawnsLost === null) {
         return `${move}: ${probability}`;
       }
       return `${move}: ${probability}, lost ${pawnsLost} pawns`;
     },
-    noImprobable: 'None: Camille plays each of its moves at least once in 100 in that position.',
     pending: (moves) => `Stockfish is still measuring ${english(moves, 'move', 'moves')} of the Bot's.`,
     source: (games) => `Camille's losses: Stockfish on his ${games} games.`,
     ratingSent: 'Thank you, it is noted.',
@@ -608,14 +614,23 @@ const FRENCH: Texts = {
       }
       return `${french(count, 'coup', 'coups')} sur ${of} ${lost} plus de 3 pions (${share}). Camille${NO_BREAK}: ${camilleShare}.`;
     },
-    improbable: 'Coups que Camille joue moins d’une fois sur 100',
+    improbable: (count, of) => {
+      const moves = french(of, 'coup', 'coups');
+      const chance = `moins de 1${NO_BREAK}% de chances`;
+      if (count === 0) {
+        return `Sur ${moves} du Bot dans cette partie, aucun n’avait ${chance} d’être joué par Camille.`;
+      }
+      if (count === 1) {
+        return `Sur ${moves} du Bot dans cette partie, 1 avait ${chance} d’être joué par Camille.`;
+      }
+      return `Sur ${moves} du Bot dans cette partie, ${count} avaient ${chance} d’être joués par Camille.`;
+    },
     improbableMove: (move, probability, pawnsLost) => {
       if (pawnsLost === null) {
         return `${move}${NO_BREAK}: ${probability}`;
       }
       return `${move}${NO_BREAK}: ${probability}, a perdu ${pawnsLost} pions`;
     },
-    noImprobable: `Aucun${NO_BREAK}: Camille joue chacun de ses coups au moins une fois sur 100 dans cette position.`,
     pending: (moves) => `Stockfish mesure encore ${french(moves, 'coup', 'coups')} du Bot.`,
     source: (games) => `Les pertes de Camille${NO_BREAK}: Stockfish sur ses ${games} parties.`,
     ratingSent: 'Merci, c’est noté.',

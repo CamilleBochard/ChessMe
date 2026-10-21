@@ -1,8 +1,9 @@
-// Lays out the end-of-game report in the page's language: the share of the
-// Bot's moves Camille could have played in large, where it followed him, its
-// losses per Phase beside the range of his games, its costly moves and the
-// moves he rarely plays. src/explanation/game-report.ts works out every
-// figure; this only writes them out, each beside Camille's own.
+// Lays out the end-of-game report in the page's language: in large, the
+// share of the Bot's moves Camille could have played and how often its model
+// guesses his move; where it met his own positions; its losses per Phase
+// beside the range of his games, and its costly moves; the moves he rarely
+// plays. src/explanation/game-report.ts works out every figure; this only
+// writes them out.
 
 import fineTuningResults from '../../docs/experiments/results/fine-tuning.json';
 import {
@@ -49,25 +50,10 @@ export function showGameReport(body: HTMLElement, report: GameReport, positions:
   }
   sections.push(losses);
 
-  const improbable = section(words.improbable);
-  if (report.improbable.length === 0) {
-    improbable.append(paragraph(words.noImprobable));
-  } else {
-    const list = document.createElement('ul');
-    list.className = 'improbable-moves';
-    for (const move of report.improbable) {
-      const item = document.createElement('li');
-      let pawnsLost: string | null = null;
-      if (move.loss !== null) {
-        pawnsLost = texts.decimal(move.loss / 100, 1);
-      }
-      const named = `${moveNumber(move.ply)}${texts.writeMove(move.san)}`;
-      item.textContent = words.improbableMove(named, texts.percent(move.probability, 1), pawnsLost);
-      list.append(item);
-    }
-    improbable.append(list);
+  // A game the visitor ended before the Bot moved has no move to count.
+  if (report.moves > 0) {
+    sections.push(improbableSection(report, texts));
   }
-  sections.push(improbable);
 
   if (report.pending > 0) {
     const pending = paragraph(words.pending(report.pending));
@@ -80,6 +66,32 @@ export function showGameReport(body: HTMLElement, report: GameReport, positions:
   sections.push(source);
 
   body.replaceChildren(...sections);
+}
+
+/** How many of the Bot's moves Camille plays less than once in 100, then each of them. */
+function improbableSection(report: GameReport, texts: Texts): HTMLElement {
+  const words = texts.report;
+  const improbable = document.createElement('section');
+  const summary = paragraph(words.improbable(report.improbable.length, report.moves));
+  summary.className = 'improbable-summary';
+  improbable.append(summary);
+  if (report.improbable.length === 0) {
+    return improbable;
+  }
+  const list = document.createElement('ul');
+  list.className = 'improbable-moves';
+  for (const move of report.improbable) {
+    const item = document.createElement('li');
+    let pawnsLost: string | null = null;
+    if (move.loss !== null) {
+      pawnsLost = texts.decimal(move.loss / 100, 1);
+    }
+    const named = `${moveNumber(move.ply)}${texts.writeMove(move.san)}`;
+    item.textContent = words.improbableMove(named, texts.percent(move.probability, 1), pawnsLost);
+    list.append(item);
+  }
+  improbable.append(list);
+  return improbable;
 }
 
 /** The share in large and what it counts. */
