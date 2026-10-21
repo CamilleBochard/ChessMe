@@ -131,7 +131,13 @@ const english = TEXTS.en.page;
   import { startBrowserAnalyser, type BrowserAnalyser } from '../../analysis/browser-analyser';
   import { moveLoss, type Score } from '../../analysis/engine-analysis';
   import { barReading, positionScores } from '../../analysis/evaluation-bar';
-  import { botMovesOf, moveKeyOf, replyKey, type ExplainedMove } from '../../explanation/explained-moves';
+  import {
+    botMovesOf,
+    movesOfSide,
+    replyKey,
+    type ExplainedMove,
+    type PlayedMove,
+  } from '../../explanation/explained-moves';
   import { showPanel, type MoveEvaluation } from '../../explanation/panel';
   import { LANGUAGE_CHANGED, pageLanguage, pageTexts } from '../../i18n/page-language';
   import { adaptiveDialog } from '../adaptive-dialog';
@@ -222,7 +228,7 @@ const english = TEXTS.en.page;
     // mode, and what it has found, filed like the replies.
     let analysis: BrowserAnalyser | null = null;
     const evaluations = new Map<string, MoveEvaluation>();
-    // Stockfish's score of every position next to one of the Bot's moves,
+    // Stockfish's score of every position next to a measured move,
     // from White's side and filed by FEN, for the evaluation bar.
     const scores = new Map<string, Score>();
 
@@ -508,7 +514,11 @@ const english = TEXTS.en.page;
         botColour = 'black';
       }
       const botMoves = botMovesOf(session.game(), botColour, replies);
-      const report = gameReport(reportedMovesOf(botMoves, evaluations), camillePositions);
+      const visitorEvaluations: MoveEvaluation[] = [];
+      for (const played of movesOfSide(session.game(), visitor)) {
+        visitorEvaluations.push(evaluations.get(played.key) ?? 'pending');
+      }
+      const report = gameReport(reportedMovesOf(botMoves, evaluations), camillePositions, visitorEvaluations);
       const texts = pageTexts();
       showGameReport(reportBody, report, positionsState, texts);
       if (ratingsSent) {
@@ -755,7 +765,10 @@ const english = TEXTS.en.page;
       }
 
       if (analysis !== null) {
-        evaluateMissing(botMoves);
+        // The Bot's moves first, so the chart fills before the report's
+        // average of the visitor's moves.
+        const game = session.game();
+        evaluateMissing([...movesOfSide(game, botColour), ...movesOfSide(game, visitor)]);
       }
       const isOver = gameStatus(session.game()).kind !== 'ongoing';
       showPanel(moveExplanation, lossChartElement, {
@@ -810,25 +823,25 @@ const english = TEXTS.en.page;
       }
     }
 
-    /** Sends the engine every Bot move it has not yet been given. */
-    function evaluateMissing(botMoves: ExplainedMove[]): void {
+    /** Sends the engine every move it has not yet been given. */
+    function evaluateMissing(moves: PlayedMove[]): void {
       const running = analysis;
       if (running === null) {
         return;
       }
-      for (const explained of botMoves) {
-        const key = moveKeyOf(explained);
+      for (const played of moves) {
+        const key = played.key;
         if (evaluations.has(key)) {
           continue;
         }
         evaluations.set(key, 'pending');
-        const fen = currentFen(explained.before);
-        const move = uciName(explained.botMove.move);
+        const fen = currentFen(played.before);
+        const move = uciName(played.move);
         running.analyser
           .analyse(fen, move)
           .then((found) => {
             evaluations.set(key, moveLoss(found));
-            for (const positionScore of positionScores(explained.before, explained.botMove.move, found)) {
+            for (const positionScore of positionScores(played.before, played.move, found)) {
               scores.set(positionScore.fen, positionScore.score);
             }
           })

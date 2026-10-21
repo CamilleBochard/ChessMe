@@ -6,6 +6,7 @@ import { currentFen, newGame, playMove } from '../game/game';
 import type { BotMove } from '../engine/move-selection';
 import { camilleFigures, gameReport, moveMatching, reportedMovesOf, type ReportedMove } from './game-report';
 import { botMovesOf, replyKey } from './explained-moves';
+import type { MoveEvaluation } from './panel';
 import type { ShippedLossYardstick } from './yardsticks';
 
 /** A Base Model move in the middlegame that lost nothing, changed as each test needs. */
@@ -31,7 +32,7 @@ describe('the report of the Bot\'s game', () => {
       move({ source: 'random', modelProbability: undefined }),
     ];
 
-    const report = gameReport(moves, null);
+    const report = gameReport(moves, null, []);
 
     expect(report.moves).toBe(4);
     expect(report.plausible).toBe(2);
@@ -46,14 +47,14 @@ describe('the report of the Bot\'s game', () => {
       move({ ply: 32, positionAfter: 'his position b KQkq' }),
     ];
 
-    const report = gameReport(moves, camillePositions);
+    const report = gameReport(moves, camillePositions, []);
 
     expect(report.fromOpeningBook).toBe(1);
     expect(report.reachedByCamille).toEqual({ count: 1, of: 2 });
   });
 
   it("says nothing of Camille's positions until they have been read", () => {
-    const report = gameReport([move()], null);
+    const report = gameReport([move()], null, []);
 
     expect(report.reachedByCamille).toBeNull();
   });
@@ -67,7 +68,7 @@ describe('the report of the Bot\'s game', () => {
       move({ phase: 'endgame', evaluation: 'failed' }),
     ];
 
-    const report = gameReport(moves, null);
+    const report = gameReport(moves, null, []);
 
     expect(report.phases.middlegame).toEqual({ measured: 2, averageLoss: 220 });
     expect(report.phases.endgame).toEqual({ measured: 0, averageLoss: null });
@@ -81,7 +82,7 @@ describe('the report of the Bot\'s game', () => {
       move({ evaluation: { centipawnLoss: 900, openPosition: false } }),
     ];
 
-    const report = gameReport(moves, null);
+    const report = gameReport(moves, null, []);
 
     expect(report.overThreePawns).toEqual({ count: 1, of: 2 });
   });
@@ -93,12 +94,38 @@ describe('the report of the Bot\'s game', () => {
       move({ ply: 51, san: 'e4', modelProbability: 0.004, evaluation: 'pending' }),
     ];
 
-    const report = gameReport(moves, null);
+    const report = gameReport(moves, null, []);
 
     expect(report.improbable).toEqual([
       { ply: 13, san: 'f6', probability: 0.001, loss: 197 },
       { ply: 51, san: 'e4', probability: 0.004, loss: null },
     ]);
+  });
+});
+
+describe("the average loss of each side", () => {
+  it("averages the Bot's moves and the visitor's over those measured in open positions, and counts both while measured", () => {
+    const moves = [
+      move({ evaluation: { centipawnLoss: 20, openPosition: true } }),
+      move({ evaluation: { centipawnLoss: 60, openPosition: true } }),
+      move({ evaluation: { centipawnLoss: 900, openPosition: false } }),
+    ];
+    const visitorEvaluations: MoveEvaluation[] = [
+      { centipawnLoss: 100, openPosition: true },
+      'pending',
+      'failed',
+    ];
+
+    const report = gameReport(moves, null, visitorEvaluations);
+
+    expect(report.averageLoss).toEqual({ bot: 40, visitor: 100 });
+    expect(report.pending).toBe(1);
+  });
+
+  it('has no average for a side none of whose moves was measured in an open position', () => {
+    const report = gameReport([move({ evaluation: 'pending' })], null, []);
+
+    expect(report.averageLoss).toEqual({ bot: null, visitor: null });
   });
 });
 

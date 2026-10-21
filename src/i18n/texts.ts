@@ -397,7 +397,7 @@ const ENGLISH: Texts = {
       }
       return `${move}: ${probability}, lost ${pawnsLost} pawns`;
     },
-    pending: (moves) => `Stockfish is still measuring ${english(moves, 'move', 'moves')} of the Bot's.`,
+    pending: (moves) => `Stockfish is still measuring ${english(moves, 'move', 'moves')} of the game.`,
     source: (games) => `Camille's losses: Stockfish on his ${games} games.`,
     ratingSent: 'Thank you, it is noted.',
   },
@@ -631,7 +631,7 @@ const FRENCH: Texts = {
       }
       return `${move}${NO_BREAK}: ${probability}, a perdu ${pawnsLost} pions`;
     },
-    pending: (moves) => `Stockfish mesure encore ${french(moves, 'coup', 'coups')} du Bot.`,
+    pending: (moves) => `Stockfish mesure encore ${french(moves, 'coup', 'coups')} de la partie.`,
     source: (games) => `Les pertes de Camille${NO_BREAK}: Stockfish sur ses ${games} parties.`,
     ratingSent: 'Merci, c’est noté.',
   },

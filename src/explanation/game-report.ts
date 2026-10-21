@@ -109,14 +109,23 @@ export interface GameReport {
   phases: Record<Phase, PhaseLosses>;
   /** Of its moves measured in open positions, how many lost more than three pawns. */
   overThreePawns: { count: number; of: number };
-  /** How many of its moves Stockfish has still to measure. */
+  /**
+   * The average loss in centipawns of each side's moves measured in open
+   * positions; null for a side none of whose moves was.
+   */
+  averageLoss: { bot: number | null; visitor: number | null };
+  /** How many moves of either side Stockfish has still to measure. */
   pending: number;
   /** Its model moves under 1%, in the order played. */
   improbable: ImprobableMove[];
 }
 
 /** What the Bot's moves in one game add up to. */
-export function gameReport(moves: ReportedMove[], camillePositions: ReadonlySet<string> | null): GameReport {
+export function gameReport(
+  moves: ReportedMove[],
+  camillePositions: ReadonlySet<string> | null,
+  visitorEvaluations: MoveEvaluation[],
+): GameReport {
   const plausible = moves.filter(isPlausible).length;
   const fromOpeningBook = moves.filter((move) => move.source === 'opening-book').length;
 
@@ -144,13 +153,24 @@ export function gameReport(moves: ReportedMove[], camillePositions: ReadonlySet<
   const phases = {} as Record<Phase, PhaseLosses>;
   for (const phase of PHASES) {
     const inPhase = measuredOpen.filter((measured) => measured.phase === phase);
-    let averageLoss: number | null = null;
-    if (inPhase.length > 0) {
-      const total = inPhase.reduce((sum, measured) => sum + measured.loss.centipawnLoss, 0);
-      averageLoss = total / inPhase.length;
-    }
+    const averageLoss = averageOf(inPhase.map((measured) => measured.loss));
     phases[phase] = { measured: inPhase.length, averageLoss: averageLoss };
   }
+
+  // The visitor's moves are measured as the Bot's are, so the two averages
+  // can stand side by side.
+  const visitorOpen: MoveLoss[] = [];
+  for (const evaluation of visitorEvaluations) {
+    if (evaluation === 'pending') {
+      pending += 1;
+    } else if (evaluation !== 'failed' && evaluation.openPosition) {
+      visitorOpen.push(evaluation);
+    }
+  }
+  const averageLoss = {
+    bot: averageOf(measuredOpen.map((measured) => measured.loss)),
+    visitor: averageOf(visitorOpen),
+  };
 
   const costly = measuredOpen.filter((measured) => measured.loss.centipawnLoss > COSTLY_LOSS);
 
@@ -173,9 +193,19 @@ export function gameReport(moves: ReportedMove[], camillePositions: ReadonlySet<
     reachedByCamille: reachedByCamille,
     phases: phases,
     overThreePawns: { count: costly.length, of: measuredOpen.length },
+    averageLoss: averageLoss,
     pending: pending,
     improbable: improbable,
   };
+}
+
+/** The average loss in centipawns of the moves given; null when there are none. */
+function averageOf(losses: MoveLoss[]): number | null {
+  if (losses.length === 0) {
+    return null;
+  }
+  const total = losses.reduce((sum, loss) => sum + loss.centipawnLoss, 0);
+  return total / losses.length;
 }
 
 /** Whether Camille could have played the move: one from his Opening Book, or one the model gave at least 1%. */
