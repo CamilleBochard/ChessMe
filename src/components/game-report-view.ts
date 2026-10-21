@@ -24,6 +24,10 @@ const camille: CamilleFigures = camilleFigures(lossYardstick);
 // them if the model is trained again.
 const matching = moveMatching(fineTuningResults as FineTuningResults);
 
+// Whether the visitor opened the note on centipawns. The report is written
+// again each time Stockfish measures a move, so the note stays as they left it.
+let centipawnHelpShown = false;
+
 /** Where the reading of Camille's positions stands. */
 export type PositionsState = 'reading' | 'read' | 'unavailable';
 
@@ -40,6 +44,8 @@ export function showGameReport(body: HTMLElement, report: GameReport, positions:
   followed.append(paragraph(words.fromBook(report.fromOpeningBook)));
   followed.append(paragraph(reachedText(report, positions, texts)));
   sections.push(followed);
+
+  sections.push(averageLossBlock(report, texts));
 
   const losses = section(words.losses);
   losses.append(lossTable(report, texts));
@@ -66,6 +72,55 @@ export function showGameReport(body: HTMLElement, report: GameReport, positions:
   sections.push(source);
 
   body.replaceChildren(...sections);
+}
+
+/** Each side's average loss per move in large, the Bot's in the accent, and what a centipawn is on demand. */
+function averageLossBlock(report: GameReport, texts: Texts): HTMLElement {
+  const words = texts.report;
+  const block = section(words.averageLoss);
+  block.classList.add('average-loss');
+
+  const help = document.createElement('p');
+  help.className = 'centipawn-help';
+  help.id = 'centipawn-help';
+  help.textContent = words.centipawnHelp;
+  help.hidden = !centipawnHelpShown;
+
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'help-button';
+  button.textContent = '?';
+  button.setAttribute('aria-label', words.centipawnHelpLabel);
+  button.setAttribute('aria-controls', help.id);
+  button.setAttribute('aria-expanded', String(centipawnHelpShown));
+  button.addEventListener('click', () => {
+    centipawnHelpShown = !centipawnHelpShown;
+    help.hidden = !centipawnHelpShown;
+    button.setAttribute('aria-expanded', String(centipawnHelpShown));
+  });
+  block.querySelector('h3')!.append(button);
+
+  const sides = document.createElement('div');
+  sides.className = 'sides';
+  sides.append(sideFigure(words.bot, report.averageLoss.bot, 'bot', texts));
+  sides.append(sideFigure(words.visitor, report.averageLoss.visitor, 'visitor', texts));
+  block.append(sides, help);
+  return block;
+}
+
+function sideFigure(name: string, averageLoss: number | null, side: 'bot' | 'visitor', texts: Texts): HTMLElement {
+  const figure = document.createElement('div');
+  figure.className = `side ${side}`;
+  const label = paragraph(name);
+  label.className = 'side-name';
+  let valueText = texts.report.notMeasured;
+  if (averageLoss !== null) {
+    valueText = texts.report.centipawns(averageLoss);
+  }
+  const value = paragraph(valueText);
+  value.className = 'side-loss';
+  figure.append(label, value);
+  return figure;
 }
 
 /** How many of the Bot's moves Camille plays less than once in 100, then each of them. */

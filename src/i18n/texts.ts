@@ -106,6 +106,12 @@ export interface ReportTexts {
   noEarlyModelMove: string;
   readingPositions: string;
   positionsUnavailable: string;
+  averageLoss: string;
+  bot: string;
+  visitor: string;
+  /** The name of the button that shows what a centipawn is. */
+  centipawnHelpLabel: string;
+  centipawnHelp: string;
   losses: string;
   phase: string;
   thisGame: string;
@@ -373,6 +379,14 @@ const ENGLISH: Texts = {
     noEarlyModelMove: 'No other move up to move 15 to compare with his positions.',
     readingPositions: "Reading Camille's positions…",
     positionsUnavailable: "Camille's positions could not be read.",
+    averageLoss: 'Average loss per move',
+    bot: 'Bot',
+    visitor: 'You',
+    centipawnHelpLabel: 'What is a centipawn?',
+    centipawnHelp:
+      'A centipawn (cp) is a hundredth of a pawn. Stockfish scores every position in centipawns, and a move loses ' +
+      'what it falls short of the best move: 100 cp is about a pawn given away. The lower, the better the moves. ' +
+      'Positions already decided are left out, since every move there reads as losing nothing.',
     losses: 'Its losses, in positions still open',
     phase: 'Phase',
     thisGame: 'This game',
@@ -599,6 +613,14 @@ const FRENCH: Texts = {
     noEarlyModelMove: 'Aucun autre coup jusqu’au 15e à comparer avec ses positions.',
     readingPositions: 'Lecture des positions de Camille…',
     positionsUnavailable: 'Les positions de Camille n’ont pas pu être lues.',
+    averageLoss: 'Perte moyenne par coup',
+    bot: 'Bot',
+    visitor: 'Vous',
+    centipawnHelpLabel: `Qu’est-ce qu’un centipion${NO_BREAK}?`,
+    centipawnHelp:
+      `Un centipion (cp) est un centième de pion. Stockfish évalue chaque position en centipions, et un coup perd ` +
+      `ce qui le sépare du meilleur coup${NO_BREAK}: 100${NO_BREAK}cp, c’est à peu près un pion donné. Plus c’est bas, ` +
+      `mieux les coups sont joués. Les positions déjà décidées ne comptent pas, car tout coup y semble ne rien perdre.`,
     losses: 'Ses pertes, dans les positions encore ouvertes',
     phase: 'Phase',
     thisGame: 'Cette partie',
