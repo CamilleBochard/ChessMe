@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import type { BotMove } from '../engine/move-selection';
 import { currentFen, newGame, playMove, type Game, type MoveRequest } from '../game/game';
-import { botMovesOf, candidateRows, movesOnTheChart, rankOf, replyKey } from './explained-moves';
+import { botMovesOf, candidateRows, movesOnTheChart, movesOfSide, rankOf, replyKey } from './explained-moves';
 import type { Candidate } from '../engine/move-selection';
 
 function play(moves: MoveRequest[]): Game {
@@ -33,6 +33,26 @@ describe("the Bot's moves in the game", () => {
     expect(botMoves.map((explained) => [explained.ply, explained.phase, explained.san, explained.botMove])).toEqual([
       [2, 'opening', 'c5', sicilian],
       [4, 'opening', 'd6', pawnToD6],
+    ]);
+  });
+});
+
+describe("one side's moves in the game", () => {
+  it('are the moves that side played, oldest first, each filed by the position it was played from', () => {
+    const afterOneMove = play([{ from: 'e2', to: 'e4' }]);
+    const afterTwoMoves = play([{ from: 'e2', to: 'e4' }, { from: 'c7', to: 'c5' }]);
+    const game = playMove(afterTwoMoves, { from: 'g1', to: 'f3' })!;
+
+    const whiteMoves = movesOfSide(game, 'white');
+
+    expect(whiteMoves.map((played) => played.key)).toEqual([
+      replyKey(currentFen(newGame()), { from: 'e2', to: 'e4' }),
+      replyKey(currentFen(afterTwoMoves), { from: 'g1', to: 'f3' }),
+    ]);
+    expect(currentFen(whiteMoves[1].before)).toBe(currentFen(afterTwoMoves));
+    expect(whiteMoves[1].move).toEqual({ from: 'g1', to: 'f3' });
+    expect(movesOfSide(game, 'black').map((played) => played.key)).toEqual([
+      replyKey(currentFen(afterOneMove), { from: 'c7', to: 'c5' }),
     ]);
   });
 });

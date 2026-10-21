@@ -41,6 +41,7 @@ export interface Texts {
   losses(count: number): string;
   answered(feltReal: number, answered: number): string;
   panel: PanelTexts;
+  report: ReportTexts;
   /** A share as a percentage with the given number of decimals, as the language writes it. */
   percent(share: number, decimals: number): string;
   /** A number with the given number of decimals, as the language writes it. */
@@ -92,6 +93,42 @@ export interface PanelTexts {
   chartBot(share: string, moves: number): string;
 }
 
+/** The words of the report shown once a game is over. */
+export interface ReportTexts {
+  /** What the share in large counts. */
+  plausible: string;
+  /** What the second share in large counts. */
+  guessed(games: number): string;
+  followed: string;
+  fromBook(moves: number): string;
+  reached(count: number): string;
+  noneReached: string;
+  noEarlyModelMove: string;
+  readingPositions: string;
+  positionsUnavailable: string;
+  averageLoss: string;
+  bot: string;
+  visitor: string;
+  /** The name of the button that shows what a centipawn is. */
+  centipawnHelpLabel: string;
+  centipawnHelp: string;
+  losses: string;
+  phase: string;
+  thisGame: string;
+  camilleRange: string;
+  phaseName: Record<Phase, string>;
+  centipawns(value: number): string;
+  range(low: number, high: number): string;
+  notMeasured: string;
+  costly(count: number, of: number, share: string, camilleShare: string): string;
+  /** Of the Bot's moves, how many Camille plays less than once in 100. */
+  improbable(count: number, of: number): string;
+  improbableMove(move: string, probability: string, pawnsLost: string | null): string;
+  pending(moves: number): string;
+  source(games: number): string;
+  ratingSent: string;
+}
+
 /** The page's fixed words, each placed where an element's data-text names it. */
 export type PageText =
   | 'intro'
@@ -129,6 +166,7 @@ export type PageText =
   | 'analysisWarning'
   | 'turnOn'
   | 'cancel'
+  | 'gameReport'
   | 'ratingTitle'
   | 'ratingQuestion'
   | 'lichessRating'
@@ -251,10 +289,11 @@ const ENGLISH: Texts = {
       'The game is then recorded as assisted.',
     turnOn: 'Turn on',
     cancel: 'Cancel',
+    gameReport: 'Game report',
     ratingTitle: 'Your rating',
     ratingQuestion:
       'Do you play on Lichess or Chess.com? Your rapid rating there shows how the Bot fares against each level. ' +
-      'Fill in one field or both, or close.',
+      'Fill in one field or both.',
     lichessRating: 'Lichess',
     chesscomRating: 'Chess.com',
     ratingProblem: 'Type a whole number from 100 to 3500 in at least one field.',
@@ -329,6 +368,53 @@ const ENGLISH: Texts = {
   percent: (share, decimals) => `${(100 * share).toFixed(decimals)}%`,
   decimal: (value, decimals) => value.toFixed(decimals),
   writeMove: (san) => notation(san, 'en'),
+  report: {
+    plausible: "of the Bot's moves are moves Camille could have played.",
+    guessed: (games) => `of Camille's moves are the ones the Bot plays in his place, on ${games} of his games it never saw.`,
+    followed: 'Where it followed Camille',
+    fromBook: (moves) => `${english(moves, 'move', 'moves')} from Camille's opening repertoire.`,
+    reached: (count) =>
+      `Out of its opening repertoire, ${english(count, 'position', 'positions')} of this game already came up in Camille's games.`,
+    noneReached: "Once out of the opening, no position up to move 15 comes from a game Camille has played.",
+    noEarlyModelMove: 'No other move up to move 15 to compare with his positions.',
+    readingPositions: "Reading Camille's positions…",
+    positionsUnavailable: "Camille's positions could not be read.",
+    averageLoss: 'Average loss per move',
+    bot: 'Bot',
+    visitor: 'You',
+    centipawnHelpLabel: 'What is a centipawn?',
+    centipawnHelp:
+      'A centipawn (cp) is a hundredth of a pawn. Stockfish scores every position in centipawns, and a move loses ' +
+      'what it falls short of the best move: 100 cp is about a pawn given away. The lower, the better the moves. ' +
+      'Positions already decided are left out, since every move there reads as losing nothing.',
+    losses: 'Its losses, in positions still open',
+    phase: 'Phase',
+    thisGame: 'This game',
+    camilleRange: 'Camille, 8 games in 10',
+    phaseName: { opening: 'Opening', middlegame: 'Middlegame', endgame: 'Endgame' },
+    centipawns: (value) => `${Math.round(value)} cp`,
+    range: (low, high) => `${Math.round(low)}–${Math.round(high)} cp`,
+    notMeasured: '–',
+    costly: (count, of, share, camilleShare) =>
+      `${count} of ${english(of, 'move', 'moves')} lost more than 3 pawns (${share}). Camille: ${camilleShare}.`,
+    improbable: (count, of) => {
+      let howMany = String(count);
+      if (count === 0) {
+        howMany = 'none';
+      }
+      const moves = english(of, 'move', 'moves');
+      return `Of the Bot's ${moves} this game, ${howMany} had less than a 1% chance of being played by Camille.`;
+    },
+    improbableMove: (move, probability, pawnsLost) => {
+      if (pawnsLost === null) {
+        return `${move}: ${probability}`;
+      }
+      return `${move}: ${probability}, lost ${pawnsLost} pawns`;
+    },
+    pending: (moves) => `Stockfish is still measuring ${english(moves, 'move', 'moves')} of the game.`,
+    source: (games) => `Camille's losses: Stockfish on his ${games} games.`,
+    ratingSent: 'Thank you, it is noted.',
+  },
   panel: {
     placeholder: "Each of the Bot's moves is explained here as the game goes.",
     phaseMoves: { opening: 'opening moves', middlegame: 'middlegame moves', endgame: 'endgame moves' },
@@ -429,10 +515,11 @@ const FRENCH: Texts = {
       'La partie est alors enregistrée comme assistée.',
     turnOn: 'Activer',
     cancel: 'Annuler',
+    gameReport: 'Bilan de la partie',
     ratingTitle: 'Votre classement',
     ratingQuestion:
       `Vous jouez sur Lichess ou Chess.com${NO_BREAK}? Votre Elo en parties rapides y montre comment le Bot s’en sort ` +
-      'face à chaque niveau. Remplissez un champ ou les deux, ou fermez.',
+      'face à chaque niveau. Remplissez un champ ou les deux.',
     lichessRating: 'Elo Lichess',
     chesscomRating: 'Elo Chess.com',
     ratingProblem: 'Indiquez un nombre entier de 100 à 3500 dans au moins un des champs.',
@@ -507,6 +594,69 @@ const FRENCH: Texts = {
   percent: (share, decimals) => `${FRENCH.decimal(100 * share, decimals)}${NO_BREAK}%`,
   decimal: (value, decimals) => value.toFixed(decimals).replace('.', ','),
   writeMove: (san) => notation(san, 'fr'),
+  report: {
+    plausible: 'des coups du Bot sont des coups que Camille aurait pu jouer.',
+    guessed: (games) =>
+      `des coups de Camille sont ceux que le Bot joue à sa place, sur ${games} de ses parties qu’il n’a jamais vues.`,
+    followed: 'Où il a suivi Camille',
+    fromBook: (moves) => `${french(moves, 'coup tiré', 'coups tirés')} du répertoire d’ouverture de Camille.`,
+    reached: (count) => {
+      let cameUp = 'sont déjà apparues';
+      if (count < 2) {
+        cameUp = 'est déjà apparue';
+      }
+      const positions = french(count, 'position', 'positions');
+      return `Hors de son répertoire d’ouverture, ${positions} de cette partie ${cameUp} dans les parties de Camille.`;
+    },
+    noneReached:
+      'Une fois sorti de l’ouverture, aucune position jusqu’au 15e coup ne provient d’une partie déjà jouée par Camille.',
+    noEarlyModelMove: 'Aucun autre coup jusqu’au 15e à comparer avec ses positions.',
+    readingPositions: 'Lecture des positions de Camille…',
+    positionsUnavailable: 'Les positions de Camille n’ont pas pu être lues.',
+    averageLoss: 'Perte moyenne par coup',
+    bot: 'Bot',
+    visitor: 'Vous',
+    centipawnHelpLabel: `Qu’est-ce qu’un centipion${NO_BREAK}?`,
+    centipawnHelp:
+      `Un centipion (cp) est un centième de pion. Stockfish évalue chaque position en centipions, et un coup perd ` +
+      `ce qui le sépare du meilleur coup${NO_BREAK}: 100${NO_BREAK}cp, c’est à peu près un pion donné. Plus c’est bas, ` +
+      `mieux les coups sont joués. Les positions déjà décidées ne comptent pas, car tout coup y semble ne rien perdre.`,
+    losses: 'Ses pertes, dans les positions encore ouvertes',
+    phase: 'Phase',
+    thisGame: 'Cette partie',
+    camilleRange: 'Camille, 8 parties sur 10',
+    phaseName: { opening: 'Ouverture', middlegame: 'Milieu de jeu', endgame: 'Finale' },
+    centipawns: (value) => `${Math.round(value)}${NO_BREAK}cp`,
+    range: (low, high) => `${Math.round(low)}–${Math.round(high)}${NO_BREAK}cp`,
+    notMeasured: '–',
+    costly: (count, of, share, camilleShare) => {
+      let lost = 'ont perdu';
+      if (count < 2) {
+        lost = 'a perdu';
+      }
+      return `${french(count, 'coup', 'coups')} sur ${of} ${lost} plus de 3 pions (${share}). Camille${NO_BREAK}: ${camilleShare}.`;
+    },
+    improbable: (count, of) => {
+      const moves = french(of, 'coup', 'coups');
+      const chance = `moins de 1${NO_BREAK}% de chances`;
+      if (count === 0) {
+        return `Sur ${moves} du Bot dans cette partie, aucun n’avait ${chance} d’être joué par Camille.`;
+      }
+      if (count === 1) {
+        return `Sur ${moves} du Bot dans cette partie, 1 avait ${chance} d’être joué par Camille.`;
+      }
+      return `Sur ${moves} du Bot dans cette partie, ${count} avaient ${chance} d’être joués par Camille.`;
+    },
+    improbableMove: (move, probability, pawnsLost) => {
+      if (pawnsLost === null) {
+        return `${move}${NO_BREAK}: ${probability}`;
+      }
+      return `${move}${NO_BREAK}: ${probability}, a perdu ${pawnsLost} pions`;
+    },
+    pending: (moves) => `Stockfish mesure encore ${french(moves, 'coup', 'coups')} de la partie.`,
+    source: (games) => `Les pertes de Camille${NO_BREAK}: Stockfish sur ses ${games} parties.`,
+    ratingSent: 'Merci, c’est noté.',
+  },
   panel: {
     placeholder: 'Chaque coup du Bot est expliqué ici au fil de la partie.',
     phaseMoves: {

@@ -13,6 +13,9 @@ import type { MoveCut } from './move-cut';
  */
 export const SERVED_MODEL_SOURCE = 'models/onnx/maia3-5m-fine-tuned.onnx';
 
+/** The model's name, as the experiments' results record it. */
+export const SERVED_MODEL_NAME = 'maia3-5m-fine-tuned';
+
 /** Where the build serves it from. */
 export const SERVED_MODEL_DIRECTORY = 'public/models';
 

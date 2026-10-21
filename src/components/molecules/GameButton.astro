@@ -38,6 +38,11 @@ const { accent = false, textKey, class: className, type = 'button', ...attribute
     cursor: pointer;
   }
 
+  /* The display above would otherwise show a button marked hidden. */
+  .game-button[hidden] {
+    display: none;
+  }
+
   .plate {
     --chamfer: 8px;
     flex: 1;
