@@ -196,19 +196,21 @@ const fields = [
   }
 
   .report-body :global(.losses th) {
-    padding: 10px 12px 8px;
+    padding: 10px 10px 8px;
+    vertical-align: bottom;
     border-bottom: 1px solid color-mix(in srgb, var(--paper-light) 30%, transparent);
     font-family: var(--font-mono);
     font-size: 10px;
     font-weight: 400;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
     text-align: right;
     color: color-mix(in srgb, var(--paper-light) 65%, transparent);
   }
 
   .report-body :global(.losses td) {
-    padding: 10px 12px;
+    padding: 10px;
+    white-space: nowrap;
     border-top: 1px solid color-mix(in srgb, var(--paper-light) 12%, transparent);
     font-family: var(--font-mono);
     text-align: right;
