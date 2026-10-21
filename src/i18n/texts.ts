@@ -370,7 +370,7 @@ const ENGLISH: Texts = {
   writeMove: (san) => notation(san, 'en'),
   report: {
     plausible: "of the Bot's moves are moves Camille could have played.",
-    guessed: (games) => `of Camille's moves are guessed exactly by the Bot's model, on ${games} of his games it never saw.`,
+    guessed: (games) => `of Camille's moves are the ones the Bot plays in his place, on ${games} of his games it never saw.`,
     followed: 'Where it followed Camille',
     fromBook: (moves) => `${english(moves, 'move', 'moves')} from Camille's opening repertoire.`,
     reached: (count) =>
@@ -597,7 +597,7 @@ const FRENCH: Texts = {
   report: {
     plausible: 'des coups du Bot sont des coups que Camille aurait pu jouer.',
     guessed: (games) =>
-      `des coups de Camille sont devinés exactement par le modèle du Bot, sur ${games} de ses parties qu’il n’a jamais vues.`,
+      `des coups de Camille sont ceux que le Bot joue à sa place, sur ${games} de ses parties qu’il n’a jamais vues.`,
     followed: 'Où il a suivi Camille',
     fromBook: (moves) => `${french(moves, 'coup tiré', 'coups tirés')} du répertoire d’ouverture de Camille.`,
     reached: (count) => {

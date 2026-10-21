@@ -6,6 +6,8 @@
 import { describe, expect, it } from 'vitest';
 import { ANALYSIS_DEPTH } from '../analysis/browser-engine';
 import { SERVED_MODEL_RATING, SERVED_MODEL_SOURCE } from '../engine/served-model';
+import botRunsFile from '../../docs/experiments/results/opening-cut-test-set-fine-tuned.json';
+import { moveMatching, SERVED_BOT, type BotRunResults } from './game-report';
 import improbabilityFile from './improbability-yardstick.json';
 import lossFile from './loss-yardstick.json';
 
@@ -18,5 +20,10 @@ describe('the yardsticks the site ships', () => {
   it('read losses with the build of Stockfish analysis mode runs, at the depth it searches to', () => {
     expect(lossFile.engine).toBe('Stockfish 19 Lite WASM');
     expect(lossFile.depth).toBe(ANALYSIS_DEPTH);
+  });
+
+  it("measured the Bot's Move-Matching on the Bot the site serves, at the rating it plays at", () => {
+    expect(botRunsFile.rating).toBe(SERVED_MODEL_RATING);
+    expect(() => moveMatching(botRunsFile as BotRunResults, SERVED_BOT)).not.toThrow();
   });
 });

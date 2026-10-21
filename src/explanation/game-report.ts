@@ -5,7 +5,9 @@
 // Free of anything DOM.
 
 import type { MoveLoss } from '../analysis/engine-analysis';
+import type { MoveCut } from '../engine/move-cut';
 import type { MoveSource } from '../engine/move-selection';
+import { SERVED_MODEL_NAME, SERVED_MODEL_TEMPERATURE, SERVED_OPENING_CUT } from '../engine/served-model';
 import { PHASES, type Phase } from '../evaluation/move-matching';
 import { currentFen, playMove } from '../game/game';
 import { moveKeyOf, type ExplainedMove } from './explained-moves';
@@ -240,9 +242,22 @@ export function camilleFigures(losses: ShippedLossYardstick): CamilleFigures {
   return { overThreePawnsShare: overThreePawnsShare, lossRanges: lossRanges };
 }
 
-/** The parts of docs/experiments/results/fine-tuning.json the report reads. */
-export interface FineTuningResults {
-  variants: { full: { testSet: { overall: MatchedCount } } };
+/** How the Bot was set up for one run on the Test Set, and how often its drawn move was Camille's. */
+export interface BotRun extends ServedBot {
+  drawn: { overall: MatchedCount };
+}
+
+/** The parts of docs/experiments/results/opening-cut-test-set-fine-tuned.json the report reads. */
+export interface BotRunResults {
+  first: BotRun;
+  second: BotRun;
+}
+
+/** How the site serves the Bot: its Base Model, the temperature it draws at, and its opening cut. */
+export interface ServedBot {
+  baseModel: string;
+  temperature: number;
+  openingCut: MoveCut;
 }
 
 interface MatchedCount {
@@ -251,22 +266,60 @@ interface MatchedCount {
   games: number;
 }
 
-/** How often the model the Bot plays guesses Camille's exact move on his Test Set. */
+/** The Bot as the site serves it. */
+export const SERVED_BOT: ServedBot = {
+  baseModel: SERVED_MODEL_NAME,
+  temperature: SERVED_MODEL_TEMPERATURE,
+  openingCut: SERVED_OPENING_CUT,
+};
+
+/** How often the Bot plays Camille's move on his Test Set. */
 export interface MoveMatching {
   /** How many of his games the Test Set holds: none of them was trained on. */
   games: number;
-  /** The share of his moves there that were the model's first choice. */
+  /** The share of his moves there the Bot plays, drawing as it does on the site. */
   guessed: number;
 }
 
 /**
- * Move-Matching on the Test Set, as the fine-tuning experiment measured it:
- * the model alone, on its first choice, before the Bot draws among its moves.
+ * Move-Matching of the Bot as the site serves it: the Opening Book first,
+ * then the Base Model's move drawn at its temperature, within its opening
+ * cut. A drawn move is Camille's as often as the draw gives his move, so this
+ * is lower than the model's first choice, which is his more often but never
+ * makes his mistakes.
  */
-export function moveMatching(results: FineTuningResults): MoveMatching {
-  const testSet = results.variants.full.testSet.overall;
+export function moveMatching(results: BotRunResults, served: ServedBot): MoveMatching {
+  const runs = [results.first, results.second];
+  const servedRun = runs.find((botRun) => isSetUpAs(botRun, served));
+  if (servedRun === undefined) {
+    throw new Error('No run on the Test Set was set up as the Bot is served');
+  }
+  const overall = servedRun.drawn.overall;
   return {
-    games: testSet.games,
-    guessed: testSet.matched / testSet.positions,
+    games: overall.games,
+    guessed: overall.matched / overall.positions,
   };
+}
+
+function isSetUpAs(botRun: BotRun, served: ServedBot): boolean {
+  const sameModel = botRun.baseModel === served.baseModel;
+  const sameTemperature = botRun.temperature === served.temperature;
+  const sameCut = isSameCut(botRun.openingCut, served.openingCut);
+  return sameModel && sameTemperature && sameCut;
+}
+
+function isSameCut(first: MoveCut, second: MoveCut): boolean {
+  if (first.kind === 'none' && second.kind === 'none') {
+    return true;
+  }
+  if (first.kind === 'top-k' && second.kind === 'top-k') {
+    return first.k === second.k;
+  }
+  if (first.kind === 'top-p' && second.kind === 'top-p') {
+    return first.p === second.p;
+  }
+  if (first.kind === 'min-p' && second.kind === 'min-p') {
+    return first.fraction === second.fraction;
+  }
+  return false;
 }

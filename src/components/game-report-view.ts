@@ -1,16 +1,17 @@
 // Lays out the end-of-game report in the page's language: in large, the
-// share of the Bot's moves Camille could have played and how often its model
-// guesses his move; where it met his own positions; its losses per Phase
-// beside the range of his games, and its costly moves; the moves he rarely
-// plays. src/explanation/game-report.ts works out every figure; this only
+// share of the Bot's moves Camille could have played and how often it plays
+// his move; where it met his own positions; each side's average loss; its
+// losses per Phase beside the range of his games, and its costly moves; the
+// moves he rarely plays. src/explanation/game-report.ts works out every figure; this only
 // writes them out.
 
-import fineTuningResults from '../../docs/experiments/results/fine-tuning.json';
+import botRunsFile from '../../docs/experiments/results/opening-cut-test-set-fine-tuned.json';
 import {
   camilleFigures,
   moveMatching,
+  SERVED_BOT,
   type CamilleFigures,
-  type FineTuningResults,
+  type BotRunResults,
   type GameReport,
 } from '../explanation/game-report';
 import lossFile from '../explanation/loss-yardstick.json';
@@ -20,9 +21,9 @@ import type { Texts } from '../i18n/texts';
 
 const lossYardstick = lossFile as ShippedLossYardstick;
 const camille: CamilleFigures = camilleFigures(lossYardstick);
-// Read from the fine-tuning experiment's own results, so the report follows
-// them if the model is trained again.
-const matching = moveMatching(fineTuningResults as FineTuningResults);
+// Read from the experiment that measured the Bot as it is served; a test in
+// shipped-yardsticks.test.ts fails if the served Bot changes without it.
+const matching = moveMatching(botRunsFile as BotRunResults, SERVED_BOT);
 
 // Whether the visitor opened the note on centipawns. The report is written
 // again each time Stockfish measures a move, so the note stays as they left it.
@@ -158,7 +159,7 @@ function headline(report: GameReport, texts: Texts): HTMLElement {
   return figureBlock(share, texts.report.plausible);
 }
 
-/** How often the model guesses his move on games it never saw, in large like the headline. */
+/** How often the Bot plays his move on games it never saw, in large like the headline. */
 function guessedBlock(texts: Texts): HTMLElement {
   const share = texts.percent(matching.guessed, 0);
   return figureBlock(share, texts.report.guessed(matching.games));

@@ -7,6 +7,7 @@ import type { BotMove } from '../engine/move-selection';
 import { camilleFigures, gameReport, moveMatching, reportedMovesOf, type ReportedMove } from './game-report';
 import { botMovesOf, replyKey } from './explained-moves';
 import type { MoveEvaluation } from './panel';
+import type { MoveCut } from '../engine/move-cut';
 import type { ShippedLossYardstick } from './yardsticks';
 
 /** A Base Model move in the middlegame that lost nothing, changed as each test needs. */
@@ -182,15 +183,30 @@ describe("the Bot's moves as the report reads them", () => {
   });
 });
 
-describe('how often the model guesses Camille\'s move', () => {
-  it('reads the share of his moves the fine-tuned model guesses on the Test Set, and how many games that holds', () => {
-    const results = {
-      variants: { full: { testSet: { overall: { matched: 3822, positions: 7092, games: 230 } } } },
+describe("how often the Bot plays Camille's move", () => {
+  /** A run of the Bot on the Test Set, as the opening-cut experiment records it. */
+  function run(openingCut: MoveCut, drawnMatched: number) {
+    return {
+      baseModel: 'maia3-5m-fine-tuned',
+      temperature: 1,
+      openingCut: openingCut,
+      drawn: { overall: { matched: drawnMatched, positions: 7092, games: 230 } },
     };
+  }
+  const served = { baseModel: 'maia3-5m-fine-tuned', temperature: 1, openingCut: { kind: 'top-k', k: 10 } } as const;
 
-    const matching = moveMatching(results);
+  it('reads the drawn share of the run set up as the Bot is served, and how many games that holds', () => {
+    const results = { first: run({ kind: 'none' }, 2935), second: run({ kind: 'top-k', k: 10 }, 2937) };
+
+    const matching = moveMatching(results, served);
 
     expect(matching.games).toBe(230);
-    expect(matching.guessed).toBeCloseTo(0.539);
+    expect(matching.guessed).toBeCloseTo(2937 / 7092);
+  });
+
+  it('refuses results none of whose runs is set up as the Bot is served', () => {
+    const results = { first: run({ kind: 'none' }, 2935), second: run({ kind: 'top-k', k: 5 }, 2937) };
+
+    expect(() => moveMatching(results, served)).toThrow();
   });
 });
