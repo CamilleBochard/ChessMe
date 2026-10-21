@@ -185,39 +185,46 @@ const fields = [
     color: var(--ink-soft);
   }
 
+  /* The Bot's losses beside Camille's, light on ink, with the Bot's figure
+     in the accent like the headline. */
   .report-body :global(.losses) {
     width: 100%;
     border-collapse: collapse;
+    background: var(--ink);
+    color: var(--paper-light);
     font-size: 12px;
   }
 
   .report-body :global(.losses th) {
-    padding: 0 0 4px;
-    border-bottom: var(--line);
+    padding: 10px 12px 8px;
+    border-bottom: 1px solid color-mix(in srgb, var(--paper-light) 30%, transparent);
     font-family: var(--font-mono);
     font-size: 10px;
     font-weight: 400;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
     text-align: right;
-    color: var(--ink-soft);
+    color: color-mix(in srgb, var(--paper-light) 65%, transparent);
   }
 
   .report-body :global(.losses td) {
-    padding: 4px 0;
-    border-bottom: 1px solid var(--ink-faint);
+    padding: 10px 12px;
+    border-top: 1px solid color-mix(in srgb, var(--paper-light) 12%, transparent);
     font-family: var(--font-mono);
     text-align: right;
     font-variant-numeric: tabular-nums;
+  }
+
+  .report-body :global(.losses td:nth-child(2)) {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent);
   }
 
   .report-body :global(.losses th:first-child),
   .report-body :global(.losses td:first-child) {
     font-family: var(--font-body);
     text-align: left;
-  }
-
-  .report-body :global(.losses td + td),
-  .report-body :global(.losses th + th) {
-    padding-left: 8px;
   }
 
   .report-body :global(.improbable-moves) {
