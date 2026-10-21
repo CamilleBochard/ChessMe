@@ -49,6 +49,34 @@ export function botMovesOf(game: Game, botColour: Colour, replies: Map<string, B
   return explained;
 }
 
+/** A move one side played, with the position it was played from. */
+export interface PlayedMove {
+  before: Game;
+  move: MoveRequest;
+  /** How the page files the move among the evaluations, as moveKeyOf files the Bot's. */
+  key: string;
+}
+
+/**
+ * The moves one side played in the game, oldest first. The report reads the
+ * visitor's this way: they have no reply to explain them, only a loss to
+ * measure.
+ */
+export function movesOfSide(game: Game, colour: Colour): PlayedMove[] {
+  const played: PlayedMove[] = [];
+  let moment = game;
+  while (moment.previous !== undefined && moment.lastMove !== undefined) {
+    const before = moment.previous;
+    if (sideToMove(before) === colour) {
+      const key = replyKey(currentFen(before), moment.lastMove);
+      played.push({ before: before, move: moment.lastMove, key: key });
+    }
+    moment = before;
+  }
+  played.reverse();
+  return played;
+}
+
 /** How many moves led to the position. */
 function pliesPlayed(game: Game): number {
   let plies = 0;
