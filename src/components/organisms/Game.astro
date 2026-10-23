@@ -1127,7 +1127,9 @@ const english = TEXTS.en.page;
      and the record, the buttons of a game in progress, then the moves and the
      panel. From 960px the title's bar runs across the top, over three
      columns: the settings on the left at 230px, the moves and the panel on
-     the right at 320px, and the board centred between them. */
+     the right at 320px, and the board centred between them. From 1200px
+     the left column widens to 320px too, so the stats and their tabs have
+     room to be read. */
   .game {
     display: flex;
     flex-direction: column;
@@ -1264,6 +1266,12 @@ const english = TEXTS.en.page;
       top: 0;
       z-index: 1;
       background: var(--paper);
+    }
+  }
+
+  @media (min-width: 1200px) {
+    .game {
+      grid-template-columns: 320px minmax(0, 1fr) 320px;
     }
   }
 </style>
