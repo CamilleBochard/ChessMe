@@ -144,11 +144,12 @@ export interface ReportTexts {
   ratingSent: string;
 }
 
-/** The words of the tab of games visitors played against the Bot. */
+/** The words of the Bot's tab: its live record, then its games as Stockfish measured them. */
 export interface PlayedTexts {
-  /** Beside the number of games in large. */
-  gamesAnalysed: string;
-  botResults: string;
+  liveTitle: string;
+  measuredTitle: string;
+  /** How many games were measured, and when. */
+  measuredSummary(games: number, measuredOn: Date): string;
   lossTitle: string;
   /** The Phases named short enough for a column of the narrow panel. */
   phaseShort: Record<Phase, string>;
@@ -159,7 +160,7 @@ export interface PlayedTexts {
   /** What ± means. */
   margin: string;
   /** Which games are counted and how they were measured. */
-  scope(measuredOn: Date, engine: string, depth: number, camilleGames: number): string;
+  scope(engine: string, depth: number, camilleGames: number): string;
 }
 
 /** The page's fixed words, each placed where an element's data-text names it. */
@@ -214,7 +215,6 @@ export type PageText =
   | 'stats'
   | 'camilleTab'
   | 'botTab'
-  | 'playedTab'
   | 'games'
   | 'withWhite'
   | 'withBlack'
@@ -340,7 +340,6 @@ const ENGLISH: Texts = {
     stats: 'Stats',
     camilleTab: 'Camille',
     botTab: 'Bot',
-    playedTab: 'Played games',
     games: 'Games',
     withWhite: 'With White',
     withBlack: 'With Black',
@@ -404,8 +403,11 @@ const ENGLISH: Texts = {
   decimal: (value, decimals) => value.toFixed(decimals),
   writeMove: (san) => notation(san, 'en'),
   played: {
-    gamesAnalysed: 'games analysed',
-    botResults: "The Bot's results",
+    liveTitle: 'Live',
+    measuredTitle: 'Measured by Stockfish',
+    measuredSummary: (games, measuredOn) =>
+      `${english(games, 'game', 'games')}, last analysed on ` +
+      `${measuredOn.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })}`,
     lossTitle: 'Average loss per move, in centipawns',
     phaseShort: { opening: 'Open.', middlegame: 'Mid.', endgame: 'End' },
     visitors: 'Visitors',
@@ -413,10 +415,9 @@ const ENGLISH: Texts = {
     camille: 'Camille',
     slippedTitle: 'Games gone before move 15: three pawns down or worse',
     margin: '±: two standard errors. A gap smaller than that can come from chance alone.',
-    scope: (measuredOn, engine, depth, camilleGames) =>
-      `The games visitors finished on this site without analysis mode, measured on ` +
-      `${measuredOn.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })} ` +
-      `by ${engine} at depth ${depth}, in positions still open. Camille: his ${camilleGames} games.`,
+    scope: (engine, depth, camilleGames) =>
+      `The games visitors finished on this site without analysis mode, measured by ${engine} at depth ${depth}, ` +
+      `in positions still open. Camille: his ${camilleGames} games.`,
   },
   report: {
     guessed: (games) => `of Camille's moves are the ones the Bot plays in his place, on ${games} of his games it never saw.`,
@@ -593,7 +594,6 @@ const FRENCH: Texts = {
     stats: 'Statistiques',
     camilleTab: 'Camille',
     botTab: 'Bot',
-    playedTab: 'Parties jouées',
     games: 'Parties',
     withWhite: 'Avec les Blancs',
     withBlack: 'Avec les Noirs',
@@ -657,8 +657,11 @@ const FRENCH: Texts = {
   decimal: (value, decimals) => value.toFixed(decimals).replace('.', ','),
   writeMove: (san) => notation(san, 'fr'),
   played: {
-    gamesAnalysed: 'parties analysées',
-    botResults: 'Résultats du Bot',
+    liveTitle: 'En temps réel',
+    measuredTitle: 'Mesuré par Stockfish',
+    measuredSummary: (games, measuredOn) =>
+      `${french(games, 'partie', 'parties')}, dernière analyse le ` +
+      `${measuredOn.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })}`,
     lossTitle: 'Perte moyenne par coup, en centipions',
     phaseShort: { opening: 'Ouv.', middlegame: 'Mil.', endgame: 'Fin.' },
     visitors: 'Visiteurs',
@@ -666,10 +669,9 @@ const FRENCH: Texts = {
     camille: 'Camille',
     slippedTitle: `Parties compromises avant le 15e coup${NO_BREAK}: trois pions de retard ou plus`,
     margin: `±${NO_BREAK}: deux erreurs types. Un écart plus petit peut venir du seul hasard.`,
-    scope: (measuredOn, engine, depth, camilleGames) =>
-      `Les parties que les visiteurs ont terminées sur ce site sans le mode analyse, mesurées le ` +
-      `${measuredOn.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })} ` +
-      `par ${engine} à la profondeur ${depth}, dans les positions encore ouvertes. Camille${NO_BREAK}: ses ${camilleGames} parties.`,
+    scope: (engine, depth, camilleGames) =>
+      `Les parties que les visiteurs ont terminées sur ce site sans le mode analyse, mesurées par ${engine} ` +
+      `à la profondeur ${depth}, dans les positions encore ouvertes. Camille${NO_BREAK}: ses ${camilleGames} parties.`,
   },
   report: {
     guessed: (games) =>

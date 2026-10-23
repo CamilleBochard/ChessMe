@@ -1,9 +1,11 @@
-// The tab of games visitors played against the Bot, as the stats panel lays
-// it out: how many games were analysed, the Bot's results in them, the
-// average loss per move of the visitors, the Bot and Camille in each Phase,
-// and how often a game was gone before move 15 for each. Every figure comes
-// with its margin, so a gap within it does not read as one.
-// src/record/played-games.json holds the figures; this only writes them out.
+// The games visitors played against the Bot as Stockfish measured them, the
+// second part of the Bot's tab under its live record: how many games were
+// measured and when, the average loss per move of the visitors, the Bot and
+// Camille in each Phase, and how often a game was gone before move 15 for
+// each. Every figure comes with its margin, so a gap within it does not read
+// as one. The results are left to the live record, which counts every game
+// as it is played. src/record/played-games.json holds the figures; this only
+// writes them out.
 
 import { PHASES } from '../evaluation/move-matching';
 import type { Texts } from '../i18n/texts';
@@ -12,13 +14,15 @@ import type { Measured, PlayedGamesRecord, Side } from '../record/played-games';
 // The visitors first: the tab is about them, set beside the Bot they played
 // and the player it is built from.
 const SIDES: readonly Side[] = ['visitors', 'bot', 'camille'];
-const OUTCOMES = ['wins', 'draws', 'losses'] as const;
 
-/** The tab's figures in the page's language. It has no heading: the tab names them. */
+/** The measured figures in the page's language, under a heading of their own. */
 export function playedGamesView(record: PlayedGamesRecord, texts: Texts): HTMLElement {
-  const view = element('div', 'record-view');
-  view.append(totalOf(record, texts));
-  view.append(resultsOf(record, texts));
+  const view = element('section', 'record-view');
+  const title = element('h3', 'group-title');
+  title.textContent = texts.played.measuredTitle;
+  const summary = element('p', 'group-summary');
+  summary.textContent = texts.played.measuredSummary(record.games, new Date(record.measuredOn));
+  view.append(title, summary);
   view.append(lossTable(record, texts));
   view.append(slippedAway(record, texts));
 
@@ -27,42 +31,9 @@ export function playedGamesView(record: PlayedGamesRecord, texts: Texts): HTMLEl
   const centipawns = element('p', 'note');
   centipawns.textContent = texts.report.centipawnHelp;
   const scope = element('p', 'scope');
-  const measuredOn = new Date(record.measuredOn);
-  scope.textContent = texts.played.scope(measuredOn, record.engine, record.depth, record.camilleGames);
+  scope.textContent = texts.played.scope(record.engine, record.depth, record.camilleGames);
   view.append(margin, centipawns, scope);
   return view;
-}
-
-function totalOf(record: PlayedGamesRecord, texts: Texts): HTMLElement {
-  const total = element('p', 'total');
-  const figure = element('span', 'total-figure');
-  figure.textContent = `${record.games}`;
-  const unit = element('span', 'total-unit');
-  unit.textContent = texts.played.gamesAnalysed;
-  total.append(figure, unit);
-  return total;
-}
-
-/** The Bot's wins, draws and losses as one bar, as its record shows them, with the counts under it. */
-function resultsOf(record: PlayedGamesRecord, texts: Texts): HTMLElement {
-  const results = element('section', 'results');
-  const title = element('h3', 'block-title');
-  title.textContent = texts.played.botResults;
-  const bar = element('div', 'results-bar');
-  bar.setAttribute('aria-hidden', 'true');
-  const counts = element('dl', 'results-counts');
-  for (const outcome of OUTCOMES) {
-    const count = record.results[outcome];
-    const part = element('span', outcome);
-    part.style.flexGrow = `${count}`;
-    bar.append(part);
-
-    const entry = term(texts.page[outcome], `${count}`);
-    entry.classList.add(outcome);
-    counts.append(entry);
-  }
-  results.append(title, bar, counts);
-  return results;
 }
 
 /**
@@ -127,7 +98,7 @@ function measuredCell(measured: Measured, texts: Texts): HTMLTableCellElement {
 /** For each side, a line with the share of its games gone before move 15, its margin and the count it is read from. */
 function slippedAway(record: PlayedGamesRecord, texts: Texts): HTMLElement {
   const block = element('section', 'slipped');
-  const title = element('h3', 'block-title');
+  const title = element('h4', 'block-title');
   title.textContent = texts.played.slippedTitle;
   const list = element('dl', 'slipped-sides');
   for (const side of SIDES) {
@@ -157,17 +128,6 @@ function sideName(side: Side, texts: Texts): string {
     return texts.played.bot;
   }
   return texts.played.camille;
-}
-
-/** A name and its figure, grouped so that a grid can place each pair as one. */
-function term(label: string, value: string): HTMLElement {
-  const group = document.createElement('div');
-  const name = document.createElement('dt');
-  name.textContent = label;
-  const figure = document.createElement('dd');
-  figure.textContent = value;
-  group.append(name, figure);
-  return group;
 }
 
 function element<Tag extends keyof HTMLElementTagNameMap>(tag: Tag, className: string): HTMLElementTagNameMap[Tag] {

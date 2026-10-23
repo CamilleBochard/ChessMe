@@ -4,10 +4,10 @@
 // built into JSON by pipeline/build_player_record.py, and the Bot's over the
 // games visitors finished on the site, read from the Session Game service
 // when its tab is first opened and again once a game on the page ends. Both
-// are laid out by record-view.ts. A third tab shows those games as Stockfish
-// measured them, the visitors' losses beside the Bot's and Camille's, from
-// JSON pipeline/analyse_session_games.py wrote; played-games-view.ts lays it
-// out. The panel sits in a dialog shown in place
+// are laid out by record-view.ts. Under the Bot's live record, its tab shows
+// those games as Stockfish last measured them, the visitors' losses beside
+// the Bot's and Camille's, from JSON pipeline/analyse_session_games.py wrote;
+// played-games-view.ts lays it out. The panel sits in a dialog shown in place
 // on a wide screen and over the board on a phone, where any button marked
 // data-open-stats opens it. The tabs follow the WAI-ARIA tabs pattern: the
 // arrow keys move between them.
@@ -20,7 +20,6 @@ const english = TEXTS.en.page;
 const tabs = [
   { name: 'camille', textKey: 'camilleTab' },
   { name: 'bot', textKey: 'botTab' },
-  { name: 'played', textKey: 'playedTab' },
 ] as const;
 ---
 
@@ -92,7 +91,13 @@ const tabs = [
   const tabs = [...document.querySelectorAll<HTMLButtonElement>('[data-stats-tab]')];
   const camillePanel = document.querySelector<HTMLElement>('[data-stats-panel="camille"]')!;
   const botPanel = document.querySelector<HTMLElement>('[data-stats-panel="bot"]')!;
-  const playedPanel = document.querySelector<HTMLElement>('[data-stats-panel="played"]')!;
+  // The Bot's tab in two parts: the record the service answers, read again
+  // as games end, and the games as Stockfish measured them, shipped with
+  // the page.
+  const botLive = document.createElement('section');
+  botLive.className = 'live';
+  const botMeasured = document.createElement('div');
+  botPanel.replaceChildren(botLive, botMeasured);
 
   /**
    * Whether the Bot's figures on show are those of the service as it last
@@ -126,10 +131,10 @@ const tabs = [
   }
 
   showCamille();
-  showPlayed();
+  showMeasured();
   document.addEventListener(LANGUAGE_CHANGED, () => {
     showCamille();
-    showPlayed();
+    showMeasured();
     // The Bot's figures come from the service already written out, so they
     // are read again in the new language.
     if (isBotRead) {
@@ -162,8 +167,16 @@ const tabs = [
     camillePanel.replaceChildren(recordView(camilleRecord, texts, [], texts.page.recordScope));
   }
 
-  function showPlayed(): void {
-    playedPanel.replaceChildren(playedGamesView(playedGames, pageTexts()));
+  function showMeasured(): void {
+    botMeasured.replaceChildren(playedGamesView(playedGames, pageTexts()));
+  }
+
+  /** The live part of the Bot's tab, under its heading. */
+  function showLive(content: HTMLElement): void {
+    const title = document.createElement('h3');
+    title.className = 'group-title';
+    title.textContent = pageTexts().played.liveTitle;
+    botLive.replaceChildren(title, content);
   }
 
   /**
@@ -173,8 +186,8 @@ const tabs = [
    */
   async function showBot(): Promise<void> {
     const texts = pageTexts();
-    if (botPanel.childElementCount === 0) {
-      botPanel.replaceChildren(message(texts.page.readingTheCounts));
+    if (botLive.childElementCount === 0) {
+      showLive(message(texts.page.readingTheCounts));
     }
     isBotRead = true;
 
@@ -185,16 +198,16 @@ const tabs = [
     // The language may have changed while the service answered.
     const shownTexts = pageTexts();
     if (record === undefined || summary === undefined) {
-      botPanel.replaceChildren(message(shownTexts.summaryUnavailable));
+      showLive(message(shownTexts.summaryUnavailable));
       // Read again the next time the tab is opened.
       isBotRead = false;
       return;
     }
     if (record.games === 0) {
-      botPanel.replaceChildren(message(shownTexts.page.noBotGameYet));
+      showLive(message(shownTexts.page.noBotGameYet));
       return;
     }
-    botPanel.replaceChildren(recordView(record, shownTexts, botFigures(summary), shownTexts.page.botScope));
+    showLive(recordView(record, shownTexts, botFigures(summary), shownTexts.page.botScope));
   }
 
   /** The figures only the Bot has: where its moves came from. */
@@ -437,8 +450,39 @@ const tabs = [
     padding-left: 8px;
   }
 
-  /* The tab of played games: each block under a small heading, as the
-     openings tables' captions. */
+  /* The Bot's tab in two parts, each under a heading in ink, the measured
+     part set off by a rule. */
+  .tab-panel :global(.live) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+
+  .tab-panel :global(.live + div) {
+    margin-top: 22px;
+    padding-top: 16px;
+    border-top: var(--line);
+  }
+
+  .tab-panel :global(.group-title) {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink);
+  }
+
+  .tab-panel :global(.group-summary) {
+    margin: -8px 0 0;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--ink-soft);
+  }
+
+  /* Each block of the measured part under a small heading, as the openings
+     tables' captions. */
   .tab-panel :global(.block-title),
   .tab-panel :global(.played-losses caption) {
     margin: 0 0 6px;
