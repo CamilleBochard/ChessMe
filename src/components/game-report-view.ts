@@ -1,6 +1,6 @@
-// Lays out the end-of-game report in the page's language: in large, how
-// often the Bot plays Camille's move, then the share of its moves he could
-// have played beside the share of his own; where it met his own positions;
+// Lays out the end-of-game report in the page's language: in large, the
+// share of the Bot's moves Camille could have played beside the share of his
+// own, then how often it plays his move; where it met his own positions;
 // each side's average loss; its losses per Phase beside the range of his
 // games, and its costly moves; the moves he rarely plays.
 // src/explanation/game-report.ts works out every figure; this only writes
@@ -42,11 +42,10 @@ export function showGameReport(body: HTMLElement, report: GameReport, positions:
   const words = texts.report;
   const sections: HTMLElement[] = [];
 
-  // Whether the Bot plays like Camille comes first: it is measured on games
-  // the model never saw. The share he could have played only says it did
-  // not stray from him, and reads only beside his own.
-  sections.push(guessedBlock(texts));
+  // This game's figure first, then the one measured once on games the model
+  // never saw, the same in every report.
   sections.push(plausibleBlock(report, texts));
+  sections.push(guessedBlock(texts));
 
   const followed = section(words.followed);
   followed.classList.add('card');

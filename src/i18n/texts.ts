@@ -95,12 +95,12 @@ export interface PanelTexts {
 
 /** The words of the report shown once a game is over. */
 export interface ReportTexts {
-  /** What the first share in large counts. */
-  guessed(games: number): string;
-  /** What the second share in large counts, and the share of Camille's own moves set beside it. */
+  /** What the first share in large counts, and the share of Camille's own moves set beside it. */
   plausible(games: number): string;
   /** The name over Camille's share beside the Bot's. */
   camille: string;
+  /** What the second share in large counts. */
+  guessed(games: number): string;
   followed: string;
   fromBook(moves: number): string;
   reached(count: number): string;
