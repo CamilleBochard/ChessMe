@@ -8,7 +8,7 @@ import type { MoveLoss } from '../analysis/engine-analysis';
 import { cutName } from '../engine/move-cut';
 import type { BotMove, Candidate } from '../engine/move-selection';
 import { playMove, type Game } from '../game/game';
-import { candidateRows, CHART_LAG, moveKeyOf, movesOnTheChart, rankOf, type ExplainedMove } from './explained-moves';
+import { CANDIDATES_LISTED, candidateRows, CHART_LAG, moveKeyOf, movesOnTheChart, rankOf, type ExplainedMove } from './explained-moves';
 import type { Phase } from '../evaluation/move-matching';
 import type { Texts } from '../i18n/texts';
 import improbabilityFile from './improbability-yardstick.json';
@@ -96,8 +96,32 @@ function baseModelExplanation(explained: ExplainedMove, botMove: ModelMove, text
   }
   const how = paragraph(words.fromModel(botMove.legalMoves, botMove.temperature, drawnAmong));
   const table = candidateTable(explained.before, botMove, texts);
+  const legend = candidateLegend(texts);
   const rarity = rarityLine(explained.phase, playedCandidate(botMove), texts);
-  return [how, table, rarity];
+  return [how, table, legend, rarity];
+}
+
+/** What the table lists and what its two columns of probabilities mean. */
+function candidateLegend(texts: Texts): HTMLElement {
+  const words = texts.panel;
+  const legend = document.createElement('div');
+  legend.className = 'candidates-legend';
+  legend.append(paragraph(words.listedLegend(CANDIDATES_LISTED)));
+
+  const columns = document.createElement('dl');
+  const entries = [
+    { name: words.model, meaning: words.modelLegend },
+    { name: words.drawn, meaning: words.drawnLegend },
+  ];
+  for (const entry of entries) {
+    const name = document.createElement('dt');
+    name.textContent = entry.name;
+    const meaning = document.createElement('dd');
+    meaning.textContent = entry.meaning;
+    columns.append(name, meaning);
+  }
+  legend.append(columns);
+  return legend;
 }
 
 /** Where the move stood, in large, and what the figure means beside it. */

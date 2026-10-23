@@ -64,6 +64,10 @@ export interface PanelTexts {
   move: string;
   model: string;
   drawn: string;
+  /** Under the table of candidates: how many it lists, and what each column of probabilities means. */
+  listedLegend(listed: number): string;
+  modelLegend: string;
+  drawnLegend: string;
   /** How a screen reader names the row of the move played. */
   playedMove: string;
   /** The figure shown in large for a move the Base Model did not choose. */
@@ -440,6 +444,10 @@ const ENGLISH: Texts = {
     move: 'Move',
     model: 'Model',
     drawn: 'Drawn',
+    listedLegend: (listed) => `The model's ${listed} most likely moves; the other legal moves share the rest.`,
+    modelLegend: "how often the model trained on Camille's games expects him to play the move in this position.",
+    drawnLegend:
+      'the chance the Bot had of playing it, once the temperature and the opening cut were applied. At temperature 1 and with no cut, it equals Model.',
     playedMove: 'the move played',
     bookFigure: 'Book',
     randomFigure: 'Random',
@@ -691,6 +699,10 @@ const FRENCH: Texts = {
     move: 'Coup',
     model: 'Modèle',
     drawn: 'Tirage',
+    listedLegend: (listed) => `Les ${listed} coups les plus probables selon le modèle${NO_BREAK}; les autres coups légaux se partagent le reste.`,
+    modelLegend: 'la fréquence à laquelle le modèle entraîné sur les parties de Camille s’attend à ce qu’il joue ce coup dans cette position.',
+    drawnLegend:
+      'la chance que le Bot avait de jouer ce coup, une fois la température et la coupe d’ouverture appliquées. À la température 1 et sans coupe, elle est égale à Modèle.',
     playedMove: 'le coup joué',
     bookFigure: 'Livre',
     randomFigure: 'Hasard',
