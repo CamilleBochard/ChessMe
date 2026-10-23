@@ -32,6 +32,7 @@ import json
 import math
 import sqlite3
 from collections import defaultdict
+from datetime import date
 from pathlib import Path
 
 import chess
@@ -46,6 +47,9 @@ from pipeline.session_game_analysis import (
     PhaseSummary,
     collapse_ply,
     phase_summaries,
+    played_games_record,
+    result_for_the_bot,
+    share_margin,
     stored_games,
 )
 from pipeline.stockfish_analysis import Analyser, analyse_positions
@@ -106,13 +110,14 @@ def export(
 
 def report(
     database: Path, moves_path: Path, probabilities_path: Path, visitor_moves_path: Path | None,
-    analysers: list[Analyser], cache_path: Path, include_assisted: bool,
+    record_path: Path | None, analysers: list[Analyser], cache_path: Path, include_assisted: bool,
 ) -> None:
     """Prints each stored game, then the games beside the Bot's games against the model and Camille's own.
 
     Given the visitors' moves, as the export writes them, they get a column
     of their own: measured as the Bot's are, they say how strong the players
-    it met were.
+    it met were. Given a record path too, it writes there, as JSON, what the
+    site's tab of played games shows.
     """
     store = open_store(database)
     try:
@@ -155,7 +160,7 @@ def report(
             session_moves.append(_analysed(row, probabilities.get((row["game_id"], row["ply"]))))
         worst = _costliest_move(game_rows, probabilities)
         print(
-            f"| {game.played_on} | {game.bot_colour} | {_result_for_the_bot(game.result, game.bot_colour)} | "
+            f"| {game.played_on} | {game.bot_colour} | {result_for_the_bot(game.result, game.bot_colour)} | "
             f"{len(game_rows)} | {_collapse_text(collapse)} | {worst} |"
         )
     print()
@@ -171,21 +176,34 @@ def report(
     camille_moves = _losses_with_open_flags(camille_rows, analysers, cache_path)
     camille_probabilities = _camille_model_moves()
 
-    columns = {
-        f"Session Games ({len(games)})": (session_collapses, phase_summaries(session_moves)),
-    }
+    session_column = (session_collapses, phase_summaries(session_moves))
+    camille_column = (
+        [collapse_ply(evaluations) for evaluations in camille_evaluations.values()],
+        _merge_improbability(phase_summaries(camille_moves), phase_summaries(camille_probabilities)),
+    )
+    visitor_column = None
+    columns = {f"Session Games ({len(games)})": session_column}
     if visitor_moves_path is not None:
-        columns[f"Their visitors ({len(games)})"] = _visitor_column(_read_json_lines(visitor_moves_path), games)
-    columns |= {
-        f"Bot against the model ({len(bot_evaluations)})": (
-            [collapse_ply(evaluations) for evaluations in bot_evaluations.values()],
-            phase_summaries(bot_moves),
-        ),
-        f"Camille's games ({len(camille_evaluations)})": (
-            [collapse_ply(evaluations) for evaluations in camille_evaluations.values()],
-            _merge_improbability(phase_summaries(camille_moves), phase_summaries(camille_probabilities)),
-        ),
-    }
+        visitor_column = _visitor_column(_read_json_lines(visitor_moves_path), games)
+        columns[f"Their visitors ({len(games)})"] = visitor_column
+    columns[f"Bot against the model ({len(bot_evaluations)})"] = (
+        [collapse_ply(evaluations) for evaluations in bot_evaluations.values()],
+        phase_summaries(bot_moves),
+    )
+    columns[f"Camille's games ({len(camille_evaluations)})"] = camille_column
+
+    if record_path is not None:
+        if visitor_column is None:
+            raise SystemExit("The site's record sets the visitors' moves beside the Bot's: give --visitor-moves.")
+        sides = {"bot": session_column, "visitors": visitor_column, "camille": camille_column}
+        record = {
+            "measuredOn": date.today().isoformat(),
+            "engine": analysers[0].engine,
+            "depth": analysers[0].depth,
+            "camilleGames": len(camille_evaluations),
+            **played_games_record(games, sides),
+        }
+        record_path.write_text(json.dumps(record, indent=1) + "\n", encoding="utf-8")
 
     print(f"| Measure (Stockfish 19, depth 18) | {' | '.join(columns)} |")
     print(f"|---|{'---|' * len(columns)}")
@@ -355,16 +373,6 @@ def _assisted_note(include_assisted: bool) -> str:
     return " played without analysis mode"
 
 
-def _result_for_the_bot(result: str, bot_colour: str) -> str:
-    if result == "1/2-1/2":
-        return "draw"
-    white_won = result == "1-0"
-    bot_is_white = bot_colour == "white"
-    if white_won == bot_is_white:
-        return "win"
-    return "loss"
-
-
 def _collapse_text(collapse: int | None) -> str:
     if collapse is None:
         return "no"
@@ -377,8 +385,8 @@ def _share_cell(collapses: list[int | None]) -> str:
         return "no game"
     collapsed = sum(1 for collapse in collapses if collapse is not None)
     share = collapsed / games
-    standard_error = math.sqrt(share * (1 - share) / games)
-    return f"{collapsed} of {games}: {100 * share:.0f}% ± {200 * standard_error:.0f}"
+    margin = share_margin(collapsed, games)
+    return f"{collapsed} of {games}: {100 * share:.0f}% ± {100 * margin:.0f}"
 
 
 def _loss_cell(summary: PhaseSummary) -> str:
@@ -414,6 +422,7 @@ if __name__ == "__main__":
     report_step.add_argument("--moves", type=Path, required=True, help="the moves the export wrote")
     report_step.add_argument("--probabilities", type=Path, required=True, help="npm run move-probabilities on them")
     report_step.add_argument("--visitor-moves", type=Path, help="the visitors' moves the export wrote with --side visitor")
+    report_step.add_argument("--record-out", type=Path, help="where to write, as JSON, what the site shows of the games")
 
     for step in (export_step, report_step):
         step.add_argument("--database", type=Path, required=True, help="the SQLite file the games are stored in")
@@ -439,5 +448,5 @@ if __name__ == "__main__":
         else:
             report(
                 arguments.database, arguments.moves, arguments.probabilities, arguments.visitor_moves,
-                stockfish_processes, cache_path, arguments.include_assisted,
+                arguments.record_out, stockfish_processes, cache_path, arguments.include_assisted,
             )

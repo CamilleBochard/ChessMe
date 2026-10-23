@@ -3,7 +3,15 @@ from datetime import date
 
 import pytest
 
-from pipeline.session_game_analysis import AnalysedMove, collapse_ply, phase_summaries, stored_games
+from pipeline.session_game_analysis import (
+    AnalysedMove,
+    PhaseSummary,
+    StoredGame,
+    collapse_ply,
+    phase_summaries,
+    played_games_record,
+    stored_games,
+)
 from pipeline.session_games import open_store, record_session_game
 
 
@@ -94,4 +102,27 @@ def test_gives_each_phases_average_loss_a_margin_of_two_standard_errors():
     # One move has no spread to read a margin from.
     assert summaries["endgame"].loss_margin is None
     assert summaries["opening"].loss_margin is None
+
+
+def test_records_the_games_results_for_the_bot_and_each_sides_figures_for_the_site():
+    games = [
+        StoredGame(id="a", played_on="2026-10-21", bot_colour="white", result="1-0", bot_moves=[], visitor_moves=[]),
+        StoredGame(id="b", played_on="2026-10-21", bot_colour="white", result="0-1", bot_moves=[], visitor_moves=[]),
+        StoredGame(id="c", played_on="2026-10-22", bot_colour="black", result="0-1", bot_moves=[], visitor_moves=[]),
+        StoredGame(id="d", played_on="2026-10-22", bot_colour="black", result="1/2-1/2", bot_moves=[], visitor_moves=[]),
+    ]
+    middlegame = PhaseSummary(open_moves=3, average_loss=60, loss_margin=46.2, model_moves=0, share_under_1_percent=None)
+    nothing = PhaseSummary(open_moves=0, average_loss=None, loss_margin=None, model_moves=0, share_under_1_percent=None)
+    phases = {"opening": nothing, "middlegame": middlegame, "endgame": nothing}
+    # The ply at which each game slipped away from the side, None where it did not.
+    sides = {"visitors": ([12, None, 20, None], phases)}
+
+    record = played_games_record(games, sides)
+
+    assert record["games"] == 4
+    assert record["results"] == {"wins": 2, "draws": 1, "losses": 1}
+    visitors = record["sides"]["visitors"]
+    assert visitors["slippedAway"] == {"games": 2, "of": 4, "margin": pytest.approx(2 * math.sqrt(0.25 / 4))}
+    assert visitors["phases"]["middlegame"] == {"moves": 3, "averageLoss": 60, "margin": 46.2}
+    assert visitors["phases"]["opening"] == {"moves": 0, "averageLoss": None, "margin": None}
 

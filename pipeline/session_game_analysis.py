@@ -178,3 +178,57 @@ def phase_summaries(moves: list[AnalysedMove]) -> dict[str, PhaseSummary]:
             share_under_1_percent=share_under_1_percent,
         )
     return summaries
+
+
+def result_for_the_bot(result: str, bot_colour: str) -> str:
+    """A game's result from the Bot's side: win, draw or loss."""
+    if result == "1/2-1/2":
+        return "draw"
+    white_won = result == "1-0"
+    bot_is_white = bot_colour == "white"
+    if white_won == bot_is_white:
+        return "win"
+    return "loss"
+
+
+def share_margin(count: int, of: int) -> float:
+    """Two standard errors of the share count / of, read as a proportion."""
+    share = count / of
+    return 2 * math.sqrt(share * (1 - share) / of)
+
+
+def played_games_record(
+    games: list[StoredGame], sides: dict[str, tuple[list[int | None], dict[str, PhaseSummary]]]
+) -> dict:
+    """What the site shows of the games visitors played: their results for the Bot, then each side's figures.
+
+    Each side comes with the ply at which each game slipped away from it, or
+    None, and its Phase summaries. The keys are those the site reads.
+    """
+    results = {"wins": 0, "draws": 0, "losses": 0}
+    for game in games:
+        outcome = result_for_the_bot(game.result, game.bot_colour)
+        if outcome == "win":
+            results["wins"] += 1
+        elif outcome == "draw":
+            results["draws"] += 1
+        else:
+            results["losses"] += 1
+
+    sides_record = {}
+    for side, (collapses, summaries) in sides.items():
+        slipped = sum(1 for collapse in collapses if collapse is not None)
+        phases = {}
+        for phase in PHASES:
+            summary = summaries[phase]
+            phases[phase] = {
+                "moves": summary.open_moves,
+                "averageLoss": summary.average_loss,
+                "margin": summary.loss_margin,
+            }
+        sides_record[side] = {
+            "slippedAway": {"games": slipped, "of": len(collapses), "margin": share_margin(slipped, len(collapses))},
+            "phases": phases,
+        }
+    return {"games": len(games), "results": results, "sides": sides_record}
+
