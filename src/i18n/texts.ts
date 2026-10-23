@@ -99,15 +99,19 @@ export interface PanelTexts {
 
 /** The words of the report shown once a game is over. */
 export interface ReportTexts {
-  /** How many moves each side played, over the first share in large. */
+  /** The headings of the report's three groups. */
+  measuredBefore: string;
+  theGame: string;
+  botThisGame: string;
+  /** How many moves each side played. */
   moveCounts(bot: number, visitor: number): string;
-  /** What the first share in large counts, out of the Bot's moves. */
+  /** What the share of the Bot's moves Camille could have played counts, out of its moves. */
   plausible(moves: number, share: string): string;
   /** What the share of Camille's own moves beside it counts. */
   camilleReference(games: number): string;
   /** The name over Camille's share beside the Bot's. */
   camille: string;
-  /** What the second share in large counts. */
+  /** What the share of Camille's moves the Bot plays counts. */
   guessed(games: number): string;
   followed: string;
   fromBook(moves: number): string;
@@ -380,6 +384,9 @@ const ENGLISH: Texts = {
   writeMove: (san) => notation(san, 'en'),
   report: {
     guessed: (games) => `of Camille's moves are the ones the Bot plays in his place, on ${games} of his games it never saw.`,
+    measuredBefore: 'The Bot, measured before the game',
+    theGame: 'The game',
+    botThisGame: 'The Bot in this game',
     moveCounts: (bot, visitor) => `Moves played: Bot ${bot}, you ${visitor}.`,
     plausible: (moves, share) =>
       `Of the Bot's ${english(moves, 'move', 'moves')}, ${share} had at least a 1% chance of being played by Camille, or came from his opening repertoire.`,
@@ -615,6 +622,9 @@ const FRENCH: Texts = {
   report: {
     guessed: (games) =>
       `des coups de Camille sont ceux que le Bot joue à sa place, sur ${games} de ses parties qu’il n’a jamais vues.`,
+    measuredBefore: 'Le Bot, mesuré avant la partie',
+    theGame: 'La partie',
+    botThisGame: 'Le Bot dans cette partie',
     moveCounts: (bot, visitor) => `Nombre de coups${NO_BREAK}: Bot ${bot}, vous ${visitor}.`,
     plausible: (moves, share) =>
       `Sur ${french(moves, 'coup', 'coups')} du Bot, ${share} ont au moins 1${NO_BREAK}% de chance d’être joués par Camille, ou viennent de son répertoire d’ouverture.`,
