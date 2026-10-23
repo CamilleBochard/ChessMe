@@ -4,11 +4,23 @@
 import { describe, expect, it } from 'vitest';
 import { currentFen, newGame, playMove } from '../game/game';
 import type { BotMove } from '../engine/move-selection';
-import { camilleFigures, gameReport, moveMatching, reportedMovesOf, type ReportedMove } from './game-report';
+import {
+  camilleFigures,
+  camillePlausibleShare,
+  gameReport,
+  moveMatching,
+  reportedMovesOf,
+  type ReportedMove,
+} from './game-report';
 import { botMovesOf, replyKey } from './explained-moves';
 import type { MoveEvaluation } from './panel';
 import type { MoveCut } from '../engine/move-cut';
-import type { ShippedLossYardstick } from './yardsticks';
+import {
+  IMPROBABLE_BELOW,
+  RARITY_LADDER,
+  type ShippedImprobabilityYardstick,
+  type ShippedLossYardstick,
+} from './yardsticks';
 
 /** A Base Model move in the middlegame that lost nothing, changed as each test needs. */
 function move(changes: Partial<ReportedMove> = {}): ReportedMove {
@@ -154,6 +166,37 @@ describe("Camille's figures the report sets the Bot's beside", () => {
     expect(figures.overThreePawnsShare).toBeCloseTo(0.08);
     expect(figures.lossRanges.middlegame).toEqual({ games: 3, low: 24, high: 160 });
     expect(figures.lossRanges.opening).toBeNull();
+  });
+
+  it('counts as plausible his Opening Book moves and those the model gave at least 1%, out of all his moves', () => {
+    /** A Phase of his where the share given at the 1% rung of the ladder is the share under 1%. */
+    function phase(moves: number, shareUnderOnePercent: number) {
+      const atOrBelow = RARITY_LADDER.map((rung) => {
+        if (rung < IMPROBABLE_BELOW) {
+          return 0;
+        }
+        if (rung === IMPROBABLE_BELOW) {
+          return shareUnderOnePercent;
+        }
+        return 1;
+      });
+      return { moves: moves, atOrBelow: atOrBelow, perGame: null };
+    }
+    const improbability: ShippedImprobabilityYardstick = {
+      measuredOn: '2026-10-14',
+      baseModel: 'model.onnx',
+      rating: 1100,
+      records: 'records.jsonl',
+      games: 3,
+      moves: 10,
+      movesOutsideOpeningBook: 8,
+      movesForAVerdict: 8,
+      // 1 of 4 and 2 of 4 under 1%; the endgame holds none of his moves.
+      phases: { opening: phase(4, 0.25), middlegame: phase(4, 0.5), endgame: phase(0, NaN) },
+    };
+
+    // 2 Opening Book moves and 5 of the 8 others.
+    expect(camillePlausibleShare(improbability)).toBeCloseTo(0.7);
   });
 });
 
