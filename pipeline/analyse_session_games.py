@@ -1,24 +1,30 @@
 """Analyses the Session Games stored on the site as evidence about the Bot's Level.
 
-Run from the repository root, with a copy of the database, in two steps
+Run from the repository root, with a copy of the database, in steps
 around the Base Model's probabilities (scripts/analyse-session-games.sh runs
-all three):
+them all):
 
     python -m pipeline.analyse_session_games export --database data/session-games.sqlite \\
         --out data/session-analysis/bot-moves.jsonl
+    python -m pipeline.analyse_session_games export --database data/session-games.sqlite \\
+        --side visitor --out data/session-analysis/visitor-moves.jsonl
     npm run move-probabilities -- models/onnx/maia3-5m-fine-tuned.onnx --rating 1100 \\
         data/session-analysis/bot-moves.jsonl --out data/session-analysis/bot-move-probabilities.jsonl
     python -m pipeline.analyse_session_games report --database data/session-games.sqlite \\
         --moves data/session-analysis/bot-moves.jsonl \\
-        --probabilities data/session-analysis/bot-move-probabilities.jsonl
+        --probabilities data/session-analysis/bot-move-probabilities.jsonl \\
+        --visitor-moves data/session-analysis/visitor-moves.jsonl
 
-The export has Stockfish 19 measure each of the Bot's moves at the Blunder
-Profile's depth, from its cache. The report prints each game, then sets the
-games beside the Bot's 400 games against the Base Model at Camille's rating
-and beside Camille's own games, on the same measures: how often a game
-slipped away before move 15, the average loss per Phase in open positions,
-and the share of the model's moves under 1%. Games played with analysis
-mode on are left out unless --include-assisted is given.
+The export has Stockfish 19 measure each of one side's moves at the Blunder
+Profile's depth, from its cache: the Bot's, or with --side visitor the
+visitors'. The report prints each game, then sets the games beside the Bot's
+400 games against the Base Model at Camille's rating and beside Camille's
+own games, on the same measures: how often a game slipped away before move
+15, the average loss per Phase in open positions, and the share of the
+model's moves under 1%. Given the visitors' moves, it sets their losses
+beside the Bot's, which says how strong the players it met were. Games
+played with analysis mode on are left out unless --include-assisted is
+given.
 """
 
 import argparse
@@ -59,20 +65,27 @@ OPENING_BOOK = DATASET_DIR / "opening-book.json"
 SERVED_MODEL_DIRECTORY = Path(__file__).resolve().parent.parent / "public" / "models"
 
 
-def export(database: Path, out_path: Path, analysers: list[Analyser], cache_path: Path, include_assisted: bool) -> int:
-    """Writes the Bot's moves of the stored games, each with its loss and the evaluation before it."""
+def export(
+    database: Path, out_path: Path, side: str, analysers: list[Analyser], cache_path: Path, include_assisted: bool
+) -> int:
+    """Writes one side's moves of the stored games, the Bot's or the visitor's, each with its loss and the evaluation before it."""
     store = open_store(database)
     try:
         games = stored_games(store, include_assisted=include_assisted)
     finally:
         store.close()
-    bot_moves = [move for game in games for move in game.bot_moves]
-    positions = [_position_of(move.game_id, move.ply, move.phase, move.fen, move.move) for move in bot_moves]
+    moves = []
+    for game in games:
+        if side == "bot":
+            moves.extend(game.bot_moves)
+        else:
+            moves.extend(game.visitor_moves)
+    positions = [_position_of(move.game_id, move.ply, move.phase, move.fen, move.move) for move in moves]
     analyses = analyse_positions(positions, analysers, cache_path)
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_path, "w", encoding="utf-8") as out_file:
-        for move in bot_moves:
+        for move in moves:
             analysis = analyses[(move.fen, move.move)]
             row = {
                 "game_id": move.game_id,
@@ -88,14 +101,19 @@ def export(database: Path, out_path: Path, analysers: list[Analyser], cache_path
                 "best_move": analysis.best_move,
             }
             out_file.write(json.dumps(row) + "\n")
-    return len(bot_moves)
+    return len(moves)
 
 
 def report(
-    database: Path, moves_path: Path, probabilities_path: Path, analysers: list[Analyser], cache_path: Path,
-    include_assisted: bool,
+    database: Path, moves_path: Path, probabilities_path: Path, visitor_moves_path: Path | None,
+    analysers: list[Analyser], cache_path: Path, include_assisted: bool,
 ) -> None:
-    """Prints each stored game, then the games beside the Bot's games against the model and Camille's own."""
+    """Prints each stored game, then the games beside the Bot's games against the model and Camille's own.
+
+    Given the visitors' moves, as the export writes them, they get a column
+    of their own: measured as the Bot's are, they say how strong the players
+    it met were.
+    """
     store = open_store(database)
     try:
         games = stored_games(store, include_assisted=include_assisted)
@@ -155,6 +173,10 @@ def report(
 
     columns = {
         f"Session Games ({len(games)})": (session_collapses, phase_summaries(session_moves)),
+    }
+    if visitor_moves_path is not None:
+        columns[f"Their visitors ({len(games)})"] = _visitor_column(_read_json_lines(visitor_moves_path), games)
+    columns |= {
         f"Bot against the model ({len(bot_evaluations)})": (
             [collapse_ply(evaluations) for evaluations in bot_evaluations.values()],
             phase_summaries(bot_moves),
@@ -182,6 +204,20 @@ def report(
         "probabilities. Camille's share under 1% reads his Test Set moves outside the Opening Book, "
         "as the panel's yardstick does. A share carries ± two standard errors."
     )
+
+
+def _visitor_column(rows: list[dict], games: list) -> tuple[list[int | None], dict[str, PhaseSummary]]:
+    """How early each game slipped away from the visitor, and their losses per Phase."""
+    rows_by_game = defaultdict(list)
+    for row in rows:
+        rows_by_game[row["game_id"]].append(row)
+    collapses = []
+    for game in games:
+        evaluations = [(row["ply"], row["evaluation"]) for row in rows_by_game[game.id]]
+        collapses.append(collapse_ply(evaluations))
+    # The visitor's moves carry no model probability.
+    moves = [_analysed(row, None) for row in rows]
+    return collapses, phase_summaries(moves)
 
 
 def _position_of(game_id: str, ply: int, phase: str, fen: str, move: str) -> Position:
@@ -365,12 +401,16 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Analyse the stored Session Games as evidence about the Bot's Level.")
     steps = parser.add_subparsers(dest="step", required=True)
 
-    export_step = steps.add_parser("export", help="write the Bot's moves with their losses")
-    export_step.add_argument("--out", type=Path, required=True, help="where to write the Bot's moves, one per line")
+    export_step = steps.add_parser("export", help="write one side's moves with their losses")
+    export_step.add_argument("--out", type=Path, required=True, help="where to write the moves, one per line")
+    export_step.add_argument(
+        "--side", choices=["bot", "visitor"], default="bot", help="whose moves to write (default the Bot's)"
+    )
 
     report_step = steps.add_parser("report", help="print the games beside the Bot's games and Camille's")
     report_step.add_argument("--moves", type=Path, required=True, help="the moves the export wrote")
     report_step.add_argument("--probabilities", type=Path, required=True, help="npm run move-probabilities on them")
+    report_step.add_argument("--visitor-moves", type=Path, help="the visitors' moves the export wrote with --side visitor")
 
     for step in (export_step, report_step):
         step.add_argument("--database", type=Path, required=True, help="the SQLite file the games are stored in")
@@ -386,11 +426,15 @@ if __name__ == "__main__":
     with running_stockfish(arguments.depth, arguments.workers) as (stockfish_processes, cache_path):
         if arguments.step == "export":
             written = export(
-                arguments.database, arguments.out, stockfish_processes, cache_path, arguments.include_assisted
+                arguments.database, arguments.out, arguments.side, stockfish_processes, cache_path,
+                arguments.include_assisted,
             )
-            print(f"{written} moves of the Bot written to {arguments.out}")
+            whose = "the Bot"
+            if arguments.side == "visitor":
+                whose = "the visitors"
+            print(f"{written} moves of {whose} written to {arguments.out}")
         else:
             report(
-                arguments.database, arguments.moves, arguments.probabilities, stockfish_processes, cache_path,
-                arguments.include_assisted,
+                arguments.database, arguments.moves, arguments.probabilities, arguments.visitor_moves,
+                stockfish_processes, cache_path, arguments.include_assisted,
             )
