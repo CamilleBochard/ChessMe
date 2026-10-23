@@ -165,13 +165,20 @@ function guessedBlock(texts: Texts): HTMLElement {
   return block;
 }
 
-/** The share of the Bot's moves Camille could have played in large, and beside it the share of his own. */
+/**
+ * How many moves each side played, then the share of the Bot's moves Camille
+ * could have played in large, and beside it the share of his own.
+ */
 function plausibleBlock(report: GameReport, texts: Texts): HTMLElement {
-  let share = texts.report.notMeasured;
+  const words = texts.report;
+  let share = words.notMeasured;
   if (report.moves > 0) {
     share = texts.percent(report.plausible / report.moves, 0);
   }
   const block = figureBlock(share);
+  const counts = paragraph(words.moveCounts(report.moves, report.visitorMoves));
+  counts.className = 'move-counts';
+  block.prepend(counts);
 
   const reference = document.createElement('div');
   reference.className = 'reference';
@@ -182,7 +189,12 @@ function plausibleBlock(report: GameReport, texts: Texts): HTMLElement {
   reference.append(name, camilleShare);
   block.querySelector('.figures')!.append(reference);
 
-  block.append(paragraph(texts.report.plausible(improbabilityYardstick.games)));
+  // A game the visitor ended before the Bot moved has no share to explain.
+  let meaning = words.camilleReference(improbabilityYardstick.games);
+  if (report.moves > 0) {
+    meaning = `${words.plausible(report.moves, share)} ${meaning}`;
+  }
+  block.append(paragraph(meaning));
   return block;
 }
 

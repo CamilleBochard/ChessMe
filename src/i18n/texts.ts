@@ -95,8 +95,12 @@ export interface PanelTexts {
 
 /** The words of the report shown once a game is over. */
 export interface ReportTexts {
-  /** What the first share in large counts, and the share of Camille's own moves set beside it. */
-  plausible(games: number): string;
+  /** How many moves each side played, over the first share in large. */
+  moveCounts(bot: number, visitor: number): string;
+  /** What the first share in large counts, out of the Bot's moves. */
+  plausible(moves: number, share: string): string;
+  /** What the share of Camille's own moves beside it counts. */
+  camilleReference(games: number): string;
   /** The name over Camille's share beside the Bot's. */
   camille: string;
   /** What the second share in large counts. */
@@ -372,8 +376,10 @@ const ENGLISH: Texts = {
   writeMove: (san) => notation(san, 'en'),
   report: {
     guessed: (games) => `of Camille's moves are the ones the Bot plays in his place, on ${games} of his games it never saw.`,
-    plausible: (games) =>
-      `of the Bot's moves are moves Camille could have played. Beside it, the same count on his own moves, in ${games} of his games the model never saw.`,
+    moveCounts: (bot, visitor) => `Moves played: Bot ${bot}, you ${visitor}.`,
+    plausible: (moves, share) =>
+      `Of the Bot's ${english(moves, 'move', 'moves')}, ${share} had at least a 1% chance of being played by Camille, or came from his opening repertoire.`,
+    camilleReference: (games) => `Beside it, the same count on his own moves, in ${games} of his games the model never saw.`,
     camille: 'Camille',
     followed: 'Where it followed Camille',
     fromBook: (moves) => `${english(moves, 'move', 'moves')} from Camille's opening repertoire.`,
@@ -601,8 +607,11 @@ const FRENCH: Texts = {
   report: {
     guessed: (games) =>
       `des coups de Camille sont ceux que le Bot joue à sa place, sur ${games} de ses parties qu’il n’a jamais vues.`,
-    plausible: (games) =>
-      `des coups du Bot sont des coups que Camille aurait pu jouer. À côté, le même compte sur ses propres coups, dans ${games} de ses parties que le modèle n’a jamais vues.`,
+    moveCounts: (bot, visitor) => `Nombre de coups${NO_BREAK}: Bot ${bot}, vous ${visitor}.`,
+    plausible: (moves, share) =>
+      `Sur ${french(moves, 'coup', 'coups')} du Bot, ${share} ont au moins 1${NO_BREAK}% de chance d’être joués par Camille, ou viennent de son répertoire d’ouverture.`,
+    camilleReference: (games) =>
+      `À côté, le même compte sur ses propres coups, dans ${games} de ses parties que le modèle n’a jamais vues.`,
     camille: 'Camille',
     followed: 'Où il a suivi Camille',
     fromBook: (moves) => `${french(moves, 'coup tiré', 'coups tirés')} du répertoire d’ouverture de Camille.`,
