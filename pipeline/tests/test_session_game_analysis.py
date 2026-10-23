@@ -46,6 +46,17 @@ def test_reads_the_bots_moves_of_each_stored_game_played_without_analysis_mode(t
     assert games[0].bot_moves[1].fen == "rnbqkbnr/pppp1ppp/8/4p3/6P1/5P2/PPPPP2P/RNBQKBNR b KQkq - 0 2"
 
 
+def test_reads_as_the_visitors_moves_the_plies_the_store_did_not_record_as_the_bots(tmp_path):
+    store = open_store(tmp_path / "session-games.sqlite")
+    record_session_game(store, fools_mate(assisted=False), played_on=date(2026, 10, 14))
+
+    games = stored_games(store)
+
+    visitor_moves = [(move.ply, move.phase, move.move, move.came_from) for move in games[0].visitor_moves]
+    assert visitor_moves == [(1, "opening", "f2f3", None), (3, "opening", "g2g4", None)]
+    assert games[0].visitor_moves[1].fen == "rnbqkbnr/pppp1ppp/8/4p3/8/5P2/PPPPP1PP/RNBQKBNR w KQkq - 0 2"
+
+
 def test_sums_up_each_phase_by_its_average_loss_in_open_positions_and_its_share_of_model_moves_under_1_percent():
     moves = [
         AnalysedMove(phase="middlegame", centipawn_loss=100, open_position=True, probability=0.005),

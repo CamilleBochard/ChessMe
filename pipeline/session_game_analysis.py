@@ -43,16 +43,17 @@ def collapse_ply(evaluations: list[tuple[int, int]]) -> int | None:
 
 
 @dataclass(frozen=True)
-class StoredBotMove:
-    """One of the Bot's moves in a stored Session Game, in the dataset's shape, and where it came from."""
+class StoredMove:
+    """One move of a stored Session Game, in the dataset's shape, and for the Bot's, where it came from."""
 
     game_id: str
     ply: int
     phase: str
     fen: str
     move: str
-    # The Opening Book or the Base Model, as the page reported it.
-    came_from: str
+    # The Opening Book or the Base Model, as the page reported it; None for
+    # the visitor's moves.
+    came_from: str | None
 
 
 @dataclass(frozen=True)
@@ -61,7 +62,9 @@ class StoredGame:
     played_on: str
     bot_colour: str
     result: str
-    bot_moves: list[StoredBotMove]
+    bot_moves: list[StoredMove]
+    # Measured as the Bot's are, they say how strong the players it met were.
+    visitor_moves: list[StoredMove]
 
 
 def stored_games(connection: sqlite3.Connection, include_assisted: bool = False) -> list[StoredGame]:
@@ -80,31 +83,42 @@ def stored_games(connection: sqlite3.Connection, include_assisted: bool = False)
     for game_id, played_on, bot_colour, result, pgn in connection.execute(query).fetchall():
         source_rows = connection.execute("SELECT ply, source FROM bot_moves WHERE game_id = ?", (game_id,)).fetchall()
         sources = dict(source_rows)
-        bot_moves = _bot_moves(game_id, pgn, sources)
-        game = StoredGame(id=game_id, played_on=played_on, bot_colour=bot_colour, result=result, bot_moves=bot_moves)
+        bot_moves, visitor_moves = _moves_of_each_side(game_id, pgn, bot_colour, sources)
+        game = StoredGame(
+            id=game_id,
+            played_on=played_on,
+            bot_colour=bot_colour,
+            result=result,
+            bot_moves=bot_moves,
+            visitor_moves=visitor_moves,
+        )
         games.append(game)
     return games
 
 
-def _bot_moves(game_id: str, pgn: str, sources: dict[int, str]) -> list[StoredBotMove]:
-    """The Bot's moves of a game, found by the plies the store recorded them at."""
+def _moves_of_each_side(
+    game_id: str, pgn: str, bot_colour: str, sources: dict[int, str]
+) -> tuple[list[StoredMove], list[StoredMove]]:
+    """The Bot's moves of a game, found by the plies the store recorded them at, and the visitor's, the others."""
     game = chess.pgn.read_game(io.StringIO(pgn))
     board = game.board()
     bot_moves = []
+    visitor_moves = []
     for ply, move in enumerate(game.mainline_moves(), start=1):
+        stored = StoredMove(
+            game_id=game_id,
+            ply=ply,
+            phase=phase_of(ply),
+            fen=board.fen(),
+            move=move.uci(),
+            came_from=sources.get(ply),
+        )
         if ply in sources:
-            bot_moves.append(
-                StoredBotMove(
-                    game_id=game_id,
-                    ply=ply,
-                    phase=phase_of(ply),
-                    fen=board.fen(),
-                    move=move.uci(),
-                    came_from=sources[ply],
-                )
-            )
+            bot_moves.append(stored)
+        else:
+            visitor_moves.append(stored)
         board.push(move)
-    return bot_moves
+    return bot_moves, visitor_moves
 
 
 @dataclass(frozen=True)
