@@ -95,10 +95,12 @@ export interface PanelTexts {
 
 /** The words of the report shown once a game is over. */
 export interface ReportTexts {
-  /** What the share in large counts. */
-  plausible: string;
-  /** What the second share in large counts. */
+  /** What the first share in large counts. */
   guessed(games: number): string;
+  /** What the second share in large counts, and the share of Camille's own moves set beside it. */
+  plausible(games: number): string;
+  /** The name over Camille's share beside the Bot's. */
+  camille: string;
   followed: string;
   fromBook(moves: number): string;
   reached(count: number): string;
@@ -369,8 +371,10 @@ const ENGLISH: Texts = {
   decimal: (value, decimals) => value.toFixed(decimals),
   writeMove: (san) => notation(san, 'en'),
   report: {
-    plausible: "of the Bot's moves are moves Camille could have played.",
     guessed: (games) => `of Camille's moves are the ones the Bot plays in his place, on ${games} of his games it never saw.`,
+    plausible: (games) =>
+      `of the Bot's moves are moves Camille could have played. Beside it, the same count on his own moves, in ${games} of his games the model never saw.`,
+    camille: 'Camille',
     followed: 'Where it followed Camille',
     fromBook: (moves) => `${english(moves, 'move', 'moves')} from Camille's opening repertoire.`,
     reached: (count) =>
@@ -595,9 +599,11 @@ const FRENCH: Texts = {
   decimal: (value, decimals) => value.toFixed(decimals).replace('.', ','),
   writeMove: (san) => notation(san, 'fr'),
   report: {
-    plausible: 'des coups du Bot sont des coups que Camille aurait pu jouer.',
     guessed: (games) =>
       `des coups de Camille sont ceux que le Bot joue à sa place, sur ${games} de ses parties qu’il n’a jamais vues.`,
+    plausible: (games) =>
+      `des coups du Bot sont des coups que Camille aurait pu jouer. À côté, le même compte sur ses propres coups, dans ${games} de ses parties que le modèle n’a jamais vues.`,
+    camille: 'Camille',
     followed: 'Où il a suivi Camille',
     fromBook: (moves) => `${french(moves, 'coup tiré', 'coups tirés')} du répertoire d’ouverture de Camille.`,
     reached: (count) => {
