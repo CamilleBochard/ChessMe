@@ -104,6 +104,8 @@ export interface ImprobableMove {
 export interface GameReport {
   /** How many moves the Bot played. */
   moves: number;
+  /** How many moves the visitor played. */
+  visitorMoves: number;
   /** How many of them Camille could have played: from his Opening Book, or given at least 1% by the model trained on his games. */
   plausible: number;
   /** How many came from his Opening Book. */
@@ -197,6 +199,7 @@ export function gameReport(
 
   return {
     moves: moves.length,
+    visitorMoves: visitorEvaluations.length,
     plausible: plausible,
     fromOpeningBook: fromOpeningBook,
     reachedByCamille: reachedByCamille,

@@ -37,6 +37,15 @@ function move(changes: Partial<ReportedMove> = {}): ReportedMove {
 }
 
 describe('the report of the Bot\'s game', () => {
+  it('counts the moves each side played, whether measured yet or not', () => {
+    const visitorEvaluations: MoveEvaluation[] = [{ centipawnLoss: 0, openPosition: true }, 'pending', 'failed'];
+
+    const report = gameReport([move(), move()], null, visitorEvaluations);
+
+    expect(report.moves).toBe(2);
+    expect(report.visitorMoves).toBe(3);
+  });
+
   it('counts as plausible for Camille a move from his Opening Book or one the model gave at least 1%', () => {
     const moves = [
       move({ source: 'opening-book', modelProbability: undefined }),
