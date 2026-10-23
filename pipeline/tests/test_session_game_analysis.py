@@ -1,4 +1,7 @@
+import math
 from datetime import date
+
+import pytest
 
 from pipeline.session_game_analysis import AnalysedMove, collapse_ply, phase_summaries, stored_games
 from pipeline.session_games import open_store, record_session_game
@@ -74,3 +77,21 @@ def test_sums_up_each_phase_by_its_average_loss_in_open_positions_and_its_share_
     assert (middlegame.model_moves, middlegame.share_under_1_percent) == (3, 1 / 3)
     assert summaries["endgame"].open_moves == 0
     assert summaries["endgame"].average_loss is None
+
+
+def test_gives_each_phases_average_loss_a_margin_of_two_standard_errors():
+    moves = [
+        AnalysedMove(phase="middlegame", centipawn_loss=100, open_position=True, probability=None),
+        AnalysedMove(phase="middlegame", centipawn_loss=20, open_position=True, probability=None),
+        AnalysedMove(phase="middlegame", centipawn_loss=60, open_position=True, probability=None),
+        AnalysedMove(phase="endgame", centipawn_loss=40, open_position=True, probability=None),
+    ]
+
+    summaries = phase_summaries(moves)
+
+    # A standard deviation of 40 over 3 moves.
+    assert summaries["middlegame"].loss_margin == pytest.approx(2 * 40 / math.sqrt(3))
+    # One move has no spread to read a margin from.
+    assert summaries["endgame"].loss_margin is None
+    assert summaries["opening"].loss_margin is None
+

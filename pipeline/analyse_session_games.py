@@ -202,7 +202,7 @@ def report(
     print(
         "The Bot's games against the model were played without the opening cut and carry no fine-tuned "
         "probabilities. Camille's share under 1% reads his Test Set moves outside the Opening Book, "
-        "as the panel's yardstick does. A share carries ± two standard errors."
+        "as the panel's yardstick does. A share and an average carry ± two standard errors."
     )
 
 
@@ -285,6 +285,7 @@ def _merge_improbability(losses: dict, improbability: dict) -> dict:
         merged[phase] = PhaseSummary(
             open_moves=losses[phase].open_moves,
             average_loss=losses[phase].average_loss,
+            loss_margin=losses[phase].loss_margin,
             model_moves=improbability[phase].model_moves,
             share_under_1_percent=improbability[phase].share_under_1_percent,
         )
@@ -383,7 +384,9 @@ def _share_cell(collapses: list[int | None]) -> str:
 def _loss_cell(summary: PhaseSummary) -> str:
     if summary.average_loss is None:
         return "no move"
-    return f"{summary.average_loss:.0f} cp ({summary.open_moves})"
+    if summary.loss_margin is None:
+        return f"{summary.average_loss:.0f} cp ({summary.open_moves})"
+    return f"{summary.average_loss:.0f} ± {summary.loss_margin:.0f} cp ({summary.open_moves})"
 
 
 def _improbable_cell(summary: PhaseSummary) -> str:

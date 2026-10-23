@@ -8,6 +8,7 @@ beside the Bot's games against the Base Model at his rating.
 """
 
 import io
+import math
 import sqlite3
 from dataclasses import dataclass
 
@@ -139,6 +140,9 @@ class PhaseSummary:
     open_moves: int
     # The average loss over the moves made in open positions; None without any.
     average_loss: float | None
+    # Two standard errors of that average, the range a figure read from this
+    # many moves can stray by; None with fewer than two moves.
+    loss_margin: float | None
     model_moves: int
     # The share of the model's moves it gave less than 1%; None without any.
     share_under_1_percent: float | None
@@ -151,9 +155,14 @@ def phase_summaries(moves: list[AnalysedMove]) -> dict[str, PhaseSummary]:
         in_phase = [move for move in moves if move.phase == phase]
 
         open_moves = [move for move in in_phase if move.open_position]
+        losses = [move.centipawn_loss for move in open_moves]
         average_loss = None
-        if open_moves:
-            average_loss = sum(move.centipawn_loss for move in open_moves) / len(open_moves)
+        if losses:
+            average_loss = sum(losses) / len(losses)
+        loss_margin = None
+        if len(losses) >= 2:
+            variance = sum((loss - average_loss) ** 2 for loss in losses) / (len(losses) - 1)
+            loss_margin = 2 * math.sqrt(variance / len(losses))
 
         model_moves = [move for move in in_phase if move.probability is not None]
         share_under_1_percent = None
@@ -164,6 +173,7 @@ def phase_summaries(moves: list[AnalysedMove]) -> dict[str, PhaseSummary]:
         summaries[phase] = PhaseSummary(
             open_moves=len(open_moves),
             average_loss=average_loss,
+            loss_margin=loss_margin,
             model_moves=len(model_moves),
             share_under_1_percent=share_under_1_percent,
         )
