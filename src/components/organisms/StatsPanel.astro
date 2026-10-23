@@ -4,7 +4,10 @@
 // built into JSON by pipeline/build_player_record.py, and the Bot's over the
 // games visitors finished on the site, read from the Session Game service
 // when its tab is first opened and again once a game on the page ends. Both
-// are laid out by record-view.ts. The panel sits in a dialog shown in place
+// are laid out by record-view.ts. A third tab shows those games as Stockfish
+// measured them, the visitors' losses beside the Bot's and Camille's, from
+// JSON pipeline/analyse_session_games.py wrote; played-games-view.ts lays it
+// out. The panel sits in a dialog shown in place
 // on a wide screen and over the board on a phone, where any button marked
 // data-open-stats opens it. The tabs follow the WAI-ARIA tabs pattern: the
 // arrow keys move between them.
@@ -17,6 +20,7 @@ const english = TEXTS.en.page;
 const tabs = [
   { name: 'camille', textKey: 'camilleTab' },
   { name: 'bot', textKey: 'botTab' },
+  { name: 'played', textKey: 'playedTab' },
 ] as const;
 ---
 
@@ -64,9 +68,12 @@ const tabs = [
 <script>
   import { adaptiveDialog } from '../adaptive-dialog';
   import { recordView, type ExtraFigure } from '../record-view';
+  import { playedGamesView } from '../played-games-view';
   import { LANGUAGE_CHANGED, pageLanguage, pageTexts } from '../../i18n/page-language';
   import { readBotRecord, type PlayerRecord } from '../../record/player-record';
   import builtRecord from '../../record/player-record.json';
+  import playedGamesFile from '../../record/played-games.json';
+  import type { PlayedGamesRecord } from '../../record/played-games';
   import {
     readSessionGameSummary,
     SESSION_GAMES_CHANGED,
@@ -81,9 +88,11 @@ const tabs = [
   }
 
   const camilleRecord: PlayerRecord = builtRecord;
+  const playedGames = playedGamesFile as PlayedGamesRecord;
   const tabs = [...document.querySelectorAll<HTMLButtonElement>('[data-stats-tab]')];
   const camillePanel = document.querySelector<HTMLElement>('[data-stats-panel="camille"]')!;
   const botPanel = document.querySelector<HTMLElement>('[data-stats-panel="bot"]')!;
+  const playedPanel = document.querySelector<HTMLElement>('[data-stats-panel="played"]')!;
 
   /**
    * Whether the Bot's figures on show are those of the service as it last
@@ -117,8 +126,10 @@ const tabs = [
   }
 
   showCamille();
+  showPlayed();
   document.addEventListener(LANGUAGE_CHANGED, () => {
     showCamille();
+    showPlayed();
     // The Bot's figures come from the service already written out, so they
     // are read again in the new language.
     if (isBotRead) {
@@ -149,6 +160,10 @@ const tabs = [
   function showCamille(): void {
     const texts = pageTexts();
     camillePanel.replaceChildren(recordView(camilleRecord, texts, [], texts.page.recordScope));
+  }
+
+  function showPlayed(): void {
+    playedPanel.replaceChildren(playedGamesView(playedGames, pageTexts()));
   }
 
   /**
@@ -420,6 +435,147 @@ const tabs = [
   .tab-panel :global(.openings td + td),
   .tab-panel :global(.openings th + th) {
     padding-left: 8px;
+  }
+
+  /* The tab of played games: each block under a small heading, as the
+     openings tables' captions. */
+  .tab-panel :global(.block-title),
+  .tab-panel :global(.played-losses caption) {
+    margin: 0 0 6px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: 0.08em;
+    line-height: 1.4;
+    text-align: left;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+  }
+
+  /* The losses light on ink, as the report's table: a row per side, the
+     visitors' figures in paper, the Bot's in the accent, Camille's softer as
+     the yardstick. */
+  .tab-panel :global(.played-losses) {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-size: 12px;
+  }
+
+  .tab-panel :global(.played-losses thead),
+  .tab-panel :global(.played-losses tbody) {
+    background: var(--ink);
+    color: var(--paper-light);
+  }
+
+  .tab-panel :global(.played-losses th) {
+    padding: 8px 4px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-align: right;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--paper-light) 65%, transparent);
+  }
+
+  .tab-panel :global(.played-losses thead th),
+  .tab-panel :global(.played-losses thead td) {
+    border-bottom: 1px solid color-mix(in srgb, var(--paper-light) 30%, transparent);
+  }
+
+  .tab-panel :global(.played-losses tbody th) {
+    padding-left: 8px;
+    font-family: var(--font-body);
+    font-size: 11px;
+    text-align: left;
+    text-transform: none;
+    color: var(--paper-light);
+  }
+
+  .tab-panel :global(.played-losses thead td:first-child) {
+    width: 36%;
+  }
+
+  .tab-panel :global(.played-losses td) {
+    padding: 8px 4px;
+    border-top: 1px solid color-mix(in srgb, var(--paper-light) 12%, transparent);
+    font-family: var(--font-mono);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tab-panel :global(.played-losses .value) {
+    display: block;
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .tab-panel :global(.played-losses .margin) {
+    display: block;
+    font-size: 10px;
+    color: color-mix(in srgb, var(--paper-light) 60%, transparent);
+  }
+
+  .tab-panel :global(.played-losses tr.bot .value) {
+    color: var(--accent);
+  }
+
+  .tab-panel :global(.played-losses tr.camille .value) {
+    font-weight: 400;
+    color: color-mix(in srgb, var(--paper-light) 80%, transparent);
+  }
+
+  /* The share of games gone early, a line per side in the same order: the
+     name on the left, the share and its margin on the right. */
+  .tab-panel :global(.slipped-sides) {
+    display: grid;
+    gap: 4px;
+  }
+
+  .tab-panel :global(.slipped-sides div) {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--ink-faint);
+  }
+
+  .tab-panel :global(.slipped-sides dt) {
+    font-size: 12px;
+  }
+
+  .tab-panel :global(.slipped-sides dd) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: flex-end;
+    gap: 0 6px;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tab-panel :global(.slipped-sides .value) {
+    font-size: 16px;
+    font-weight: 700;
+  }
+
+  .tab-panel :global(.slipped-sides .bot .value) {
+    color: var(--accent);
+  }
+
+  .tab-panel :global(.slipped-sides .margin) {
+    font-size: 10px;
+    white-space: nowrap;
+    color: var(--ink-soft);
+  }
+
+  .tab-panel :global(.note) {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--ink-soft);
   }
 
   /* The page's micro text, as the other notes in the column. */

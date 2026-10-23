@@ -42,6 +42,7 @@ export interface Texts {
   answered(feltReal: number, answered: number): string;
   panel: PanelTexts;
   report: ReportTexts;
+  played: PlayedTexts;
   /** A share as a percentage with the given number of decimals, as the language writes it. */
   percent(share: number, decimals: number): string;
   /** A number with the given number of decimals, as the language writes it. */
@@ -143,6 +144,24 @@ export interface ReportTexts {
   ratingSent: string;
 }
 
+/** The words of the tab of games visitors played against the Bot. */
+export interface PlayedTexts {
+  /** Beside the number of games in large. */
+  gamesAnalysed: string;
+  botResults: string;
+  lossTitle: string;
+  /** The Phases named short enough for a column of the narrow panel. */
+  phaseShort: Record<Phase, string>;
+  visitors: string;
+  bot: string;
+  camille: string;
+  slippedTitle: string;
+  /** What ± means. */
+  margin: string;
+  /** Which games are counted and how they were measured. */
+  scope(measuredOn: Date, engine: string, depth: number, camilleGames: number): string;
+}
+
 /** The page's fixed words, each placed where an element's data-text names it. */
 export type PageText =
   | 'intro'
@@ -195,6 +214,7 @@ export type PageText =
   | 'stats'
   | 'camilleTab'
   | 'botTab'
+  | 'playedTab'
   | 'games'
   | 'withWhite'
   | 'withBlack'
@@ -320,6 +340,7 @@ const ENGLISH: Texts = {
     stats: 'Stats',
     camilleTab: 'Camille',
     botTab: 'Bot',
+    playedTab: 'Played games',
     games: 'Games',
     withWhite: 'With White',
     withBlack: 'With Black',
@@ -382,6 +403,21 @@ const ENGLISH: Texts = {
   percent: (share, decimals) => `${(100 * share).toFixed(decimals)}%`,
   decimal: (value, decimals) => value.toFixed(decimals),
   writeMove: (san) => notation(san, 'en'),
+  played: {
+    gamesAnalysed: 'games analysed',
+    botResults: "The Bot's results",
+    lossTitle: 'Average loss per move, in centipawns',
+    phaseShort: { opening: 'Open.', middlegame: 'Mid.', endgame: 'End' },
+    visitors: 'Visitors',
+    bot: 'Bot',
+    camille: 'Camille',
+    slippedTitle: 'Games gone before move 15: three pawns down or worse',
+    margin: '±: two standard errors. A gap smaller than that can come from chance alone.',
+    scope: (measuredOn, engine, depth, camilleGames) =>
+      `The games visitors finished on this site without analysis mode, measured on ` +
+      `${measuredOn.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })} ` +
+      `by ${engine} at depth ${depth}, in positions still open. Camille: his ${camilleGames} games.`,
+  },
   report: {
     guessed: (games) => `of Camille's moves are the ones the Bot plays in his place, on ${games} of his games it never saw.`,
     measuredBefore: 'The Bot, measured before the game',
@@ -557,6 +593,7 @@ const FRENCH: Texts = {
     stats: 'Statistiques',
     camilleTab: 'Camille',
     botTab: 'Bot',
+    playedTab: 'Parties jouées',
     games: 'Parties',
     withWhite: 'Avec les Blancs',
     withBlack: 'Avec les Noirs',
@@ -619,6 +656,21 @@ const FRENCH: Texts = {
   percent: (share, decimals) => `${FRENCH.decimal(100 * share, decimals)}${NO_BREAK}%`,
   decimal: (value, decimals) => value.toFixed(decimals).replace('.', ','),
   writeMove: (san) => notation(san, 'fr'),
+  played: {
+    gamesAnalysed: 'parties analysées',
+    botResults: 'Résultats du Bot',
+    lossTitle: 'Perte moyenne par coup, en centipions',
+    phaseShort: { opening: 'Ouv.', middlegame: 'Mil.', endgame: 'Fin.' },
+    visitors: 'Visiteurs',
+    bot: 'Bot',
+    camille: 'Camille',
+    slippedTitle: `Parties compromises avant le 15e coup${NO_BREAK}: trois pions de retard ou plus`,
+    margin: `±${NO_BREAK}: deux erreurs types. Un écart plus petit peut venir du seul hasard.`,
+    scope: (measuredOn, engine, depth, camilleGames) =>
+      `Les parties que les visiteurs ont terminées sur ce site sans le mode analyse, mesurées le ` +
+      `${measuredOn.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })} ` +
+      `par ${engine} à la profondeur ${depth}, dans les positions encore ouvertes. Camille${NO_BREAK}: ses ${camilleGames} parties.`,
+  },
   report: {
     guessed: (games) =>
       `des coups de Camille sont ceux que le Bot joue à sa place, sur ${games} de ses parties qu’il n’a jamais vues.`,
