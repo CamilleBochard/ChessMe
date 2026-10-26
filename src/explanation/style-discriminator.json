@@ -100,6 +100,10 @@
   ],
   "intercept": -0.0359291111838063
  },
+ "trainedOn": {
+  "camille": 702,
+  "otherPlayers": 2010
+ },
  "camille": {
   "games": 207,
   "shareScoredAsCamille": 0.5507246376811594,

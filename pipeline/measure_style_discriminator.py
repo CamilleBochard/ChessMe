@@ -151,6 +151,10 @@ def site_record(measurement: Measurement, measured_on: date) -> dict:
         "firstPlyRead": FIRST_PLY_READ,
         "minMovesRead": MIN_MOVES_READ,
         "discriminator": _camel_case_keys(measurement.discriminator.exported()),
+        "trainedOn": {
+            "camille": groups["camille_training_games"]["games"],
+            "otherPlayers": groups["other_players_training_games"]["games"],
+        },
         "camille": _shipped_group(measurement.scores["camille_test_set"], groups["camille_test_set"]),
         "otherPlayers": _shipped_group(measurement.scores["other_players_test_split"], groups["other_players_test_split"]),
         "separation": _shipped_separation(results["test_set_separation"]),
