@@ -15,7 +15,15 @@ only then scores the Bot's games and the Baseline's. Both were played against
 the same opponent with the same seed, so they differ only by the Opening
 Book, and both are equally unlike a human game in every other way: no clock,
 nobody resigns, a model across the board. Their difference is what the
-experiment reports; their raw scores are read with that caution.
+experiment reports; their raw scores are read with that caution. The Bot as
+the site serves it is scored too, from its own games.
+
+The site scores the Bot's game at the end of each Session Game with this
+same discriminator, so the run also writes what the page needs: the
+discriminator's parameters, the scores of Camille's Test Set and of the other
+players' test split it is read against, and how far the two stand apart. A
+few of Camille's Test Set games and their scores are written beside it, for
+the page's own scoring to be checked against this one.
 
 Every figure comes with a 95% bootstrap interval. Written to
 docs/experiments/results/style-discriminator.json; Markdown tables go to
@@ -24,6 +32,8 @@ standard output.
 
 import argparse
 import json
+from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
 from statistics import mean
 
@@ -34,15 +44,31 @@ from pipeline.extract_blunder_profile import DATASET_DIR, REPOSITORY_ROOT
 from pipeline.fetch_other_players import OTHER_PLAYERS_PATH
 from pipeline.other_players import read_other_players
 from pipeline.score_statistics import area_under_curve, bootstrap_interval
-from pipeline.style_discriminator import MIN_MOVES_READ, StyleDiscriminator, games_long_enough, train_discriminator
+from pipeline.style_discriminator import (
+    FIRST_PLY_READ,
+    MIN_MOVES_READ,
+    StyleDiscriminator,
+    games_long_enough,
+    train_discriminator,
+)
 
 # The version of the file's layout. Raise it whenever a reader of the old
 # layout would misread the new one.
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2
 
 BOT_GAMES_PATH = DATASET_DIR / "bot-games.jsonl"
 BASELINE_GAMES_PATH = DATASET_DIR / "baseline-games.jsonl"
+SERVED_BOT_GAMES_PATH = DATASET_DIR / "bot-games-served.jsonl"
 RESULTS_PATH = REPOSITORY_ROOT / "docs" / "experiments" / "results" / "style-discriminator.json"
+SITE_PATH = REPOSITORY_ROOT / "src" / "explanation" / "style-discriminator.json"
+PARITY_PATH = REPOSITORY_ROOT / "src" / "explanation" / "style-discriminator-parity.json"
+
+# How many of Camille's Test Set games the page's scoring is checked on.
+PARITY_GAMES = 12
+
+# The decimals each reference score is shipped with: far finer than the
+# page draws them, and a few kilobytes for both groups.
+SHIPPED_DECIMALS = 4
 
 # The groups of games scored, in the order the tables show them.
 GROUP_LABELS = {
@@ -50,12 +76,23 @@ GROUP_LABELS = {
     "other_players_test_split": "Other players, test split",
     "bot": "Bot",
     "baseline": "Baseline",
+    "served_bot": "Bot as served",
     "camille_training_games": "Camille, training games",
     "other_players_training_games": "Other players, training games",
 }
 
 
-def measure(dataset_dir: Path, other_players_path: Path, bot_games_path: Path, baseline_games_path: Path) -> dict:
+@dataclass(frozen=True)
+class Measurement:
+    results: dict
+    discriminator: StyleDiscriminator
+    groups: dict[str, list[list[Position]]]
+    scores: dict[str, list[dict]]
+
+
+def measure(
+    dataset_dir: Path, other_players_path: Path, bot_games_path: Path, baseline_games_path: Path, served_bot_games_path: Path
+) -> Measurement:
     dataset = read_dataset(dataset_dir)
     other_positions = read_other_players(other_players_path)
 
@@ -66,6 +103,7 @@ def measure(dataset_dir: Path, other_players_path: Path, bot_games_path: Path, b
         "other_players_test_split": games_long_enough(other_test_split_positions),
         "bot": games_long_enough(read_bot_games(bot_games_path)),
         "baseline": games_long_enough(read_bot_games(baseline_games_path)),
+        "served_bot": games_long_enough(read_bot_games(served_bot_games_path)),
         "camille_training_games": games_long_enough(dataset.train),
         "other_players_training_games": games_long_enough(other_training_positions),
     }
@@ -76,7 +114,7 @@ def measure(dataset_dir: Path, other_players_path: Path, bot_games_path: Path, b
     for name, games in groups.items():
         scores[name] = score_games(discriminator, games)
 
-    return {
+    results = {
         "format_version": FORMAT_VERSION,
         "min_moves_read": MIN_MOVES_READ,
         "groups": group_summaries(scores),
@@ -98,8 +136,58 @@ def measure(dataset_dir: Path, other_players_path: Path, bot_games_path: Path, b
         "bot_against_other_players": separation(scores["bot"], scores["other_players_test_split"]),
         "baseline_against_other_players": separation(scores["baseline"], scores["other_players_test_split"]),
         "bot_against_baseline": compare_mean_scores(scores["bot"], scores["baseline"]),
+        "served_bot_against_other_players": separation(scores["served_bot"], scores["other_players_test_split"]),
         "weights": _strongest_push_first(discriminator.weights()),
     }
+    return Measurement(results=results, discriminator=discriminator, groups=groups, scores=scores)
+
+
+def site_record(measurement: Measurement, measured_on: date) -> dict:
+    """What the page reads to score a game and set it against Camille's games and other players'."""
+    results = measurement.results
+    groups = results["groups"]
+    return {
+        "measuredOn": measured_on.isoformat(),
+        "firstPlyRead": FIRST_PLY_READ,
+        "minMovesRead": MIN_MOVES_READ,
+        "discriminator": _camel_case_keys(measurement.discriminator.exported()),
+        "camille": _shipped_group(measurement.scores["camille_test_set"], groups["camille_test_set"]),
+        "otherPlayers": _shipped_group(measurement.scores["other_players_test_split"], groups["other_players_test_split"]),
+        "separation": _shipped_separation(results["test_set_separation"]),
+        "separationLichessOnly": _shipped_separation(results["test_set_separation_lichess_only"]),
+    }
+
+
+def parity_record(measurement: Measurement) -> dict:
+    """A few of Camille's Test Set games, move by move, with the score this discriminator gives each."""
+    games = sorted(measurement.groups["camille_test_set"], key=lambda game: game[0].game_id)[:PARITY_GAMES]
+    shipped = []
+    for game in games:
+        moves = [{"ply": position.ply, "fen": position.fen, "uci": position.move} for position in game]
+        shipped.append({"gameId": game[0].game_id, "moves": moves, "score": measurement.discriminator.camille_probability(game)})
+    return {"games": shipped}
+
+
+def _shipped_group(scored: list[dict], summary: dict) -> dict:
+    scores = sorted(round(game["score"], SHIPPED_DECIMALS) for game in scored)
+    return {"games": summary["games"], "shareScoredAsCamille": summary["share_scored_as_camille"], "scores": scores}
+
+
+def _shipped_separation(separation: dict) -> dict:
+    return {
+        "candidateGames": separation["candidate_games"],
+        "areaUnderCurve": separation["area_under_curve"],
+        "interval": separation["area_under_curve_interval"],
+    }
+
+
+def _camel_case_keys(record: dict) -> dict:
+    """The keys of a Python record as the page's JSON files write them."""
+    shipped = {}
+    for key, value in record.items():
+        first, *rest = key.split("_")
+        shipped[first + "".join(word.capitalize() for word in rest)] = value
+    return shipped
 
 
 def split_other_players(other_positions: list[Position]) -> tuple[list[Position], list[Position]]:
@@ -200,6 +288,7 @@ def tables(results: dict) -> str:
         ("Bot against the other players' test split", results["bot_against_other_players"]),
         ("Baseline against the other players' test split", results["baseline_against_other_players"]),
         ("Bot against Baseline", results["bot_against_baseline"]),
+        ("Bot as served against the other players' test split", results["served_bot_against_other_players"]),
     ]
     for label, separation in separations:
         lines.append(f"| {label} | {_interval(separation['area_under_curve'], separation['area_under_curve_interval'])} |")
@@ -230,11 +319,16 @@ if __name__ == "__main__":
     parser.add_argument("--other-players", type=Path, default=OTHER_PLAYERS_PATH)
     parser.add_argument("--bot-games", type=Path, default=BOT_GAMES_PATH)
     parser.add_argument("--baseline-games", type=Path, default=BASELINE_GAMES_PATH)
+    parser.add_argument("--served-bot-games", type=Path, default=SERVED_BOT_GAMES_PATH)
     arguments = parser.parse_args()
 
-    results = measure(DATASET_DIR, arguments.other_players, arguments.bot_games, arguments.baseline_games)
-    RESULTS_PATH.write_text(json.dumps(results, indent=1), encoding="utf-8")
+    measurement = measure(
+        DATASET_DIR, arguments.other_players, arguments.bot_games, arguments.baseline_games, arguments.served_bot_games
+    )
+    RESULTS_PATH.write_text(json.dumps(measurement.results, indent=1), encoding="utf-8")
+    SITE_PATH.write_text(json.dumps(site_record(measurement, date.today()), indent=1), encoding="utf-8")
+    PARITY_PATH.write_text(json.dumps(parity_record(measurement), indent=1), encoding="utf-8")
 
-    print(f"Written to {RESULTS_PATH}")
+    print(f"Written to {RESULTS_PATH}, {SITE_PATH} and {PARITY_PATH}")
     print()
-    print(tables(results))
+    print(tables(measurement.results))
