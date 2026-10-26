@@ -85,8 +85,20 @@ where the Bot went wrong. The endpoint answers the counts over every game.
 python -m pipeline.report_session_games --database data/session-games.sqlite
 ```
 
-The stored PGNs are in the `pgn` column of `session_games`, for any analysis
-beyond the counts. The endpoint is public, so anyone can post a legal,
+The stored PGNs are in the `pgn` column of `session_games`. To read them as
+evidence about the Bot's Level, run
+
+```sh
+scripts/analyse-session-games.sh data/session-games.sqlite
+```
+
+which has Stockfish 19 measure each of the Bot's moves at the Blunder
+Profile's depth, adds the served model's probability for each, and sets the
+games beside the Bot's games against the model at Camille's rating and
+beside Camille's own games: how often a game slipped away before move 15,
+the average loss per Phase in open positions, and the share of the model's
+moves under 1%. Assisted games are left out unless `--include-assisted` is
+added. The endpoint is public, so anyone can post a legal,
 finished game that was never played on the site; the counts carry that limit.
 
 ## In development
