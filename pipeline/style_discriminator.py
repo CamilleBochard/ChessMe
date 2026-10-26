@@ -95,6 +95,24 @@ class StyleDiscriminator:
             weights[name] = float(coefficient)
         return weights
 
+    def exported(self) -> dict:
+        """What another program needs to score a game as this discriminator does, as plain lists.
+
+        One entry per statistic, in the order of feature_names: the value a
+        missing statistic is filled with, the mean and scale it is rescaled
+        by, and its weight on the rescaled value. The game's probability is
+        then 1 / (1 + exp(-(intercept + the weighted sum))).
+        """
+        imputer, scaler, regression = self._model
+        return {
+            "statistics": feature_names(),
+            "fill_values": [float(value) for value in imputer.statistics_],
+            "means": [float(value) for value in scaler.mean_],
+            "scales": [float(value) for value in scaler.scale_],
+            "weights": [float(value) for value in regression.coef_[0]],
+            "intercept": float(regression.intercept_[0]),
+        }
+
 
 def train_discriminator(camille_games: list[list[Position]], other_games: list[list[Position]]) -> StyleDiscriminator:
     """Trains the discriminator on Camille's games against other players' games, one list of positions per game."""
