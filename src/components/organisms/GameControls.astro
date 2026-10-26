@@ -2,7 +2,7 @@
 // The controls that run a game. The settings of a new one, whether to play
 // with a clock and then the choice of a side, which starts it, sit in a
 // dialog: in place on a wide screen until the game starts, over the board on
-// a phone. Once a game is on, take back, resign and start over, and once it
+// a phone. Once a game is on, take a move back, resign and start over, and once it
 // is over, open its report again. The game's
 // script opens the dialog, shows the buttons, reads the clock choice through
 // data-clock-choice, and enables only what the Session Game allows right now.
@@ -64,6 +64,50 @@ const english = TEXTS.en.page;
 
   .buttons :global(.game-button) {
     width: 100%;
+  }
+
+  /* Taking a move back to play it again stands apart from ending or
+     restarting the game: its plate is the orange of the dark squares. Under
+     the pointer it turns accent like the others. */
+  [data-controls] :global([data-take-back]) {
+    color: var(--ink);
+  }
+
+  [data-controls] :global([data-take-back] .plate) {
+    background: var(--square-dark);
+  }
+
+  [data-controls] :global([data-take-back] .plate::after) {
+    color: var(--ink);
+  }
+
+  /* After each move the button is lit once, briefly, to say a move can be
+     played again; the game's script restarts it with the class. */
+  [data-controls] :global([data-take-back].nudged:not(:disabled) .plate) {
+    animation: nudge 0.9s ease-out;
+  }
+
+  [data-controls] :global([data-take-back].nudged:not(:disabled) .plate::after) {
+    animation: nudge-arrow 0.9s ease-out;
+  }
+
+  @keyframes nudge {
+    30% {
+      background: color-mix(in srgb, var(--square-dark) 55%, var(--accent));
+    }
+  }
+
+  @keyframes nudge-arrow {
+    30% {
+      transform: translateX(3px);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-controls] :global([data-take-back].nudged .plate),
+    [data-controls] :global([data-take-back].nudged .plate::after) {
+      animation: none;
+    }
   }
 
   /* On a phone the buttons of a game in progress stand side by side under
