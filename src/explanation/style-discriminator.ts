@@ -29,6 +29,31 @@ export interface ShippedStyleDiscriminator {
   /** A game with fewer moves read than this is too short to score. */
   minMovesRead: number;
   discriminator: ShippedParameters;
+  /** How many games of each kind it was trained on. */
+  trainedOn: { camille: number; otherPlayers: number };
+  /** Its scores on Camille's Test Set, the games of his it never saw. */
+  camille: ReferenceGroup;
+  /** Its scores on the other players' test split. */
+  otherPlayers: ReferenceGroup;
+  /** How far Camille's Test Set stands out from the other players' games, on all his games and on his Lichess games alone. */
+  separation: Separation;
+  separationLichessOnly: Separation;
+}
+
+/** A group of games the discriminator never saw, scored. */
+export interface ReferenceGroup {
+  games: number;
+  /** The share of the games scored above one half, as Camille's. */
+  shareScoredAsCamille: number;
+  /** Every game's score, lowest first. */
+  scores: number[];
+}
+
+/** The probability that one of Camille's games outscores another player's, with its 95% interval. */
+export interface Separation {
+  candidateGames: number;
+  areaUnderCurve: number;
+  interval: [number, number];
 }
 
 /**

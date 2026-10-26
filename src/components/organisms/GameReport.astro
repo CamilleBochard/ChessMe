@@ -369,6 +369,81 @@ const fields = [
     color: var(--ink-soft);
   }
 
+  /* The style discriminator: Camille's real games in ink, other players'
+     softer and dashed, and the Bot's game as an upright line in the
+     accent, the colour its figures take throughout the report. */
+  .report-body :global(.style-legend) {
+    display: grid;
+    gap: 4px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-family: var(--font-mono);
+    font-size: 11px;
+  }
+
+  .report-body :global(.style-legend li) {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .report-body :global(.style-legend .swatch) {
+    flex: none;
+    width: 16px;
+    height: 0;
+    border-top: 3px solid var(--ink);
+  }
+
+  .report-body :global(.style-legend .swatch.others) {
+    border-top: 2px dashed var(--ink-soft);
+  }
+
+  .report-body :global(.style-legend .swatch.game) {
+    width: 3px;
+    height: 12px;
+    border: 0;
+    background: var(--accent);
+  }
+
+  .report-body :global(.style-chart) {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .report-body :global(.style-chart .baseline) {
+    stroke: var(--ink-faint);
+    stroke-width: 1;
+  }
+
+  .report-body :global(.style-chart .axis-label) {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    fill: var(--ink-soft);
+  }
+
+  .report-body :global(.style-chart .spread) {
+    fill: none;
+    stroke-linejoin: round;
+  }
+
+  .report-body :global(.style-chart .spread.camille) {
+    stroke: var(--ink);
+    stroke-width: 2.5;
+  }
+
+  .report-body :global(.style-chart .spread.others) {
+    stroke: var(--ink-soft);
+    stroke-width: 2;
+    stroke-dasharray: 5 3;
+  }
+
+  .report-body :global(.style-chart .game) {
+    stroke: var(--accent);
+    stroke-width: 3;
+  }
+
   .rating {
     margin-top: 22px;
     padding-top: 18px;

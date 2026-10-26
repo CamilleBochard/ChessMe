@@ -1,7 +1,7 @@
 // The report shown once a game is over: what the Bot's moves in that game add
 // up to, each figure meant to be set beside Camille's own. It counts what it
-// names and claims no more: how many of the Bot's moves Camille could have
-// played, where it followed him, and where it left his habits.
+// names and claims no more: where the Bot followed him, and where it left his
+// habits.
 // Free of anything DOM.
 
 import type { MoveLoss } from '../analysis/engine-analysis';
@@ -12,14 +12,7 @@ import { PHASES, type Phase } from '../evaluation/move-matching';
 import { currentFen, playMove, uciName } from '../game/game';
 import { moveKeyOf, type ExplainedMove } from './explained-moves';
 import type { MoveEvaluation } from './panel';
-import {
-  IMPROBABLE_BELOW,
-  LOSS_PROFILE_EDGES,
-  RARITY_LADDER,
-  type ShippedImprobabilityYardstick,
-  type ShippedLossYardstick,
-  type Spread,
-} from './yardsticks';
+import { IMPROBABLE_BELOW, LOSS_PROFILE_EDGES, type ShippedLossYardstick, type Spread } from './yardsticks';
 
 /** One of the Bot's moves, as the report reads it. */
 export interface ReportedMove {
@@ -112,8 +105,6 @@ export interface GameReport {
   moves: number;
   /** How many moves the visitor played. */
   visitorMoves: number;
-  /** How many of them Camille could have played: from his Opening Book, or given at least 1% by the model trained on his games. */
-  plausible: number;
   /** How many came from his Opening Book. */
   fromOpeningBook: number;
   /**
@@ -143,7 +134,6 @@ export function gameReport(
   camillePositions: ReadonlySet<string> | null,
   visitorEvaluations: MoveEvaluation[],
 ): GameReport {
-  const plausible = moves.filter(isPlausible).length;
   const fromOpeningBook = moves.filter((move) => move.source === 'opening-book').length;
 
   // The Opening Book's moves are his by construction; the question is
@@ -206,7 +196,6 @@ export function gameReport(
   return {
     moves: moves.length,
     visitorMoves: visitorEvaluations.length,
-    plausible: plausible,
     fromOpeningBook: fromOpeningBook,
     reachedByCamille: reachedByCamille,
     phases: phases,
@@ -224,17 +213,6 @@ function averageOf(losses: MoveLoss[]): number | null {
   }
   const total = losses.reduce((sum, loss) => sum + loss.centipawnLoss, 0);
   return total / losses.length;
-}
-
-/** Whether Camille could have played the move: one from his Opening Book, or one the model gave at least 1%. */
-function isPlausible(move: ReportedMove): boolean {
-  if (move.source === 'opening-book') {
-    return true;
-  }
-  if (move.modelProbability === undefined) {
-    return false;
-  }
-  return move.modelProbability >= IMPROBABLE_BELOW;
 }
 
 /** Camille's own figures, read from his loss yardstick, that the report sets the Bot's beside. */
@@ -256,30 +234,6 @@ export function camilleFigures(losses: ShippedLossYardstick): CamilleFigures {
   }
 
   return { overThreePawnsShare: overThreePawnsShare, lossRanges: lossRanges };
-}
-
-/**
- * The share of Camille's Test Set moves he could have played by the report's
- * own rule: his Opening Book moves, and the others the model gave at least
- * 1%. The Bot's share is read against it, since a model drawn from at its
- * own probabilities gives even his real moves under 1% now and then.
- */
-export function camillePlausibleShare(improbability: ShippedImprobabilityYardstick): number {
-  const rung = RARITY_LADDER.indexOf(IMPROBABLE_BELOW);
-  if (rung === -1) {
-    throw new Error('The improbability yardstick holds no rung at the threshold for an improbable move');
-  }
-
-  let improbable = 0;
-  for (const phase of PHASES) {
-    const inPhase = improbability.phases[phase];
-    // A Phase with none of his moves has no share to read.
-    if (inPhase.moves === 0) {
-      continue;
-    }
-    improbable += inPhase.atOrBelow[rung] * inPhase.moves;
-  }
-  return (improbability.moves - improbable) / improbability.moves;
 }
 
 /** How the Bot was set up for one run on the Test Set, and how often its drawn move was Camille's. */

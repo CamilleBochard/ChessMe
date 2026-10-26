@@ -2,32 +2,40 @@
 // The Bot measured before the game: how often it plays Camille's move on
 // games the model never saw, the same in every report. The game: how many
 // moves each side played and each side's average loss. The Bot in this game:
-// the share of its moves Camille could have played beside the share of his
-// own, where it met his own positions, its losses per Phase beside the range
-// of his games and its costly moves, and the moves he rarely plays.
-// src/explanation/game-report.ts works out every figure; this only writes
-// them out.
+// whether the game looks like one of Camille's to the style discriminator,
+// set against his real games and other players', where it met his own
+// positions, its losses per Phase beside the range of his games and its
+// costly moves, and the moves he rarely plays.
+// src/explanation/game-report.ts and src/explanation/style-discriminator.ts
+// work out every figure; this only writes them out.
 
 import botRunsFile from '../../docs/experiments/results/opening-cut-test-set-fine-tuned.json';
 import {
   camilleFigures,
-  camillePlausibleShare,
   moveMatching,
   SERVED_BOT,
   type CamilleFigures,
   type BotRunResults,
   type GameReport,
 } from '../explanation/game-report';
-import improbabilityFile from '../explanation/improbability-yardstick.json';
 import lossFile from '../explanation/loss-yardstick.json';
-import type { ShippedImprobabilityYardstick, ShippedLossYardstick } from '../explanation/yardsticks';
+import { STYLE_CHART_EDGES, styleChart } from '../explanation/style-chart';
+import discriminatorFile from '../explanation/style-discriminator.json';
+import {
+  scoreShares,
+  shareScoringBelow,
+  type ShippedStyleDiscriminator,
+  type StyleScore,
+} from '../explanation/style-discriminator';
+import type { ShippedLossYardstick } from '../explanation/yardsticks';
 import { PHASES } from '../evaluation/move-matching';
 import type { Texts } from '../i18n/texts';
 
 const lossYardstick = lossFile as ShippedLossYardstick;
 const camille: CamilleFigures = camilleFigures(lossYardstick);
-const improbabilityYardstick = improbabilityFile as ShippedImprobabilityYardstick;
-const camillePlausible = camillePlausibleShare(improbabilityYardstick);
+const discriminator = discriminatorFile as ShippedStyleDiscriminator;
+const camilleShares = scoreShares(discriminator.camille.scores, STYLE_CHART_EDGES);
+const otherShares = scoreShares(discriminator.otherPlayers.scores, STYLE_CHART_EDGES);
 // Read from the experiment that measured the Bot as it is served; a test in
 // shipped-yardsticks.test.ts fails if the served Bot changes without it.
 const matching = moveMatching(botRunsFile as BotRunResults, SERVED_BOT);
@@ -40,7 +48,13 @@ let centipawnHelpShown = false;
 export type PositionsState = 'reading' | 'read' | 'unavailable';
 
 /** Writes the report into body, replacing what it held. */
-export function showGameReport(body: HTMLElement, report: GameReport, positions: PositionsState, texts: Texts): void {
+export function showGameReport(
+  body: HTMLElement,
+  report: GameReport,
+  style: StyleScore,
+  positions: PositionsState,
+  texts: Texts,
+): void {
   const words = texts.report;
   const sections: HTMLElement[] = [];
 
@@ -55,7 +69,7 @@ export function showGameReport(body: HTMLElement, report: GameReport, positions:
   sections.push(theGame);
 
   const botThisGame = group(words.botThisGame);
-  botThisGame.append(plausibleBlock(report, texts));
+  botThisGame.append(styleBlock(style, texts));
 
   const followed = section(words.followed);
   followed.classList.add('card');
@@ -174,31 +188,57 @@ function guessedBlock(texts: Texts): HTMLElement {
   return block;
 }
 
-/** The share of the Bot's moves Camille could have played in large, and beside it the share of his own. */
-function plausibleBlock(report: GameReport, texts: Texts): HTMLElement {
+/**
+ * The style discriminator's score of the game in large, on the spread of
+ * Camille's real games and of other players', with where it stands among
+ * them and what a single game allows the discriminator to say.
+ */
+function styleBlock(style: StyleScore, texts: Texts): HTMLElement {
   const words = texts.report;
-  let share = words.notMeasured;
-  if (report.moves > 0) {
-    share = texts.percent(report.plausible / report.moves, 0);
-  }
-  const block = figureBlock(share);
+  const block = section(words.styleTitle);
+  block.classList.add('style');
 
-  const reference = document.createElement('div');
-  reference.className = 'reference';
-  const name = paragraph(texts.report.camille);
-  name.className = 'side-name';
-  const camilleShare = paragraph(texts.percent(camillePlausible, 0));
-  camilleShare.className = 'reference-share';
-  reference.append(name, camilleShare);
-  block.querySelector('.figures')!.append(reference);
-
-  // A game the visitor ended before the Bot moved has no share to explain.
-  let meaning = words.camilleReference(improbabilityYardstick.games);
-  if (report.moves > 0) {
-    meaning = `${words.plausible(report.moves, share)} ${meaning}`;
+  let gameScore: number | null = null;
+  if (style.kind === 'scored') {
+    gameScore = style.score;
+    const figure = paragraph(texts.decimal(style.score, 2));
+    figure.className = 'share';
+    block.append(figure);
+  } else {
+    block.append(paragraph(words.styleTooShort(style.movesRead, style.needed)));
   }
-  block.append(paragraph(meaning));
+
+  const legend = document.createElement('ul');
+  legend.className = 'style-legend';
+  legend.append(legendItem('camille', words.styleLegendCamille(discriminator.camille.games)));
+  legend.append(legendItem('others', words.styleLegendOthers(discriminator.otherPlayers.games)));
+  if (gameScore !== null) {
+    legend.append(legendItem('game', words.styleLegendGame));
+  }
+  block.append(legend, styleChart(camilleShares, otherShares, gameScore, texts));
+
+  if (gameScore !== null) {
+    const camilleBelow = texts.percent(shareScoringBelow(discriminator.camille.scores, gameScore), 0);
+    const othersBelow = texts.percent(shareScoringBelow(discriminator.otherPlayers.scores, gameScore), 0);
+    block.append(paragraph(words.styleStanding(camilleBelow, othersBelow)));
+  }
+  const recognised = texts.percent(discriminator.camille.shareScoredAsCamille, 0);
+  const taken = texts.percent(discriminator.otherPlayers.shareScoredAsCamille, 0);
+  block.append(paragraph(words.styleLimit(recognised, taken)));
+
+  const source = paragraph(words.styleSource(discriminator.trainedOn.camille, discriminator.trainedOn.otherPlayers));
+  source.classList.add('source');
+  block.append(source);
   return block;
+}
+
+function legendItem(who: 'camille' | 'others' | 'game', text: string): HTMLLIElement {
+  const item = document.createElement('li');
+  const swatch = document.createElement('span');
+  swatch.className = `swatch ${who}`;
+  swatch.setAttribute('aria-hidden', 'true');
+  item.append(swatch, text);
+  return item;
 }
 
 /** A block holding a share in large, the words saying what it counts appended after. */
