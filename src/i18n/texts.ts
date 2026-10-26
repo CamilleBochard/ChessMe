@@ -514,15 +514,15 @@ const ENGLISH: Texts = {
     legendBot: (moves) => `The Bot this game, ${english(moves, 'move', 'moves')}`,
     legendBand: (moves) => `Range where the Bot plays like Camille, over ${english(moves, 'move', 'moves')}`,
     chartReading:
-      'Share of moves that lost at most so many centipawns, in positions still open. ' +
-      'Higher and further left: fewer and smaller mistakes.',
+      'Each point gives the share of moves that lost at most that many centipawns: at 100, those that lost ' +
+      'a pawn or less. The faster the curve climbs, the fewer the mistakes.',
     chartLag: (lag) =>
-      `While the game goes on the Bot's curve leaves out its last ${lag} moves, so it never shows where ` +
-      'the Bot has just gone wrong. Analysis mode, and the end of the game, show them all.',
+      `During the game the Bot's last ${lag} moves are left out, so the curve never points at a mistake it ` +
+      'has just made. They appear at the end of the game or in analysis mode.',
     stillToEvaluate: (waiting) => `Stockfish is evaluating the Bot's moves one at a time: ${waiting} still to come.`,
     notEvaluated: (failed) => `Stockfish could not evaluate ${failed} of the Bot's moves; the curve leaves them out.`,
     camilleSource: (games, engine, depth) =>
-      `Camille: all ${games} of his games, ${engine} at depth ${depth}, the settings used here.`,
+      `Camille: his ${games} games, analysed with ${engine} at depth ${depth}, as here.`,
     chartAxis: 'lost at most, in centipawns',
     chartCamille: (share) => `Camille loses a pawn or less on ${share} of his moves.`,
     chartBot: (share, moves) => `The Bot, on ${share} of its ${moves} evaluated moves this game.`,
@@ -792,11 +792,11 @@ const FRENCH: Texts = {
     legendBot: (moves) => `Le Bot dans cette partie, ${french(moves, 'coup', 'coups')}`,
     legendBand: (moves) => `Zone où le Bot joue comme Camille, sur ${french(moves, 'coup', 'coups')}`,
     chartReading:
-      'Part des coups qui ont perdu au plus tant de centipions, dans les positions encore ouvertes. ' +
-      `Plus haut et plus à gauche${NO_BREAK}: des erreurs moins nombreuses et plus petites.`,
+      `Chaque point donne la part des coups qui ont perdu au plus ce nombre de centipions${NO_BREAK}: à 100, ` +
+      'ceux qui ont perdu un pion ou moins. Plus la courbe monte vite, moins il y a d’erreurs.',
     chartLag: (lag) =>
-      `Tant que la partie continue, la courbe du Bot laisse de côté ses ${lag} derniers coups, pour ne jamais ` +
-      'montrer où le Bot vient de se tromper. Le mode analyse, et la fin de la partie, les montrent tous.',
+      `Pendant la partie, les ${lag} derniers coups du Bot n’apparaissent pas, pour que la courbe ne signale ` +
+      'jamais une erreur qu’il vient de faire. Ils s’affichent à la fin de la partie ou en mode analyse.',
     stillToEvaluate: (waiting) => `Stockfish évalue les coups du Bot un par un${NO_BREAK}: encore ${waiting} à venir.`,
     notEvaluated: (failed) => {
       if (failed < 2) {
@@ -805,7 +805,7 @@ const FRENCH: Texts = {
       return `Stockfish n’a pas pu évaluer ${failed} coups du Bot${NO_BREAK}; la courbe les laisse de côté.`;
     },
     camilleSource: (games, engine, depth) =>
-      `Camille${NO_BREAK}: ses ${games} parties, ${engine} à la profondeur ${depth}, les réglages utilisés ici.`,
+      `Camille${NO_BREAK}: ses ${games} parties, analysées avec ${engine} à la profondeur ${depth}, comme ici.`,
     chartAxis: 'perte au plus, en centipions',
     chartCamille: (share) => `Camille perd un pion ou moins sur ${share} de ses coups.`,
     chartBot: (share, moves) => `Le Bot, sur ${share} de ses ${moves} coups évalués dans cette partie.`,
