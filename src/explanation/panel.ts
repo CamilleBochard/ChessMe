@@ -255,7 +255,10 @@ function lossComparison(view: PanelView): HTMLElement[] {
   figure.className = 'chart';
   figure.append(lossChart(camille, bot, band, view.texts));
 
-  const notes = [words.chartReading];
+  // How to read the chart stands on its own; what the curves leave out and
+  // where Camille's comes from follow on a line of their own.
+  const reading = paragraph(words.chartReading, 'sources');
+  const notes: string[] = [];
   if (!view.revealed) {
     notes.push(words.chartLag(CHART_LAG));
   }
@@ -270,7 +273,7 @@ function lossComparison(view: PanelView): HTMLElement[] {
     notes.push(words.notEvaluated(failed));
   }
   notes.push(words.camilleSource(lossYardstick.games, lossYardstick.engine, lossYardstick.depth));
-  return [legend, figure, paragraph(notes.join(' '), 'sources')];
+  return [legend, figure, reading, paragraph(notes.join(' '), 'sources')];
 }
 
 function legendItem(who: 'camille' | 'bot' | 'band', text: string): HTMLLIElement {

@@ -515,7 +515,7 @@ const ENGLISH: Texts = {
     legendBand: (moves) => `Range where the Bot plays like Camille, over ${english(moves, 'move', 'moves')}`,
     chartReading:
       "The curves compare the Bot's mistakes with Camille's. While the Bot's stays in the grey band, " +
-      'it goes wrong as often and as badly as he does.',
+      "its mistakes are like Camille's, in number as in size.",
     chartLag: (lag) => `The Bot's last ${lag} moves only appear at the end of the game or in analysis mode.`,
     stillToEvaluate: (waiting) => `Stockfish is evaluating the Bot's moves one at a time: ${waiting} still to come.`,
     notEvaluated: (failed) => `Stockfish could not evaluate ${failed} of the Bot's moves; the curve leaves them out.`,
@@ -791,7 +791,7 @@ const FRENCH: Texts = {
     legendBand: (moves) => `Zone où le Bot joue comme Camille, sur ${french(moves, 'coup', 'coups')}`,
     chartReading:
       'Les courbes comparent les erreurs du Bot à celles de Camille. Tant que celle du Bot reste dans la zone ' +
-      'grise, il se trompe aussi souvent et aussi gros que lui.',
+      'grise, ses erreurs ressemblent à celles de Camille, en nombre comme en gravité.',
     chartLag: (lag) =>
       `Les ${lag} derniers coups du Bot n’apparaissent qu’à la fin de la partie ou en mode analyse.`,
     stillToEvaluate: (waiting) => `Stockfish évalue les coups du Bot un par un${NO_BREAK}: encore ${waiting} à venir.`,
