@@ -20,8 +20,9 @@ data/dataset/
 # Stockfish analyses, kept between runs because a full pass takes hours
 data/analysis/
 
-# The Session Games' analysis, written again from the stored games on each run
-data/session-analysis/
+# The Session Games' analysis, written again from the stored games on each run,
+# one folder per copy of the store when it is dated
+data/session-analysis*/
 
 # Personal working notes, kept out of the repository
 notes/
