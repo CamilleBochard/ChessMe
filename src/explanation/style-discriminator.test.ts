@@ -3,7 +3,14 @@ import type { SquareName } from 'chessops/types';
 import { currentFen, newGame, playMove, sideToMove, type Game } from '../game/game';
 import shippedFile from './style-discriminator.json';
 import parityFile from './style-discriminator-parity.json';
-import { gameStatistics, scoreGame, type ShippedStyleDiscriminator, type StyleMove } from './style-discriminator';
+import {
+  gameStatistics,
+  scoreGame,
+  scoreShares,
+  shareScoringBelow,
+  type ShippedStyleDiscriminator,
+  type StyleMove,
+} from './style-discriminator';
 
 const shipped = shippedFile as ShippedStyleDiscriminator;
 
@@ -136,5 +143,26 @@ describe('the shipped discriminator', () => {
         expect(style.score, game.gameId).toBeCloseTo(game.score, 9);
       }
     }
+  });
+});
+
+describe('shareScoringBelow', () => {
+  it('gives the share of a group\'s games that score lower than the game, a tie counting half', () => {
+    const group = [0.2, 0.4, 0.5, 0.6];
+
+    expect(shareScoringBelow(group, 0.5)).toBe(0.625);
+    expect(shareScoringBelow(group, 0.1)).toBe(0);
+    expect(shareScoringBelow(group, 0.9)).toBe(1);
+  });
+});
+
+describe('scoreShares', () => {
+  it('gives the share of a group\'s games in each band of scores, a score past either end counting in the end band', () => {
+    const group = [0.05, 0.2, 0.3, 0.6, 0.95];
+
+    // Bands 0.1 to 0.4 and 0.4 to 0.9.
+    const shares = scoreShares(group, [0.1, 0.4, 0.9]);
+
+    expect(shares).toEqual([0.6, 0.4]);
   });
 });

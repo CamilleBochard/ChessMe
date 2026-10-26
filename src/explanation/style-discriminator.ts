@@ -78,6 +78,42 @@ export function scoreGame(moves: StyleMove[], shipped: ShippedStyleDiscriminator
   return { kind: 'scored', movesRead: read.length, score: score };
 }
 
+/**
+ * The share of a group's games that score lower than this score, a game that
+ * scores the same counting half: where the game stands among Camille's own
+ * games, or among other players'.
+ */
+export function shareScoringBelow(groupScores: readonly number[], score: number): number {
+  let below = 0;
+  for (const groupScore of groupScores) {
+    if (groupScore < score) {
+      below += 1;
+    } else if (groupScore === score) {
+      below += 0.5;
+    }
+  }
+  return below / groupScores.length;
+}
+
+/**
+ * The share of a group's games in each band between consecutive edges, so two
+ * groups of different sizes draw on the same scale. A score below the first
+ * edge counts in the first band and one above the last in the last band, so
+ * every game is drawn.
+ */
+export function scoreShares(groupScores: readonly number[], edges: readonly number[]): number[] {
+  const bands = edges.length - 1;
+  const counts = new Array<number>(bands).fill(0);
+  for (const score of groupScores) {
+    let band = 0;
+    while (band < bands - 1 && score >= edges[band + 1]) {
+      band += 1;
+    }
+    counts[band] += 1;
+  }
+  return counts.map((count) => count / groupScores.length);
+}
+
 /** Move 20 begins at ply 39, so a trade before it is complete within 38 plies. */
 const PLIES_BEFORE_MOVE_20 = 38;
 
