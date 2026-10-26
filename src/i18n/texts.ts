@@ -316,7 +316,7 @@ const ENGLISH: Texts = {
     analysisExampleLoss: 'Stockfish: the move lost 85 centipawns against the best move.',
     analysisExampleScore: '+0.8',
     analysisShows:
-      "Shows who stands better on a bar beside the board, how much evaluation each of the Bot's moves lost, " +
+      "Shows who is taking the lead on a bar beside the board, how much evaluation each of the Bot's moves lost, " +
       'and its whole curve on the chart, as the game goes.',
     analysisWarning:
       'Turned on during a game, it shows you who is winning and where the Bot goes wrong: an advantage. ' +
@@ -568,8 +568,8 @@ const FRENCH: Texts = {
     analysisExampleLoss: `Stockfish${NO_BREAK}: le coup a perdu 85 centipions par rapport au meilleur coup.`,
     analysisExampleScore: '+0,8',
     analysisShows:
-      'Montre qui est mieux sur une barre à côté de l’échiquier, combien chaque coup du Bot a perdu à l’évaluation, ' +
-      'et toute sa courbe sur le graphique, au fil de la partie.',
+      'Montre qui prend l’avantage sur une barre à côté de l’échiquier, combien chaque coup du Bot a perdu ' +
+      'à l’évaluation, et toute sa courbe sur le graphique, au fil de la partie.',
     analysisWarning:
       `Activé pendant une partie, il vous montre qui gagne et où le Bot se trompe${NO_BREAK}: un avantage. ` +
       'La partie est alors enregistrée comme assistée.',
