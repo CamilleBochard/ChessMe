@@ -15,6 +15,10 @@ import type { Measured, PlayedGamesRecord, Side } from '../record/played-games';
 // and the player it is built from.
 const SIDES: readonly Side[] = ['visitors', 'bot', 'camille'];
 
+// Whether the visitor opened the note on centipawns. The view is written again
+// when the language changes, so the note stays as they left it.
+let centipawnHelpShown = false;
+
 /** The measured figures in the page's language, under a heading of their own. */
 export function playedGamesView(record: PlayedGamesRecord, texts: Texts): HTMLElement {
   const view = element('section', 'record-view');
@@ -23,17 +27,43 @@ export function playedGamesView(record: PlayedGamesRecord, texts: Texts): HTMLEl
   const summary = element('p', 'group-summary');
   summary.textContent = texts.played.measuredSummary(record.games, new Date(record.measuredOn));
   view.append(title, summary);
-  view.append(lossTable(record, texts));
+  const help = centipawnHelp(texts);
+  const table = lossTable(record, texts);
+  table.caption!.append(helpButton(help, texts));
+  view.append(table, help);
   view.append(slippedAway(record, texts));
 
   const margin = element('p', 'note');
   margin.textContent = texts.played.margin;
-  const centipawns = element('p', 'note');
-  centipawns.textContent = texts.report.centipawnHelp;
   const scope = element('p', 'scope');
   scope.textContent = texts.played.scope(record.engine, record.depth, record.camilleGames);
-  view.append(margin, centipawns, scope);
+  view.append(margin, scope);
   return view;
+}
+
+/** What a centipawn is, under the table and hidden until the visitor asks. */
+function centipawnHelp(texts: Texts): HTMLElement {
+  const help = element('p', 'centipawn-help');
+  help.id = 'played-centipawn-help';
+  help.textContent = texts.report.centipawnHelp;
+  help.hidden = !centipawnHelpShown;
+  return help;
+}
+
+/** The "?" beside the table's title that shows or hides the note on centipawns. */
+function helpButton(help: HTMLElement, texts: Texts): HTMLButtonElement {
+  const button = element('button', 'help-button');
+  button.type = 'button';
+  button.textContent = '?';
+  button.setAttribute('aria-label', texts.report.centipawnHelpLabel);
+  button.setAttribute('aria-controls', help.id);
+  button.setAttribute('aria-expanded', String(centipawnHelpShown));
+  button.addEventListener('click', () => {
+    centipawnHelpShown = !centipawnHelpShown;
+    help.hidden = !centipawnHelpShown;
+    button.setAttribute('aria-expanded', String(centipawnHelpShown));
+  });
+  return button;
 }
 
 /**
@@ -41,7 +71,7 @@ export function playedGamesView(record: PlayedGamesRecord, texts: Texts): HTMLEl
  * a row per side and a column per Phase, so that the side's name has room in
  * the narrow panel and the Phases fit under short names.
  */
-function lossTable(record: PlayedGamesRecord, texts: Texts): HTMLElement {
+function lossTable(record: PlayedGamesRecord, texts: Texts): HTMLTableElement {
   const words = texts.played;
   const table = element('table', 'played-losses');
   const caption = document.createElement('caption');

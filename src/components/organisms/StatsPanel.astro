@@ -625,6 +625,46 @@ const tabs = [
     color: var(--ink-soft);
   }
 
+  /* The "?" after the losses' title, as the one in the end-of-game report. */
+  .tab-panel :global(.help-button) {
+    display: inline-grid;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    margin-left: 6px;
+    padding: 0;
+    border: var(--line);
+    border-radius: 50%;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    vertical-align: middle;
+    cursor: pointer;
+  }
+
+  .tab-panel :global(.help-button:hover),
+  .tab-panel :global(.help-button:focus-visible),
+  .tab-panel :global(.help-button[aria-expanded='true']) {
+    background: var(--accent);
+    outline: none;
+  }
+
+  .tab-panel :global(.centipawn-help) {
+    margin: 0;
+    padding: 10px 12px;
+    border-left: 3px solid var(--accent);
+    background: var(--paper);
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  .tab-panel :global(.centipawn-help[hidden]) {
+    display: none;
+  }
+
   /* The page's micro text, as the other notes in the column. */
   .tab-panel :global(.scope) {
     margin: 0;
