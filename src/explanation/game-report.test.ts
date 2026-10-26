@@ -31,6 +31,8 @@ function move(changes: Partial<ReportedMove> = {}): ReportedMove {
     source: 'base-model',
     modelProbability: 0.4,
     positionAfter: 'a-position w -',
+    fen: 'a-position w - - 0 10',
+    uci: 'g1f3',
     evaluation: { centipawnLoss: 0, openPosition: true },
     ...changes,
   };
@@ -232,6 +234,26 @@ describe("the Bot's moves as the report reads them", () => {
     expect(reported.modelProbability).toBe(0.3);
     expect(reported.positionAfter).toBe('rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq');
     expect(reported.evaluation).toBe('pending');
+  });
+
+  it('keeps the position each move was played from and the move in UCI form, for the style discriminator to read', () => {
+    const afterE4 = playMove(newGame(), { from: 'e2', to: 'e4' })!;
+    const reply: BotMove = {
+      move: { from: 'c7', to: 'c5' },
+      source: 'base-model',
+      legalMoves: 20,
+      candidates: [{ move: { from: 'c7', to: 'c5' }, modelProbability: 0.3, drawnProbability: 0.3 }],
+      rank: 1,
+      temperature: 1,
+      cut: { kind: 'none' },
+    };
+    const game = playMove(afterE4, reply.move)!;
+    const botMoves = botMovesOf(game, 'black', new Map([[replyKey(currentFen(afterE4), reply.move), reply]]));
+
+    const [reported] = reportedMovesOf(botMoves, new Map());
+
+    expect(reported.fen).toBe(currentFen(afterE4));
+    expect(reported.uci).toBe('c7c5');
   });
 });
 

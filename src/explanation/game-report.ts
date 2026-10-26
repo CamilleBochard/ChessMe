@@ -9,7 +9,7 @@ import type { MoveCut } from '../engine/move-cut';
 import type { MoveSource } from '../engine/move-selection';
 import { SERVED_MODEL_NAME, SERVED_MODEL_TEMPERATURE, SERVED_OPENING_CUT } from '../engine/served-model';
 import { PHASES, type Phase } from '../evaluation/move-matching';
-import { currentFen, playMove } from '../game/game';
+import { currentFen, playMove, uciName } from '../game/game';
 import { moveKeyOf, type ExplainedMove } from './explained-moves';
 import type { MoveEvaluation } from './panel';
 import {
@@ -31,6 +31,10 @@ export interface ReportedMove {
   modelProbability: number | undefined;
   /** The position the move left on the board, as positionKey writes it. */
   positionAfter: string;
+  /** The position the move was played from, as a full FEN. */
+  fen: string;
+  /** The move in UCI form. */
+  uci: string;
   /** What Stockfish knows of the move. */
   evaluation: MoveEvaluation;
 }
@@ -69,6 +73,8 @@ export function reportedMovesOf(botMoves: ExplainedMove[], evaluations: Map<stri
       source: botMove.source,
       modelProbability: modelProbability,
       positionAfter: positionKey(currentFen(after)),
+      fen: currentFen(explained.before),
+      uci: uciName(botMove.move),
       evaluation: evaluations.get(moveKeyOf(explained)) ?? 'pending',
     });
   }
