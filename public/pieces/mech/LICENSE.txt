@@ -1,7 +1,0 @@
-Mech chess pieces
-
-Drawn for ChessMe: pixel-art robots on a 16 by 16 grid, pale steel with
-cyan lights for White and gunmetal with red lights for Black. Released
-under the same licence as the rest of this repository, the GNU Affero
-General Public License, version 3 or any later version; see the LICENSE
-file at its root.
