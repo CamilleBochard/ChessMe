@@ -79,6 +79,9 @@ const tabs = [
     type SessionGameSummary,
   } from '../../telemetry/session-game-summary';
 
+  /** How many of Camille's openings each colour lists, so the narrow column stays short. */
+  const CAMILLE_OPENINGS_SHOWN = 3;
+
   const dialog = adaptiveDialog(document.querySelector<HTMLDialogElement>('[data-stats-dialog]')!, true);
   for (const opener of document.querySelectorAll<HTMLButtonElement>('[data-open-stats]')) {
     opener.addEventListener('click', () => {
@@ -164,7 +167,7 @@ const tabs = [
 
   function showCamille(): void {
     const texts = pageTexts();
-    camillePanel.replaceChildren(recordView(camilleRecord, texts, [], texts.page.recordScope));
+    camillePanel.replaceChildren(recordView(camilleRecord, texts, [], texts.page.recordScope, CAMILLE_OPENINGS_SHOWN));
   }
 
   function showMeasured(): void {

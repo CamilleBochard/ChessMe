@@ -17,8 +17,19 @@ export interface ExtraFigure {
 const COLOURS = ['white', 'black'] as const;
 const OUTCOMES = ['wins', 'draws', 'losses'] as const;
 
-/** The record laid out in the page's language. It has no heading: the tab it sits under names whose record it is. */
-export function recordView(record: PlayerRecord, texts: Texts, extraFigures: ExtraFigure[], scope: string): HTMLElement {
+/**
+ * The record laid out in the page's language. It has no heading: the tab it
+ * sits under names whose record it is. openingsShown caps how many openings
+ * each colour lists, most played first; left out, every opening the record
+ * holds is listed.
+ */
+export function recordView(
+  record: PlayerRecord,
+  texts: Texts,
+  extraFigures: ExtraFigure[],
+  scope: string,
+  openingsShown?: number,
+): HTMLElement {
   const view = element('div', 'record-view');
   view.append(totalOf(record, texts));
   view.append(byColour(record, texts));
@@ -34,7 +45,7 @@ export function recordView(record: PlayerRecord, texts: Texts, extraFigures: Ext
   for (const colour of COLOURS) {
     const colourRecord = record[colour];
     if (colourRecord.openings.length > 0) {
-      view.append(openingsTable(colourRecord, texts.page[withColour(colour)], texts));
+      view.append(openingsTable(colourRecord, texts.page[withColour(colour)], texts, openingsShown));
     }
   }
 
@@ -90,7 +101,12 @@ function extras(extraFigures: ExtraFigure[]): HTMLElement {
   return list;
 }
 
-function openingsTable(colourRecord: ColourRecord, colourName: string, texts: Texts): HTMLElement {
+function openingsTable(
+  colourRecord: ColourRecord,
+  colourName: string,
+  texts: Texts,
+  openingsShown: number | undefined,
+): HTMLElement {
   const table = element('table', 'openings');
 
   const caption = document.createElement('caption');
@@ -111,7 +127,8 @@ function openingsTable(colourRecord: ColourRecord, colourName: string, texts: Te
   table.append(head);
 
   const body = document.createElement('tbody');
-  for (const opening of colourRecord.openings) {
+  const listed = colourRecord.openings.slice(0, openingsShown);
+  for (const opening of listed) {
     const row = document.createElement('tr');
     const shownScore = texts.percent(score(opening.results), 0);
     for (const text of [opening.name, `${opening.games}`, shownScore]) {
