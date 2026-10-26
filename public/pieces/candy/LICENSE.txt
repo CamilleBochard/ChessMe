@@ -1,6 +1,0 @@
-Candy chess pieces
-
-Drawn for ChessMe: a lollipop pawn, a sugar castle rook, a candy drop
-bishop, a punk horse knight, and cupcake queen and king. Released under the
-same licence as the rest of this repository, the GNU Affero General Public
-License, version 3 or any later version; see the LICENSE file at its root.

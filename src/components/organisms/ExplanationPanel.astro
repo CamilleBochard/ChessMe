@@ -93,6 +93,36 @@ const english = TEXTS.en.page;
     color: var(--paper);
   }
 
+  /* Under the table, what it lists and what each column means, each column
+     named as its header is. */
+  .explanation :global(.candidates-legend) {
+    display: grid;
+    gap: 4px;
+    margin: 0 0 8px;
+    font-size: 11px;
+    line-height: 1.4;
+    color: var(--ink-soft);
+  }
+
+  .explanation :global(.candidates-legend dl) {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 8px;
+    margin: 0;
+  }
+
+  .explanation :global(.candidates-legend dt) {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    line-height: 1.5;
+  }
+
+  .explanation :global(.candidates-legend dd) {
+    margin: 0;
+  }
+
   /* Where the move stood, in large: 1/22 for the model's favourite out of 22. */
   .explanation :global(.move-rank) {
     display: flex;

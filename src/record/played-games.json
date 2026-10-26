@@ -1,0 +1,86 @@
+{
+ "measuredOn": "2026-10-23",
+ "engine": "Stockfish 19",
+ "depth": 18,
+ "camilleGames": 1046,
+ "games": 49,
+ "results": {
+  "wins": 37,
+  "draws": 3,
+  "losses": 9
+ },
+ "sides": {
+  "bot": {
+   "slippedAway": {
+    "games": 9,
+    "of": 49,
+    "margin": 0.11063362076390831
+   },
+   "phases": {
+    "opening": {
+     "moves": 241,
+     "averageLoss": 32.47302904564315,
+     "margin": 12.252891026142919
+    },
+    "middlegame": {
+     "moves": 406,
+     "averageLoss": 94.80788177339902,
+     "margin": 15.074624335126304
+    },
+    "endgame": {
+     "moves": 377,
+     "averageLoss": 135.27851458885942,
+     "margin": 25.77326157781967
+    }
+   }
+  },
+  "visitors": {
+   "slippedAway": {
+    "games": 27,
+    "of": 49,
+    "margin": 0.1421114589732238
+   },
+   "phases": {
+    "opening": {
+     "moves": 242,
+     "averageLoss": 73.47520661157024,
+     "margin": 20.397299248204565
+    },
+    "middlegame": {
+     "moves": 409,
+     "averageLoss": 120.8875305623472,
+     "margin": 19.455741670384118
+    },
+    "endgame": {
+     "moves": 390,
+     "averageLoss": 151.75641025641025,
+     "margin": 27.717503832287715
+    }
+   }
+  },
+  "camille": {
+   "slippedAway": {
+    "games": 289,
+    "of": 1046,
+    "margin": 0.027652177119831655
+   },
+   "phases": {
+    "opening": {
+     "moves": 5224,
+     "averageLoss": 25.704632465543646,
+     "margin": 1.9732658502902798
+    },
+    "middlegame": {
+     "moves": 9730,
+     "averageLoss": 104.11089414182939,
+     "margin": 3.854076982378399
+    },
+    "endgame": {
+     "moves": 12890,
+     "averageLoss": 128.13832428238945,
+     "margin": 4.442506632385959
+    }
+   }
+  }
+ }
+}

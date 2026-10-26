@@ -114,6 +114,7 @@ const english = TEXTS.en.page;
     legalDestinations,
     moveList,
     sideToMove,
+    type Game,
     type MoveListRow,
     type MoveRequest,
     type PromotionPiece,
@@ -220,6 +221,10 @@ const english = TEXTS.en.page;
     let storedGameId: string | undefined = undefined;
 
     let botStatus: BotStatus = { kind: 'downloading', progress: { receivedBytes: 0, totalBytes: undefined } };
+
+    // The game as it was last drawn, to tell a move just played from a
+    // redraw of the same position, a takeback or a new game.
+    let gameDrawnBefore: Game | null = null;
 
     // Every reply of the Bot, filed by the position and the move, for the
     // panel to explain the moves on the board with.
@@ -640,6 +645,18 @@ const english = TEXTS.en.page;
     }
 
     /**
+     * Plays the button's short nudge from its start, even when the last one
+     * is still running, so each move played draws the eye to it once.
+     */
+    function nudge(button: HTMLButtonElement): void {
+      button.classList.remove('nudged');
+      // Reading the layout ends the removed animation, so adding the class
+      // back starts it again.
+      void button.offsetWidth;
+      button.classList.add('nudged');
+    }
+
+    /**
      * Draws the position on display, states whose turn it is or how the game
      * ended, and enables only the controls the session allows right now.
      * Redrawing after every move matters even for a legal one: chessground
@@ -693,6 +710,11 @@ const english = TEXTS.en.page;
       setup.showOnWideScreen(!hasStarted);
       controlsElement.hidden = !hasStarted;
       takeBackButton.disabled = !session.canTakeBack();
+      const isMoveJustPlayed = game.previous !== undefined && game.previous === gameDrawnBefore;
+      if (isMoveJustPlayed && !takeBackButton.disabled) {
+        nudge(takeBackButton);
+      }
+      gameDrawnBefore = game;
       resignButton.disabled = !session.canResign();
       viewBackButton.disabled = !session.canViewBack();
       viewForwardButton.disabled = !session.canViewForward();
@@ -1127,7 +1149,9 @@ const english = TEXTS.en.page;
      and the record, the buttons of a game in progress, then the moves and the
      panel. From 960px the title's bar runs across the top, over three
      columns: the settings on the left at 230px, the moves and the panel on
-     the right at 320px, and the board centred between them. */
+     the right at 320px, and the board centred between them. From 1200px
+     the left column widens to 320px too, so the stats and their tabs have
+     room to be read. */
   .game {
     display: flex;
     flex-direction: column;
@@ -1264,6 +1288,12 @@ const english = TEXTS.en.page;
       top: 0;
       z-index: 1;
       background: var(--paper);
+    }
+  }
+
+  @media (min-width: 1200px) {
+    .game {
+      grid-template-columns: 320px minmax(0, 1fr) 320px;
     }
   }
 </style>

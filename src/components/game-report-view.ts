@@ -1,26 +1,33 @@
-// Lays out the end-of-game report in the page's language: in large, the
-// share of the Bot's moves Camille could have played and how often it plays
-// his move; where it met his own positions; each side's average loss; its
-// losses per Phase beside the range of his games, and its costly moves; the
-// moves he rarely plays. src/explanation/game-report.ts works out every figure; this only
-// writes them out.
+// Lays out the end-of-game report in the page's language, in three groups.
+// The Bot measured before the game: how often it plays Camille's move on
+// games the model never saw, the same in every report. The game: how many
+// moves each side played and each side's average loss. The Bot in this game:
+// the share of its moves Camille could have played beside the share of his
+// own, where it met his own positions, its losses per Phase beside the range
+// of his games and its costly moves, and the moves he rarely plays.
+// src/explanation/game-report.ts works out every figure; this only writes
+// them out.
 
 import botRunsFile from '../../docs/experiments/results/opening-cut-test-set-fine-tuned.json';
 import {
   camilleFigures,
+  camillePlausibleShare,
   moveMatching,
   SERVED_BOT,
   type CamilleFigures,
   type BotRunResults,
   type GameReport,
 } from '../explanation/game-report';
+import improbabilityFile from '../explanation/improbability-yardstick.json';
 import lossFile from '../explanation/loss-yardstick.json';
-import type { ShippedLossYardstick } from '../explanation/yardsticks';
+import type { ShippedImprobabilityYardstick, ShippedLossYardstick } from '../explanation/yardsticks';
 import { PHASES } from '../evaluation/move-matching';
 import type { Texts } from '../i18n/texts';
 
 const lossYardstick = lossFile as ShippedLossYardstick;
 const camille: CamilleFigures = camilleFigures(lossYardstick);
+const improbabilityYardstick = improbabilityFile as ShippedImprobabilityYardstick;
+const camillePlausible = camillePlausibleShare(improbabilityYardstick);
 // Read from the experiment that measured the Bot as it is served; a test in
 // shipped-yardsticks.test.ts fails if the served Bot changes without it.
 const matching = moveMatching(botRunsFile as BotRunResults, SERVED_BOT);
@@ -37,16 +44,24 @@ export function showGameReport(body: HTMLElement, report: GameReport, positions:
   const words = texts.report;
   const sections: HTMLElement[] = [];
 
-  sections.push(headline(report, texts));
-  sections.push(guessedBlock(texts));
+  const measuredBefore = group(words.measuredBefore);
+  measuredBefore.append(guessedBlock(texts));
+  sections.push(measuredBefore);
+
+  const theGame = group(words.theGame);
+  const counts = paragraph(words.moveCounts(report.moves, report.visitorMoves));
+  counts.className = 'move-counts';
+  theGame.append(counts, averageLossBlock(report, texts));
+  sections.push(theGame);
+
+  const botThisGame = group(words.botThisGame);
+  botThisGame.append(plausibleBlock(report, texts));
 
   const followed = section(words.followed);
   followed.classList.add('card');
   followed.append(paragraph(words.fromBook(report.fromOpeningBook)));
   followed.append(paragraph(reachedText(report, positions, texts)));
-  sections.push(followed);
-
-  sections.push(averageLossBlock(report, texts));
+  botThisGame.append(followed);
 
   const losses = section(words.losses);
   losses.append(lossTable(report, texts));
@@ -55,12 +70,13 @@ export function showGameReport(body: HTMLElement, report: GameReport, positions:
     const camilleShare = texts.percent(camille.overThreePawnsShare, 0);
     losses.append(paragraph(words.costly(report.overThreePawns.count, report.overThreePawns.of, share, camilleShare)));
   }
-  sections.push(losses);
+  botThisGame.append(losses);
 
   // A game the visitor ended before the Bot moved has no move to count.
   if (report.moves > 0) {
-    sections.push(improbableSection(report, texts));
+    botThisGame.append(improbableSection(report, texts));
   }
+  sections.push(botThisGame);
 
   if (report.pending > 0) {
     const pending = paragraph(words.pending(report.pending));
@@ -99,7 +115,7 @@ function averageLossBlock(report: GameReport, texts: Texts): HTMLElement {
     help.hidden = !centipawnHelpShown;
     button.setAttribute('aria-expanded', String(centipawnHelpShown));
   });
-  block.querySelector('h3')!.append(button);
+  block.querySelector('h4')!.append(button);
 
   const sides = document.createElement('div');
   sides.className = 'sides';
@@ -150,27 +166,51 @@ function improbableSection(report: GameReport, texts: Texts): HTMLElement {
   return improbable;
 }
 
-/** The share in large and what it counts. */
-function headline(report: GameReport, texts: Texts): HTMLElement {
-  let share = texts.report.notMeasured;
+/** How often the Bot plays his move on games it never saw, in large. */
+function guessedBlock(texts: Texts): HTMLElement {
+  const share = texts.percent(matching.guessed, 0);
+  const block = figureBlock(share);
+  block.append(paragraph(texts.report.guessed(matching.games)));
+  return block;
+}
+
+/** The share of the Bot's moves Camille could have played in large, and beside it the share of his own. */
+function plausibleBlock(report: GameReport, texts: Texts): HTMLElement {
+  const words = texts.report;
+  let share = words.notMeasured;
   if (report.moves > 0) {
     share = texts.percent(report.plausible / report.moves, 0);
   }
-  return figureBlock(share, texts.report.plausible);
+  const block = figureBlock(share);
+
+  const reference = document.createElement('div');
+  reference.className = 'reference';
+  const name = paragraph(texts.report.camille);
+  name.className = 'side-name';
+  const camilleShare = paragraph(texts.percent(camillePlausible, 0));
+  camilleShare.className = 'reference-share';
+  reference.append(name, camilleShare);
+  block.querySelector('.figures')!.append(reference);
+
+  // A game the visitor ended before the Bot moved has no share to explain.
+  let meaning = words.camilleReference(improbabilityYardstick.games);
+  if (report.moves > 0) {
+    meaning = `${words.plausible(report.moves, share)} ${meaning}`;
+  }
+  block.append(paragraph(meaning));
+  return block;
 }
 
-/** How often the Bot plays his move on games it never saw, in large like the headline. */
-function guessedBlock(texts: Texts): HTMLElement {
-  const share = texts.percent(matching.guessed, 0);
-  return figureBlock(share, texts.report.guessed(matching.games));
-}
-
-function figureBlock(figureText: string, meaningText: string): HTMLElement {
+/** A block holding a share in large, the words saying what it counts appended after. */
+function figureBlock(figureText: string): HTMLElement {
   const block = document.createElement('div');
   block.className = 'headline';
+  const figures = document.createElement('div');
+  figures.className = 'figures';
   const figure = paragraph(figureText);
   figure.className = 'share';
-  block.append(figure, paragraph(meaningText));
+  figures.append(figure);
+  block.append(figures);
   return block;
 }
 
@@ -228,9 +268,20 @@ function row(cellName: 'th' | 'td', texts: string[]): HTMLTableRowElement {
   return tableRow;
 }
 
+/** One of the report's three groups, under its heading. */
+function group(title: string): HTMLElement {
+  const element = document.createElement('section');
+  element.className = 'group';
+  const heading = document.createElement('h3');
+  heading.textContent = title;
+  element.append(heading);
+  return element;
+}
+
+/** A part of a group, under a smaller heading. */
 function section(title: string): HTMLElement {
   const element = document.createElement('section');
-  const heading = document.createElement('h3');
+  const heading = document.createElement('h4');
   heading.textContent = title;
   element.append(heading);
   return element;

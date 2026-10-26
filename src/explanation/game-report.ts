@@ -12,7 +12,14 @@ import { PHASES, type Phase } from '../evaluation/move-matching';
 import { currentFen, playMove } from '../game/game';
 import { moveKeyOf, type ExplainedMove } from './explained-moves';
 import type { MoveEvaluation } from './panel';
-import { IMPROBABLE_BELOW, LOSS_PROFILE_EDGES, type Spread, type ShippedLossYardstick } from './yardsticks';
+import {
+  IMPROBABLE_BELOW,
+  LOSS_PROFILE_EDGES,
+  RARITY_LADDER,
+  type ShippedImprobabilityYardstick,
+  type ShippedLossYardstick,
+  type Spread,
+} from './yardsticks';
 
 /** One of the Bot's moves, as the report reads it. */
 export interface ReportedMove {
@@ -97,6 +104,8 @@ export interface ImprobableMove {
 export interface GameReport {
   /** How many moves the Bot played. */
   moves: number;
+  /** How many moves the visitor played. */
+  visitorMoves: number;
   /** How many of them Camille could have played: from his Opening Book, or given at least 1% by the model trained on his games. */
   plausible: number;
   /** How many came from his Opening Book. */
@@ -190,6 +199,7 @@ export function gameReport(
 
   return {
     moves: moves.length,
+    visitorMoves: visitorEvaluations.length,
     plausible: plausible,
     fromOpeningBook: fromOpeningBook,
     reachedByCamille: reachedByCamille,
@@ -240,6 +250,30 @@ export function camilleFigures(losses: ShippedLossYardstick): CamilleFigures {
   }
 
   return { overThreePawnsShare: overThreePawnsShare, lossRanges: lossRanges };
+}
+
+/**
+ * The share of Camille's Test Set moves he could have played by the report's
+ * own rule: his Opening Book moves, and the others the model gave at least
+ * 1%. The Bot's share is read against it, since a model drawn from at its
+ * own probabilities gives even his real moves under 1% now and then.
+ */
+export function camillePlausibleShare(improbability: ShippedImprobabilityYardstick): number {
+  const rung = RARITY_LADDER.indexOf(IMPROBABLE_BELOW);
+  if (rung === -1) {
+    throw new Error('The improbability yardstick holds no rung at the threshold for an improbable move');
+  }
+
+  let improbable = 0;
+  for (const phase of PHASES) {
+    const inPhase = improbability.phases[phase];
+    // A Phase with none of his moves has no share to read.
+    if (inPhase.moves === 0) {
+      continue;
+    }
+    improbable += inPhase.atOrBelow[rung] * inPhase.moves;
+  }
+  return (improbability.moves - improbable) / improbability.moves;
 }
 
 /** How the Bot was set up for one run on the Test Set, and how often its drawn move was Camille's. */
