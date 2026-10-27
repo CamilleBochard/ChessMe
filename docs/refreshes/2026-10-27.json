@@ -3,19 +3,18 @@
  "day": "2026-10-27",
  "new_game_files": [],
  "new_games": {
-  "games": 0,
+  "games": 114,
   "moves": {
-   "opening": 0,
-   "middlegame": 0,
-   "endgame": 0
+   "opening": 567,
+   "middlegame": 1067,
+   "endgame": 1845
   }
  },
- "identity_checks": {},
  "analyses_added": {
-  "Stockfish 19 at depth 18": 0,
-  "Stockfish 19 Lite WASM at depth 14": 0
+  "Stockfish 19 at depth 18": 1041,
+  "Stockfish 19 Lite WASM at depth 14": 3082
  },
- "model_records_added": 0,
+ "model_records_added": 551,
  "level_break": {
   "at": null,
   "previous": null,
@@ -37,30 +36,30 @@
   ]
  },
  "opening_book": {
-  "positions_before": 204,
+  "positions_before": 182,
   "positions_after": 204,
-  "added": 0,
-  "dropped": 0,
-  "changed": 0
+  "added": 27,
+  "dropped": 5,
+  "changed": 1
  },
  "profiles": {
   "blunder_profile": {
    "opening mean loss, open positions": {
-    "before": 24.88620272837161,
+    "before": 25.704632465543646,
     "after": 24.88620272837161
    },
    "middlegame mean loss, open positions": {
-    "before": 103.13404353867531,
+    "before": 104.11089414182939,
     "after": 103.13404353867531
    },
    "endgame mean loss, open positions": {
-    "before": 125.95802161263508,
+    "before": 128.13832428238945,
     "after": 125.95802161263508
    }
   },
   "improbability": {
    "opening share at or below 1%": {
-    "before": 0.04198473282442748,
+    "before": 0.03564356435643564,
     "after": 0.04198473282442748
    },
    "opening middle 80% of games, low": {
@@ -72,7 +71,7 @@
     "after": null
    },
    "middlegame share at or below 1%": {
-    "before": 0.022737022737022737,
+    "before": 0.023908045977011495,
     "after": 0.022737022737022737
    },
    "middlegame middle 80% of games, low": {
@@ -84,7 +83,7 @@
     "after": 0.1
    },
    "endgame share at or below 1%": {
-    "before": 0.030325443786982247,
+    "before": 0.030093209054593874,
     "after": 0.030325443786982247
    },
    "endgame middle 80% of games, low": {
@@ -92,7 +91,7 @@
     "after": 0
    },
    "endgame middle 80% of games, high": {
-    "before": 0.09090909090909091,
+    "before": 0.09523809523809523,
     "after": 0.09090909090909091
    }
   },
@@ -106,19 +105,19 @@
     "after": null
    },
    "middlegame middle 80% of games, low": {
-    "before": 23.1,
+    "before": 24.4,
     "after": 23.1
    },
    "middlegame middle 80% of games, high": {
-    "before": 157.6,
+    "before": 160,
     "after": 157.6
    },
    "endgame middle 80% of games, low": {
-    "before": 44.46153846153846,
+    "before": 46.53846153846154,
     "after": 44.46153846153846
    },
    "endgame middle 80% of games, high": {
-    "before": 208.07142857142858,
+    "before": 216.75,
     "after": 208.07142857142858
    }
   }
