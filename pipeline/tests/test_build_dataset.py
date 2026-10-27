@@ -31,6 +31,7 @@ def test_writes_each_position_as_one_json_line(tmp_path):
         "phase": "opening",
         "fen": "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq - 0 1",
         "move": "d7d5",
+        "played_at": "2026-01-10T09:00:00",
     } in train
 
 

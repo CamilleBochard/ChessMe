@@ -25,6 +25,10 @@ class Position:
     phase: str
     fen: str
     move: str
+    # When the game began, in UTC, as "2025-06-15T10:00:00": the order the
+    # Level Break is looked for in. None for games no one dated, such as the
+    # Bot's.
+    played_at: str | None = None
 
 
 @dataclass(frozen=True)
@@ -33,15 +37,17 @@ class Dataset:
     test: list[Position]
 
 
-def build_dataset(pgn_paths: list[Path], player: str, test_fraction: float) -> Dataset:
+def build_dataset(pgn_paths: list[Path], player: str, test_fraction: float, first_day: date = FIRST_DAY_KEPT) -> Dataset:
     """Filters the games in pgn_paths and splits the player's positions into train and test.
 
     The split is made per game, so a game's positions all land on the same
     side, and roughly test_fraction of the games are held back as the Test Set.
+    An earlier first_day than the dataset's keeps older games too, to look
+    at how the player's Level changed before it.
     """
     train = []
     test = []
-    for game, game_id in kept_games(pgn_paths):
+    for game, game_id in kept_games(pgn_paths, first_day):
         positions = _player_positions(game, game_id, player)
         if is_held_back(game_id, test_fraction):
             test.extend(positions)
@@ -50,12 +56,11 @@ def build_dataset(pgn_paths: list[Path], player: str, test_fraction: float) -> D
     return Dataset(train=train, test=test)
 
 
-def kept_games(pgn_paths: list[Path]) -> Iterator[tuple[chess.pgn.Game, str]]:
+def kept_games(pgn_paths: list[Path], first_day: date = FIRST_DAY_KEPT) -> Iterator[tuple[chess.pgn.Game, str]]:
     """The games of pgn_paths the Bot is built from, each with its id.
 
-    Standard chess at ten minutes, played since FIRST_DAY_KEPT, each game
-    once: new games arrive as further exports, which may overlap the
-    earlier ones.
+    Standard chess at ten minutes, played since first_day, each game once:
+    new games arrive as further exports, which may overlap the earlier ones.
     """
     seen_game_ids = set()
     for path in pgn_paths:
@@ -65,13 +70,24 @@ def kept_games(pgn_paths: list[Path]) -> Iterator[tuple[chess.pgn.Game, str]]:
                     continue
                 if not _is_ten_minutes(game):
                     continue
-                if _played_on(game) < FIRST_DAY_KEPT:
+                if _played_on(game) < first_day:
                     continue
                 game_id = _game_id(game)
                 if game_id in seen_game_ids:
                     continue
                 seen_game_ids.add(game_id)
                 yield game, game_id
+
+
+def played_since(positions: list[Position], since: str | None) -> list[Position]:
+    """The positions of the games that began at the moment since or later; every position when since is None.
+
+    since is written as played_at is, such as "2025-06-15T10:00:00", so the
+    two compare as text.
+    """
+    if since is None:
+        return positions
+    return [position for position in positions if position.played_at >= since]
 
 
 def read_dataset(dataset_dir: Path) -> Dataset:
@@ -135,14 +151,22 @@ def _played_on(game: chess.pgn.Game) -> date:
     return datetime.strptime(game.headers["UTCDate"], "%Y.%m.%d").date()
 
 
+def _played_at(game: chess.pgn.Game) -> str:
+    """When the game began, in UTC, from the date and time both sites write."""
+    began = datetime.strptime(game.headers["UTCDate"] + " " + game.headers["UTCTime"], "%Y.%m.%d %H:%M:%S")
+    return began.isoformat()
+
+
 def _player_positions(game: chess.pgn.Game, game_id: str, player: str) -> list[Position]:
     player_colour = _player_colour(game, player, game_id)
     source = _source(game)
     moves = list(game.mainline_moves())
-    return positions_faced(game_id, source, moves, player_colour)
+    return positions_faced(game_id, source, moves, player_colour, played_at=_played_at(game))
 
 
-def positions_faced(game_id: str, source: str, moves: list[chess.Move], colour: chess.Color) -> list[Position]:
+def positions_faced(
+    game_id: str, source: str, moves: list[chess.Move], colour: chess.Color, played_at: str | None = None
+) -> list[Position]:
     """The positions the side playing colour faced in a game from the starting position, each with its move.
 
     Camille's games and the Bot's games both go through here, so a position
@@ -161,10 +185,25 @@ def positions_faced(game_id: str, source: str, moves: list[chess.Move], colour: 
                 phase=phase_of(ply),
                 fen=board.fen(),
                 move=move.uci(),
+                played_at=played_at,
             )
             positions.append(position)
         board.push(move)
     return positions
+
+
+def player_rating(game: chess.pgn.Game, player: str) -> int | None:
+    """The player's rating on the game's site when it began; None when the site did not write one.
+
+    Each site rates on its own scale, so ratings compare only within a site.
+    """
+    if game.headers["White"].lower() == player.lower():
+        rating = game.headers.get("WhiteElo")
+    else:
+        rating = game.headers.get("BlackElo")
+    if rating is None or not rating.isdigit():
+        return None
+    return int(rating)
 
 
 def _player_colour(game: chess.pgn.Game, player: str, game_id: str) -> chess.Color:

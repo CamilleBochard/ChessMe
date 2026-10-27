@@ -29,6 +29,14 @@ measuring which candidate best reproduces his moves. Not his Chess.com rating an
 not his Lichess rating, though it lands near the latter.
 _Avoid_: my rating, Elo, my level (all three hide which scale is meant)
 
+**Level Break**:
+The last point in Camille's games, ordered by when they were played, where his
+Level changed by more than chance: found by a rule stated before it is run,
+never by eye. Level is measured on the games since the Level Break, Style on
+every game kept.
+_Avoid_: cut-off, window, the recent games (a window has a length chosen by
+hand; a Level Break is found in the games)
+
 **Blunder Profile**:
 The measured distribution of Camille's own evaluation losses, sliced by game
 phase. A yardstick the Bot is compared against, not a mechanism applied to it.

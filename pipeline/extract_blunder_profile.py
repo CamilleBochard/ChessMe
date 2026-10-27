@@ -11,6 +11,11 @@ or at the settings of the engine the site runs in the browser:
         --profile data/dataset/blunder-profile-browser.json \
         --losses data/dataset/centipawn-losses-browser.jsonl
 
+--since 2025-06-15T10:00:00 builds the profile from the games begun at that
+moment or later, such as the games since the Level Break
+(docs/experiments/level-break.md); written with --profile and --losses
+elsewhere, it leaves the profile of every game as it was.
+
 A full run takes hours. It can be stopped with Ctrl+C at any point and run
 again to carry on: analyses are kept in data/analysis, one cache file per
 engine and depth, which is also why a finished run repeats nothing.
@@ -43,7 +48,7 @@ from pipeline.blunder_profile import (
     position_already_decided,
     share_in_decided_positions,
 )
-from pipeline.dataset import Position, read_dataset
+from pipeline.dataset import Position, played_since, read_dataset
 from pipeline.stockfish_analysis import Analyser, StockfishAnalyser, analyse_positions
 
 # The version of the profile's layout. Raise it whenever a reader of the old
@@ -69,9 +74,11 @@ def extract(
     losses_path: Path,
     analysers: list[Analyser],
     report_progress: Callable[[int, int], None] | None = None,
+    since: str | None = None,
 ) -> dict:
+    """Measures every move of the dataset and writes the profile, from the games begun at since or later if given."""
     dataset = read_dataset(dataset_dir)
-    positions = dataset.train + dataset.test
+    positions = played_since(dataset.train + dataset.test, since)
     move_losses = measure_move_losses(positions, analysers, cache_path, report_progress)
 
     with open(losses_path, "w", encoding="utf-8") as losses_file:
@@ -97,6 +104,9 @@ def extract(
             "share_in_decided_positions": share_in_decided_positions(move_losses),
         },
     }
+    # Recorded only when given, so a profile of every game reads as it always has.
+    if since is not None:
+        profile["since"] = since
     profile_path.write_text(json.dumps(profile, indent=1), encoding="utf-8")
     return profile
 
@@ -218,11 +228,21 @@ if __name__ == "__main__":
     )
     parser.add_argument("--profile", type=Path, default=PROFILE_PATH, help="where to write the profile")
     parser.add_argument("--losses", type=Path, default=LOSSES_PATH, help="where to write each move's loss")
+    parser.add_argument(
+        "--since",
+        help="build from the games begun at this moment or later, written as 2025-06-15T10:00:00 (default every game)",
+    )
     arguments = parser.parse_args()
 
     with running_stockfish(arguments.depth, arguments.workers, arguments.engine) as (stockfish_processes, cache_path):
         written = extract(
-            DATASET_DIR, cache_path, arguments.profile, arguments.losses, stockfish_processes, ProgressPrinter()
+            DATASET_DIR,
+            cache_path,
+            arguments.profile,
+            arguments.losses,
+            stockfish_processes,
+            ProgressPrinter(),
+            since=arguments.since,
         )
 
     all_phases = written["all_phases"]

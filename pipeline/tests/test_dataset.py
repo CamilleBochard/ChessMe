@@ -1,8 +1,9 @@
+from datetime import date
 from pathlib import Path
 
 import pytest
 
-from pipeline.dataset import build_dataset
+from pipeline.dataset import build_dataset, kept_games, played_since, player_rating
 
 FIXTURES = Path(__file__).parent / "fixtures"
 CHESSCOM = FIXTURES / "chesscom.pgn"
@@ -119,3 +120,33 @@ def test_leaves_out_games_of_other_variants():
     dataset = build_dataset([LICHESS], player="punkycam", test_fraction=0)
 
     assert "lichess:c9600001" not in game_ids(dataset.train)
+
+
+def test_records_when_each_game_was_played_in_utc():
+    dataset = build_dataset([CHESSCOM, LICHESS], player="punkycam", test_fraction=0)
+
+    played = {position.game_id: position.played_at for position in dataset.train}
+    assert played["chesscom:1001"] == "2025-06-15T10:00:00"
+    assert played["lichess:abcd1234"] == "2026-01-10T09:00:00"
+
+
+def test_keeps_the_positions_of_the_games_begun_at_or_after_a_moment():
+    dataset = build_dataset([CHESSCOM, LICHESS], player="punkycam", test_fraction=0)
+
+    since_january = played_since(dataset.train, "2026-01-10T09:00:00")
+
+    assert game_ids(since_january) == {"lichess:abcd1234", "lichess:long0001"}
+    assert played_since(dataset.train, None) == dataset.train
+
+
+def test_keeps_games_from_an_earlier_first_day_when_asked():
+    dataset = build_dataset([CHESSCOM], player="punkycam", test_fraction=0, first_day=date(2025, 1, 1))
+
+    assert "chesscom:1004" in game_ids(dataset.train)
+
+
+def test_reads_the_player_s_rating_on_the_site_in_each_game_when_the_site_gives_it():
+    ratings = {game_id: player_rating(game, "punkycam") for game, game_id in kept_games([CHESSCOM, LICHESS])}
+
+    assert ratings["chesscom:1001"] == 812
+    assert ratings["lichess:abcd1234"] is None
