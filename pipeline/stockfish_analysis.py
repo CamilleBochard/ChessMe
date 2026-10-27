@@ -141,6 +141,12 @@ def analyse_positions(
     return analyses
 
 
+def moves_not_cached(positions: list[Position], analysers: list[Analyser], cache_path: Path) -> list[Position]:
+    """The positions whose move the cache holds no analysis of by these analysers' engine and depth."""
+    cached = _read_cache(cache_path, analysers[0].engine, analysers[0].depth)
+    return [position for position in positions if (position.fen, position.move) not in cached]
+
+
 # Enough cached moves to catch a build that scores differently, analysed in
 # a minute or two; the same draw on every run.
 IDENTITY_SAMPLE_SIZE = 300

@@ -6,6 +6,13 @@ and never written anywhere. New games are written to new dated files in
 data/raw, and the files already there are never rewritten, so every figure
 measured on them stays reproducible. Games played against the Bot on the
 site are Session Games and never come here: they are not Camille's games.
+
+Run alone, from the repository root, to fetch without rebuilding anything:
+
+    export LICHESS_TOKEN="$(cat ~/.config/chessme/lichess-token)"
+    python -m pipeline.fetch_games
+
+pipeline/refresh_games.py runs it first, then rebuilds everything from the games.
 """
 
 import io
@@ -160,3 +167,15 @@ def http_get(url: str, headers: dict[str, str]) -> str:
     request = urllib.request.Request(url, headers=headers)
     with urllib.request.urlopen(request, timeout=120) as response:
         return response.read().decode("utf-8")
+
+
+if __name__ == "__main__":
+    import os
+
+    from pipeline.build_dataset import RAW_DIR
+
+    written = fetch_new_games(RAW_DIR, date.today(), http_get, os.environ)
+    if not written:
+        print("No new game.")
+    for path in written:
+        print(f"{len(split_pgn(path.read_text(encoding='utf-8')))} new games written to {path}")
