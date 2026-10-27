@@ -192,9 +192,10 @@ def test_finds_no_difference_when_the_engine_analyses_cached_moves_again_as_the_
     analyse_positions([played("lichess:a", START, "d2d4"), played("lichess:a", AFTER_E4, "c7c5", ply=2)], [FakeAnalyser()], cache)
     engine_here = FakeAnalyser()
 
-    differences = differences_from_the_cache([engine_here], cache, sample_size=300)
+    check = differences_from_the_cache([engine_here], cache, sample_size=300)
 
-    assert differences == []
+    assert check.compared == 2
+    assert check.differences == []
     assert sorted(engine_here.asked) == sorted([(START, "d2d4"), (AFTER_E4, "c7c5")])
 
 
@@ -202,10 +203,10 @@ def test_names_each_cached_move_the_engine_here_scores_differently(tmp_path):
     cache = tmp_path / "cache.jsonl"
     analyse_positions([played("lichess:a", START, "d2d4")], [FakeAnalyser()], cache)
 
-    differences = differences_from_the_cache([FakeAnalyser(played_score=Cp(-71))], cache, sample_size=300)
+    check = differences_from_the_cache([FakeAnalyser(played_score=Cp(-71))], cache, sample_size=300)
 
-    assert len(differences) == 1
-    assert "d2d4" in differences[0]
+    assert len(check.differences) == 1
+    assert "d2d4" in check.differences[0]
 
 
 def test_reports_an_engine_that_finds_none_of_its_own_analyses_in_a_cache_that_holds_some(tmp_path):
@@ -214,7 +215,8 @@ def test_reports_an_engine_that_finds_none_of_its_own_analyses_in_a_cache_that_h
     another_build = FakeAnalyser()
     another_build.engine = "Another engine"
 
-    differences = differences_from_the_cache([another_build], cache, sample_size=300)
+    check = differences_from_the_cache([another_build], cache, sample_size=300)
 
-    assert len(differences) == 1
-    assert "Another engine" in differences[0]
+    assert check.compared == 0
+    assert len(check.differences) == 1
+    assert "Another engine" in check.differences[0]

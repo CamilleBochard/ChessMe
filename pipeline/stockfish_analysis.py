@@ -153,9 +153,17 @@ IDENTITY_SAMPLE_SIZE = 300
 IDENTITY_SAMPLE_SEED = 31
 
 
+@dataclass(frozen=True)
+class IdentityCheck:
+    """How many cached moves were analysed again, and each one scored differently from the cache."""
+
+    compared: int
+    differences: list[str]
+
+
 def differences_from_the_cache(
     analysers: list[Analyser], cache_path: Path, sample_size: int = IDENTITY_SAMPLE_SIZE
-) -> list[str]:
+) -> IdentityCheck:
     """Analyses a sample of the cached moves again and names each one scored differently from the cache.
 
     A machine whose Stockfish scores a move differently would mix two
@@ -169,7 +177,7 @@ def differences_from_the_cache(
     # another build or depth: nothing would be compared, and new analyses
     # would sit beside old ones made by something else.
     if not cached and cache_path.exists() and cache_path.stat().st_size > 0:
-        return [f"{cache_path} holds no analysis by {engine} at depth {depth}"]
+        return IdentityCheck(compared=0, differences=[f"{cache_path} holds no analysis by {engine} at depth {depth}"])
     keys = sorted(cached)
     sample = random.Random(IDENTITY_SAMPLE_SEED).sample(keys, min(sample_size, len(keys)))
 
@@ -191,7 +199,7 @@ def differences_from_the_cache(
     for key, here in zip(sample, analysed_here):
         if here != cached[key]:
             differences.append(f"{key[0]} {key[1]}: cache {cached[key]}, here {here}")
-    return differences
+    return IdentityCheck(compared=len(sample), differences=differences)
 
 
 def _read_cache(cache_path: Path, engine: str, depth: int) -> dict[tuple[str, str], Analysis]:

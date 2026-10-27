@@ -156,9 +156,11 @@ def refresh(paths: RefreshPaths, day: date, tools: RefreshTools, fetch: bool = T
     # Before anything is analysed and before any file is rebuilt: a machine
     # that scores differently stops the run with nothing changed but the
     # new game files.
+    identity_checks = {}
     for engine in (tools.deep, tools.browser):
         if moves_not_cached(every_position, engine.analysers, engine.cache_path):
-            _stop_on_a_difference(engine)
+            compared = _stop_on_a_difference(engine)
+            identity_checks[_engine_name(engine)] = {"compared": compared, "differences": 0}
 
     before = _what_was_built(paths)
     deep_lines_before = _line_count(tools.deep.cache_path)
@@ -205,13 +207,10 @@ def refresh(paths: RefreshPaths, day: date, tools: RefreshTools, fetch: bool = T
         "day": day.isoformat(),
         "new_game_files": [path.name for path in new_files],
         "new_games": new_games_summary(before["positions"], after["positions"]),
+        "identity_checks": identity_checks,
         "analyses_added": {
-            tools.deep.analysers[0].engine + f" at depth {tools.deep.analysers[0].depth}": _line_count(tools.deep.cache_path)
-            - deep_lines_before,
-            tools.browser.analysers[0].engine + f" at depth {tools.browser.analysers[0].depth}": _line_count(
-                tools.browser.cache_path
-            )
-            - browser_lines_before,
+            _engine_name(tools.deep): _line_count(tools.deep.cache_path) - deep_lines_before,
+            _engine_name(tools.browser): _line_count(tools.browser.cache_path) - browser_lines_before,
         },
         "model_records_added": records_added,
         "level_break": {
@@ -229,14 +228,21 @@ def refresh(paths: RefreshPaths, day: date, tools: RefreshTools, fetch: bool = T
     return summary
 
 
-def _stop_on_a_difference(engine: Engine) -> None:
-    differences = differences_from_the_cache(engine.analysers, engine.cache_path)
-    if differences:
-        listed = "\n".join(differences[:10])
+def _engine_name(engine: Engine) -> str:
+    return f"{engine.analysers[0].engine} at depth {engine.analysers[0].depth}"
+
+
+def _stop_on_a_difference(engine: Engine) -> int:
+    """Checks the engine against its cache, stops the run on a difference, and says how many moves it compared."""
+    check = differences_from_the_cache(engine.analysers, engine.cache_path)
+    if check.differences:
+        listed = "\n".join(check.differences[:10])
         raise SystemExit(
-            f"{engine.analysers[0].engine} at depth {engine.analysers[0].depth} on this machine does not score "
-            f"{len(differences)} cached moves as the cache holds them, so nothing was analysed:\n{listed}"
+            f"{_engine_name(engine)} on this machine does not score {len(check.differences)} cached moves "
+            f"as the cache holds them, so nothing was analysed:\n{listed}"
         )
+    print(f"{_engine_name(engine)}: {check.compared} cached moves analysed again, all as the cache holds them", flush=True)
+    return check.compared
 
 
 def _what_was_built(paths: RefreshPaths) -> dict:
@@ -298,23 +304,37 @@ def place_moves_with_the_served_model(positions_path: Path, records_path: Path) 
     model, rating = served_model()
     lines_before = _line_count(records_path)
     command = ["npm", "run", "--silent", "move-probabilities", "--", model, "--rating", str(rating)]
-    command += [str(positions_path), "--out", str(records_path), "--extend"]
+    command += [_from_root(positions_path), "--out", _from_root(records_path), "--extend"]
     subprocess.run(command, cwd=REPOSITORY_ROOT, check=True)
     return _line_count(records_path) - lines_before
 
 
 def write_the_site_yardsticks(paths: RefreshPaths, since: str | None) -> None:
     """Writes the site's improbability and loss yardsticks, from the games begun at since or later if given."""
+    for command in site_yardstick_commands(paths, since):
+        subprocess.run(command, cwd=REPOSITORY_ROOT, check=True)
+
+
+def site_yardstick_commands(paths: RefreshPaths, since: str | None) -> list[list[str]]:
+    """The two npm commands that write the site's yardsticks, run from the repository root.
+
+    Each yardstick records the file it was read from, and the site ships it:
+    the paths are given from the repository root, so no machine's own
+    folders end up in a published file.
+    """
     model, _ = served_model()
     since_flags = []
     if since is not None:
         since_flags = ["--since", since]
     improbability = ["npm", "run", "--silent", "yardsticks", "--", "--model", model]
-    improbability += ["--probabilities", str(paths.model_records), "--out", str(paths.improbability_yardstick)]
-    losses = ["npm", "run", "--silent", "yardsticks", "--", "--losses", str(paths.browser_losses)]
-    losses += ["--loss-profile", str(paths.browser_profile), "--out", str(paths.loss_yardstick)]
-    subprocess.run(improbability + since_flags, cwd=REPOSITORY_ROOT, check=True)
-    subprocess.run(losses + since_flags, cwd=REPOSITORY_ROOT, check=True)
+    improbability += ["--probabilities", _from_root(paths.model_records), "--out", _from_root(paths.improbability_yardstick)]
+    losses = ["npm", "run", "--silent", "yardsticks", "--", "--losses", _from_root(paths.browser_losses)]
+    losses += ["--loss-profile", _from_root(paths.browser_profile), "--out", _from_root(paths.loss_yardstick)]
+    return [improbability + since_flags, losses + since_flags]
+
+
+def _from_root(path: Path) -> str:
+    return str(path.resolve().relative_to(REPOSITORY_ROOT))
 
 
 def summary_tables(summary: dict) -> str:
@@ -322,6 +342,7 @@ def summary_tables(summary: dict) -> str:
     new = summary["new_games"]
     files = ", ".join(summary["new_game_files"]) or "none"
     lines.append(f"New games: {new['games']} (files written: {files}); moves per Phase: {new['moves']}")
+    lines.append(f"Identity checks: {summary['identity_checks'] or 'none needed, nothing new to analyse'}")
     lines.append(f"Analyses added: {summary['analyses_added']}; model records added: {summary['model_records_added']}")
     level_break = summary["level_break"]
     verdict = "none found" if level_break["at"] is None else f"games begun at {level_break['at']} or later"

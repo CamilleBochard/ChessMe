@@ -6,7 +6,8 @@ from pathlib import Path
 import pytest
 from chess.engine import Cp
 
-from pipeline.refresh_games import Engine, RefreshPaths, RefreshTools, refresh
+from pipeline.extract_blunder_profile import REPOSITORY_ROOT
+from pipeline.refresh_games import Engine, RefreshPaths, RefreshTools, refresh, site_yardstick_commands
 from pipeline.stockfish_analysis import Analysis
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -95,6 +96,20 @@ def test_a_second_run_with_no_new_game_writes_no_game_file_analyses_nothing_and_
     assert built_files(paths) == after_the_first_run
     assert summary["new_games"]["games"] == 0
     assert summary["new_game_files"] == []
+    # Nothing to analyse, so nothing to check either.
+    assert summary["identity_checks"] == {}
+
+
+def test_records_how_many_cached_moves_each_engine_checked_before_analysing_new_ones(tmp_path):
+    paths = repository_under(tmp_path)
+    refresh(paths, date(2026, 10, 27), tools_with(FakeAnalyser("Fake deep engine", 18), FakeAnalyser("Fake browser engine", 14), paths))
+    cached = len((paths.analysis_dir / "deep.jsonl").read_text().splitlines())
+    shutil.copy(FIXTURES / "responses" / "lichess-games.pgn", paths.raw_dir / "lichess-2026-10-28.pgn")
+
+    summary = refresh(paths, date(2026, 10, 28), tools_with(FakeAnalyser("Fake deep engine", 18), FakeAnalyser("Fake browser engine", 14), paths))
+
+    assert summary["identity_checks"]["Fake deep engine at depth 18"] == {"compared": cached, "differences": 0}
+    assert summary["identity_checks"]["Fake browser engine at depth 14"]["differences"] == 0
 
 
 class ScoresOtherwise(FakeAnalyser):
@@ -135,3 +150,15 @@ def test_rebuilds_from_the_exports_as_they_stand_without_asking_the_sites_when_t
     assert requests == []
     assert summary["new_game_files"] == []
     assert (paths.dataset_dir / "train.jsonl").exists()
+
+
+def test_names_the_files_the_site_yardsticks_are_read_from_relative_to_the_repository():
+    paths = RefreshPaths.under(REPOSITORY_ROOT)
+
+    commands = site_yardstick_commands(paths, since="2026-03-01T10:00:00")
+
+    for command in commands:
+        for argument in command:
+            assert not argument.startswith("/"), argument
+    assert "data/dataset/move-probabilities/fine-tuned-test.jsonl" in commands[0]
+    assert commands[0][-2:] == ["--since", "2026-03-01T10:00:00"]
