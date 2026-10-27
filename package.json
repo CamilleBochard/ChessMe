@@ -27,7 +27,8 @@
     "improbable-moves": "tsx scripts/improbable-moves.ts",
     "browser-engine-parity": "tsx scripts/browser-engine-parity.ts",
     "yardsticks": "tsx scripts/yardsticks.ts",
-    "browser-engine-gap": "tsx scripts/browser-engine-gap.ts"
+    "browser-engine-gap": "tsx scripts/browser-engine-gap.ts",
+    "regression-gate": "tsx scripts/regression-gate.ts"
   },
   "dependencies": {
     "@lichess-org/chessground": "^10.1.1",
