@@ -37,15 +37,17 @@ class Dataset:
     test: list[Position]
 
 
-def build_dataset(pgn_paths: list[Path], player: str, test_fraction: float) -> Dataset:
+def build_dataset(pgn_paths: list[Path], player: str, test_fraction: float, first_day: date = FIRST_DAY_KEPT) -> Dataset:
     """Filters the games in pgn_paths and splits the player's positions into train and test.
 
     The split is made per game, so a game's positions all land on the same
     side, and roughly test_fraction of the games are held back as the Test Set.
+    An earlier first_day than the dataset's keeps older games too, to look
+    at how the player's Level changed before it.
     """
     train = []
     test = []
-    for game, game_id in kept_games(pgn_paths):
+    for game, game_id in kept_games(pgn_paths, first_day):
         positions = _player_positions(game, game_id, player)
         if is_held_back(game_id, test_fraction):
             test.extend(positions)
@@ -54,12 +56,11 @@ def build_dataset(pgn_paths: list[Path], player: str, test_fraction: float) -> D
     return Dataset(train=train, test=test)
 
 
-def kept_games(pgn_paths: list[Path]) -> Iterator[tuple[chess.pgn.Game, str]]:
+def kept_games(pgn_paths: list[Path], first_day: date = FIRST_DAY_KEPT) -> Iterator[tuple[chess.pgn.Game, str]]:
     """The games of pgn_paths the Bot is built from, each with its id.
 
-    Standard chess at ten minutes, played since FIRST_DAY_KEPT, each game
-    once: new games arrive as further exports, which may overlap the
-    earlier ones.
+    Standard chess at ten minutes, played since first_day, each game once:
+    new games arrive as further exports, which may overlap the earlier ones.
     """
     seen_game_ids = set()
     for path in pgn_paths:
@@ -69,7 +70,7 @@ def kept_games(pgn_paths: list[Path]) -> Iterator[tuple[chess.pgn.Game, str]]:
                     continue
                 if not _is_ten_minutes(game):
                     continue
-                if _played_on(game) < FIRST_DAY_KEPT:
+                if _played_on(game) < first_day:
                     continue
                 game_id = _game_id(game)
                 if game_id in seen_game_ids:
@@ -189,6 +190,20 @@ def positions_faced(
             positions.append(position)
         board.push(move)
     return positions
+
+
+def player_rating(game: chess.pgn.Game, player: str) -> int | None:
+    """The player's rating on the game's site when it began; None when the site did not write one.
+
+    Each site rates on its own scale, so ratings compare only within a site.
+    """
+    if game.headers["White"].lower() == player.lower():
+        rating = game.headers.get("WhiteElo")
+    else:
+        rating = game.headers.get("BlackElo")
+    if rating is None or not rating.isdigit():
+        return None
+    return int(rating)
 
 
 def _player_colour(game: chess.pgn.Game, player: str, game_id: str) -> chess.Color:
