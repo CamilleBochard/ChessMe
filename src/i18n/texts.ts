@@ -108,8 +108,10 @@ export interface ReportTexts {
   moveCounts(bot: number, visitor: number): string;
   /** The question the style discriminator answers about the game. */
   styleTitle: string;
-  /** Where the game's score stands among Camille's games and other players', from shares already written as percentages. */
-  styleStanding(camilleBelow: string, othersBelow: string): string;
+  /** What a game of Camille's and one of another player's typically score, already written as decimals. */
+  styleTypical(camille: string, others: string): string;
+  /** Where the game's score stands among Camille's games, from the side of his typical game it lies on. */
+  styleStanding(score: string, direction: 'lower' | 'higher', share: string): string;
   /** What one game allows: how often the discriminator recognises Camille, and takes other players for him. */
   styleLimit(camilleRecognised: string, othersTaken: string): string;
   /** A game too short to read: how many of the Bot's moves were read, and how many are needed. */
@@ -436,10 +438,16 @@ const ENGLISH: Texts = {
     botThisGame: 'The Bot in this game',
     moveCounts: (bot, visitor) => `Moves played: Bot ${bot}, you ${visitor}.`,
     styleTitle: "Does this game look like one of Camille's?",
-    styleStanding: (camilleBelow, othersBelow) =>
-      `This game scores higher than ${camilleBelow} of Camille's real games, and higher than ${othersBelow} of other players' games.`,
+    styleTypical: (camille, others) =>
+      `A game of Camille's typically scores ${camille}, one of another player at his level ${others}.`,
+    styleStanding: (score, direction, share) => {
+      if (direction === 'lower') {
+        return `At ${score}, this game scores lower than ${share} of Camille's real games.`;
+      }
+      return `At ${score}, this game scores higher than ${share} of Camille's real games.`;
+    },
     styleLimit: (camilleRecognised, othersTaken) =>
-      `On a single game this test is wrong almost one time in two, even on Camille's own games: it recognises ${camilleRecognised} of them, and takes ${othersTaken} of other players' games for his too.`,
+      `On a single game this test is unreliable: it recognises ${camilleRecognised} of Camille's real games, but takes ${othersTaken} of other players' games for his too.`,
     styleTooShort: (movesRead, needed) =>
       `Too short to read: the Bot played ${english(movesRead, 'move', 'moves')} after move 5, and ${needed} are needed.`,
     styleLegendCamille: (games) => `Camille's real games, ${games.toLocaleString('en')}`,
@@ -707,11 +715,17 @@ const FRENCH: Texts = {
     botThisGame: 'Le Bot dans cette partie',
     moveCounts: (bot, visitor) => `Nombre de coups${NO_BREAK}: Bot ${bot}, vous ${visitor}.`,
     styleTitle: `Cette partie ressemble-t-elle à une partie de Camille${NO_BREAK}?`,
-    styleStanding: (camilleBelow, othersBelow) =>
-      `Cette partie a un meilleur score que ${camilleBelow} des vraies parties de Camille, et que ${othersBelow} des parties des autres joueurs.`,
+    styleTypical: (camille, others) =>
+      `Une partie de Camille obtient en général ${camille}, celle d’un autre joueur de son niveau ${others}.`,
+    styleStanding: (score, direction, share) => {
+      if (direction === 'lower') {
+        return `Avec ${score}, cette partie fait moins bien que ${share} des vraies parties de Camille.`;
+      }
+      return `Avec ${score}, cette partie fait mieux que ${share} des vraies parties de Camille.`;
+    },
     styleLimit: (camilleRecognised, othersTaken) =>
-      `Sur une seule partie, ce test se trompe presque une fois sur deux, même sur les vraies parties de Camille${NO_BREAK}: ` +
-      `il en reconnaît ${camilleRecognised}, et prend aussi ${othersTaken} des parties des autres joueurs pour les siennes.`,
+      `Sur une seule partie, ce test est peu fiable${NO_BREAK}: il reconnaît ${camilleRecognised} des vraies parties de Camille, ` +
+      `mais prend aussi ${othersTaken} des parties des autres joueurs pour les siennes.`,
     styleTooShort: (movesRead, needed) =>
       `Partie trop courte pour être lue${NO_BREAK}: le Bot a joué ${french(movesRead, 'coup', 'coups')} après le 5e, il en faut ${needed}.`,
     styleLegendCamille: (games) => `Vraies parties de Camille, ${games.toLocaleString('fr')}`,

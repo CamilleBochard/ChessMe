@@ -22,8 +22,9 @@ import lossFile from '../explanation/loss-yardstick.json';
 import { STYLE_CHART_EDGES, styleChart } from '../explanation/style-chart';
 import discriminatorFile from '../explanation/style-discriminator.json';
 import {
+  medianScore,
   scoreShares,
-  shareScoringBelow,
+  standingAmong,
   type ShippedStyleDiscriminator,
   type StyleScore,
 } from '../explanation/style-discriminator';
@@ -36,6 +37,8 @@ const camille: CamilleFigures = camilleFigures(lossYardstick);
 const discriminator = discriminatorFile as ShippedStyleDiscriminator;
 const camilleShares = scoreShares(discriminator.camille.scores, STYLE_CHART_EDGES);
 const otherShares = scoreShares(discriminator.otherPlayers.scores, STYLE_CHART_EDGES);
+const camilleTypical = medianScore(discriminator.camille.scores);
+const othersTypical = medianScore(discriminator.otherPlayers.scores);
 // Read from the experiment that measured the Bot as it is served; a test in
 // shipped-yardsticks.test.ts fails if the served Bot changes without it.
 const matching = moveMatching(botRunsFile as BotRunResults, SERVED_BOT);
@@ -217,10 +220,13 @@ function styleBlock(style: StyleScore, texts: Texts): HTMLElement {
   }
   block.append(legend, styleChart(camilleShares, otherShares, gameScore, texts));
 
+  // The typical scores come first: the game's own score means little until
+  // it is set beside them.
+  block.append(paragraph(words.styleTypical(texts.decimal(camilleTypical, 2), texts.decimal(othersTypical, 2))));
   if (gameScore !== null) {
-    const camilleBelow = texts.percent(shareScoringBelow(discriminator.camille.scores, gameScore), 0);
-    const othersBelow = texts.percent(shareScoringBelow(discriminator.otherPlayers.scores, gameScore), 0);
-    block.append(paragraph(words.styleStanding(camilleBelow, othersBelow)));
+    const standing = standingAmong(discriminator.camille.scores, gameScore);
+    const share = texts.percent(standing.share, 0);
+    block.append(paragraph(words.styleStanding(texts.decimal(gameScore, 2), standing.direction, share)));
   }
   const recognised = texts.percent(discriminator.camille.shareScoredAsCamille, 0);
   const taken = texts.percent(discriminator.otherPlayers.shareScoredAsCamille, 0);
