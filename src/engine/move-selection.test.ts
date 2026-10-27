@@ -207,7 +207,9 @@ describe('selectMove drawing from the Base Model', () => {
     expect(Math.abs(timesPlayed['e2e4'] / draws - 0.7)).toBeLessThan(0.015);
     expect(Math.abs(timesPlayed['d2d4'] / draws - 0.2)).toBeLessThan(0.015);
     expect(Math.abs(timesPlayed['g1f3'] / draws - 0.1)).toBeLessThan(0.015);
-  });
+    // 20,000 draws take about two seconds alone, and can pass the default
+    // five when every test file runs at once on a few cores.
+  }, 30_000);
 });
 
 describe('selectMove with a cut in the opening', () => {
