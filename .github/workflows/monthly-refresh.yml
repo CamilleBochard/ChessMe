@@ -287,8 +287,8 @@ jobs:
     needs: [publish, deploy]
     runs-on: ubuntu-24.04
     timeout-minutes: 20
-    # The production address is a variable of the environment, never written
-    # in the repository.
+    # The production address is a secret of the environment, never written
+    # in the repository: a variable would be printed in the run's public log.
     environment: production
     permissions:
       contents: read
@@ -311,7 +311,7 @@ jobs:
 
       - name: Check production, with retries
         env:
-          PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
+          PRODUCTION_URL: ${{ secrets.PRODUCTION_URL }}
           FAIL_ON_PURPOSE: ${{ inputs.fail_checks_after_deploying }}
         run: |
           extra=()

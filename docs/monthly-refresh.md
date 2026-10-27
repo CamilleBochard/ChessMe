@@ -46,7 +46,9 @@ runner holds no other model. They check that the Bot runs with the new book,
 not how well it plays.
 
 **The checks against production** read the address from the `PRODUCTION_URL`
-variable of the `production` environment, never from the repository. The
+secret of the `production` environment, never from the repository. A secret
+rather than a variable: the repository's run logs are public, GitHub prints a
+step's variables in them and masks its secrets. The
 site's build writes `public/bot-data.json`, the sha256 of the model and of the
 book it was built with; the book is bundled into the Bot's worker, so this is
 how production says which book it serves. The browser blocks anything the page
@@ -81,7 +83,7 @@ Once, by someone with admin rights on the repository:
 
 ```sh
 gh secret set LICHESS_TOKEN < ~/.config/chessme/lichess-token
-gh variable set PRODUCTION_URL --env production --body "https://<the production host>"
+printf '%s' "https://<the production host>" | gh secret set PRODUCTION_URL --env production
 # The first copy of the caches and records, from a machine that holds them:
 python -m pipeline.pipeline_state save --stamp "$(date -u +%Y-%m-%d)-setup"
 ```
