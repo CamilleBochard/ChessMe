@@ -1,10 +1,24 @@
 # Production delivery: every push on master builds both images, publishes
-# them on GHCR, then deploys them on the VPS.
+# them on GHCR, then deploys them on the VPS. The monthly refresh
+# (monthly-refresh.yml) calls it with the commit it published, and, to roll
+# back, with the commit before it and no build: the images of a commit that
+# was deployed are still on GHCR.
 name: Deploy
 
 on:
   push:
     branches: [master]
+  workflow_call:
+    inputs:
+      ref:
+        description: The commit to deploy
+        required: true
+        type: string
+      skip_build:
+        description: Deploy the images already published for that commit, without building them again
+        required: false
+        type: boolean
+        default: false
 
 # No permission by default: each job asks only for what it needs.
 permissions: {}
@@ -15,13 +29,13 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  # The release holding the Base Model and the Opening Book, which the
-  # repository does not hold. Their checksums are in docker/bot-data.sha256.
-  BOT_DATA_RELEASE: bot-data-2
+  # The commit to build and deploy: the one pushed, or the one the caller names.
+  DEPLOY_REF: ${{ inputs.ref || github.sha }}
 
 jobs:
   publish:
     name: Build and publish ${{ matrix.image }}
+    if: ${{ !inputs.skip_build }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     # Read the code, write the images to GHCR. Nothing else.
@@ -37,14 +51,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ env.DEPLOY_REF }}
           persist-credentials: false
 
+      # The release is named in docker/bot-data-release, beside the checksums,
+      # so a commit that publishes a new release, and its revert, carry both.
       # The checksums come from the repository, not from the release: a file
       # replaced in the release fails the build instead of being shipped.
       - name: Download the Base Model and the Opening Book
         if: matrix.image == 'web'
         run: |
-          base_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${BOT_DATA_RELEASE}"
+          bot_data_release="$(cat docker/bot-data-release)"
+          base_url="https://github.com/${GITHUB_REPOSITORY}/releases/download/${bot_data_release}"
           mkdir -p models/onnx data/dataset
           curl --fail --silent --show-error --location -o models/onnx/maia3-5m-fine-tuned.onnx "$base_url/maia3-5m-fine-tuned.onnx"
           curl --fail --silent --show-error --location -o data/dataset/opening-book.json "$base_url/opening-book.json"
@@ -60,6 +78,12 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Named after the commit built, which a caller may give: the commit
+      # that triggered the run can be an earlier one.
+      - name: Name the image after the commit
+        id: commit
+        run: echo "tag=sha-${DEPLOY_REF::7}" >> "$GITHUB_OUTPUT"
+
       # Tags: sha-<short commit> to deploy or roll back a precise version,
       # latest for a manual pull.
       - name: Compute image tags
@@ -68,7 +92,7 @@ jobs:
         with:
           images: ghcr.io/camillebochard/chessme-${{ matrix.image }}
           tags: |
-            type=sha
+            type=raw,value=${{ steps.commit.outputs.tag }}
             type=raw,value=latest
 
       # One layer cache per image, kept by GitHub Actions.
@@ -86,6 +110,8 @@ jobs:
   deploy:
     name: Deploy on the VPS
     needs: publish
+    # Also when the build was skipped on purpose, to deploy images already published.
+    if: ${{ !cancelled() && (needs.publish.result == 'success' || needs.publish.result == 'skipped') }}
     runs-on: ubuntu-latest
     # Covers two services, each with two pulls and two health checks if the
     # script rolls back.
@@ -120,7 +146,7 @@ jobs:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
           DEPLOY_USER: ${{ vars.DEPLOY_USER }}
         run: |
-          image_tag="sha-${GITHUB_SHA::7}"
+          image_tag="sha-${DEPLOY_REF::7}"
           for service in chessme-api chessme-web; do
             ssh \
               -i "$RUNNER_TEMP/deploy_key" \
