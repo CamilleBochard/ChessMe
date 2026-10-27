@@ -227,8 +227,34 @@ def refresh(
         "profiles": profile_movement(before["profiles"], after["profiles"]),
     }
     paths.summaries_dir.mkdir(parents=True, exist_ok=True)
-    (paths.summaries_dir / f"{day.isoformat()}.json").write_text(json.dumps(summary, indent=1), encoding="utf-8")
+    _new_summary_path(paths.summaries_dir, day).write_text(json.dumps(summary, indent=1), encoding="utf-8")
     return summary
+
+
+def _new_summary_path(summaries_dir: Path, day: date) -> Path:
+    """A file for the day's summary that no earlier summary holds: a second run the same day writes <day>-2.json."""
+    path = summaries_dir / f"{day.isoformat()}.json"
+    copy = 2
+    while path.exists():
+        path = summaries_dir / f"{day.isoformat()}-{copy}.json"
+        copy += 1
+    return path
+
+
+def summary_files_in_order(summaries_dir: Path) -> list[Path]:
+    """Every summary, in the order the runs wrote them: by day, then by number within a day."""
+    if not summaries_dir.exists():
+        return []
+
+    def written_order(path: Path) -> tuple[str, int]:
+        # "2026-10-27" is the day's first summary, "2026-10-27-2" its second.
+        day = path.stem[:10]
+        copy = 1
+        if len(path.stem) > 10:
+            copy = int(path.stem[11:])
+        return day, copy
+
+    return sorted(summaries_dir.glob("*.json"), key=written_order)
 
 
 def _engine_name(engine: Engine) -> str:
@@ -280,7 +306,7 @@ def _line_count(path: Path) -> int:
 
 def _previous_level_break(summaries_dir: Path) -> str | None:
     """The Level Break the last refresh found; None before the first refresh, as no break had been found then."""
-    summaries = sorted(summaries_dir.glob("*.json")) if summaries_dir.exists() else []
+    summaries = summary_files_in_order(summaries_dir)
     if not summaries:
         return None
     return json.loads(summaries[-1].read_text(encoding="utf-8"))["level_break"]["at"]
@@ -405,4 +431,4 @@ if __name__ == "__main__":
         written = refresh(paths, date.today(), tools, fetch=not arguments.no_fetch, fetched=arguments.fetched)
 
     print(summary_tables(written))
-    print(f"Written to {paths.summaries_dir / (written['day'] + '.json')}")
+    print(f"Written to {summary_files_in_order(paths.summaries_dir)[-1]}")
