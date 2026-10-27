@@ -68,7 +68,7 @@ class FirstChoicesStandIn:
         self.paths = paths
         self.asked = []
 
-    def __call__(self, model: Path, positions: list) -> list[bool]:
+    def __call__(self, model: Path, rating: int, positions: list) -> list[bool]:
         games_in_the_dataset = set()
         if (self.paths.dataset_dir / "train.jsonl").exists():
             dataset = read_dataset(self.paths.dataset_dir)
@@ -229,7 +229,8 @@ def test_measures_both_models_on_the_new_games_only_before_the_dataset_takes_the
     new_positions = [position for position in after.train + after.test if position.game_id not in games_before]
     new_games = {position.game_id for position in new_positions}
     asked = tools.first_choice_matches.asked
-    assert [question["model"] for question in asked] == [paths.served_model, paths.untrained_model]
+    assert len(asked) == 2
+    assert {question["model"] for question in asked} == {paths.served_model, paths.untrained_model}
     for question in asked:
         assert question["games"] == new_games
         assert question["games_in_the_dataset"] == games_before

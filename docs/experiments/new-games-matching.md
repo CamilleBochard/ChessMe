@@ -33,8 +33,8 @@ never see a model trained on the games it is measured on. A run that
 fetched nothing measures nothing, and says so.
 
 **Two models on the same positions.** The served model and the untrained
-Maia-3 5M both play at the served rating, 1100. Each is the Base Model
-alone, with no Opening Book, and its first choice is compared with
+Maia-3 5M both play at the served rating, 1100. Each is the model alone,
+with no Opening Book, and its first choice is compared with
 Camille's move: the move the Move-Selection Engine plays from the model at
 temperature 0, measured as in [Move-Matching](move-matching.md), under Node
 with the engine's own encoding. The untrained model is the yardstick: some
@@ -50,13 +50,19 @@ models does not count against it. Each figure is also given per
 
 **A minimum of 1,500 moves.** A month's games range from 6 to 189, that is
 143 to 5,798 of Camille's moves. Fixed before the first measurement: a
-month needs 1,500 of his moves to be reported alone. On the Test Set, where
+measurement needs 1,500 of his moves to be reported alone. The unit is one
+refresh's measurement, the games it brought, which the monthly refresh
+makes a calendar month; the first measurement, made by hand, spans the end
+of September and October. On the Test Set, where
 neither model trained, samples of whole games adding up to 1,500 moves
 measure the gain to about ±0.83 points (median of 200 random samples),
 against ±1.00 at 1,000 moves and ±0.54 at 3,500; the served model's gain
-over all 7,092 Test Set moves is +4.08 ± 0.38 points. A shorter month is not
-reported: its games wait for the next month's and the two are reported
-together, the table saying which months a row covers. Months measured on
+over all 7,092 Test Set moves is +4.08 ± 0.38 points. A shorter measurement is
+not reported: its games wait for the next one's and the two are reported
+together as pooled, the table saying which months a row covers. A row once
+reported never changes, which grouping by calendar month would not
+guarantee: a month split across two refreshes would see its row change
+after it was published. Months measured on
 two different served models, after a retraining, are never pooled.
 
 **What is kept.** Each measurement keeps, per game and per Phase, Camille's
@@ -115,6 +121,7 @@ of them against 49.82% of the Test Set's, the reason the gain over it, not
 the served model's own figure, is the one followed.
 
 **The error is a little larger than the minimum's estimate predicts.** At
-3,479 moves the gain's error is 0.63 points, against about 0.54 for
-samples of that size drawn from the Test Set: this month's games are
-somewhat less alike than the Test Set's, nothing more.
+3,479 moves the gain's error is 0.63 points, against a median of 0.54 for
+samples of that size drawn from the Test Set. If new games keep spreading
+more than the Test Set's, the 1,500-move minimum gives a little more than
+±0.8 points.

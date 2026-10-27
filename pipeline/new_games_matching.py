@@ -60,9 +60,10 @@ class MeasuredModels:
     rating: int
 
 
-# first_choice_matches(model, positions) says, position by position, whether
-# the model's most likely move is the move Camille played.
-FirstChoiceMatches = Callable[[Path, list[Position]], list[bool]]
+# first_choice_matches(model, rating, positions) says, position by position,
+# whether the model's most likely move at that rating is the move Camille
+# played.
+FirstChoiceMatches = Callable[[Path, int, list[Position]], list[bool]]
 
 
 def positions_of_new_games(pgn_paths: list[Path], new_files: list[Path]) -> list[Position]:
@@ -98,8 +99,8 @@ def measure_new_games(
         print("New games' Move-Matching: no new game, nothing measured", flush=True)
         return {"skipped": "no new game"}
 
-    served_matches = first_choice_matches(models.served, positions)
-    untrained_matches = first_choice_matches(models.untrained, positions)
+    served_matches = first_choice_matches(models.served, models.rating, positions)
+    untrained_matches = first_choice_matches(models.untrained, models.rating, positions)
     measurement = {
         "format_version": FORMAT_VERSION,
         "measured_on": day.isoformat(),
@@ -129,8 +130,8 @@ def measure_new_games(
     }
 
 
-def first_choices_under_node(rating: int, repository_root: Path) -> FirstChoiceMatches:
-    """Asks each model for its most likely move with the engine's own code, under Node, at the given rating.
+def first_choices_under_node(repository_root: Path) -> FirstChoiceMatches:
+    """Asks a model for its most likely move with the engine's own code, under Node.
 
     npm run move-probabilities places Camille's move in the model's
     distribution over the legal moves, most likely first: the model's first
@@ -139,7 +140,7 @@ def first_choices_under_node(rating: int, repository_root: Path) -> FirstChoiceM
     docs/experiments/move-matching.md measures it.
     """
 
-    def first_choice_matches(model: Path, positions: list[Position]) -> list[bool]:
+    def first_choice_matches(model: Path, rating: int, positions: list[Position]) -> list[bool]:
         with tempfile.TemporaryDirectory() as folder:
             positions_path = Path(folder) / "positions.jsonl"
             records_path = Path(folder) / "records.jsonl"
@@ -268,12 +269,12 @@ def table_groups(measurements: list[dict], minimum: int) -> list[dict]:
     """
     groups = []
     open_group = []
-    for taken in measurements:
-        if open_group and _served_model(taken) != _served_model(open_group[-1]):
+    for measurement in measurements:
+        if open_group and _served_model(measurement) != _served_model(open_group[-1]):
             groups.append(_group(open_group, "below the minimum"))
             open_group = []
 
-        open_group.append(taken)
+        open_group.append(measurement)
         if _moves_in(open_group) >= minimum:
             if len(open_group) > 1:
                 groups.append(_group(open_group, "pooled"))
@@ -285,22 +286,22 @@ def table_groups(measurements: list[dict], minimum: int) -> list[dict]:
     return groups
 
 
-def _served_model(taken: dict) -> str:
-    return taken["served_model"]["sha256"]
+def _served_model(measurement: dict) -> str:
+    return measurement["served_model"]["sha256"]
 
 
 def _moves_in(measurements: list[dict]) -> int:
     moves = 0
-    for taken in measurements:
-        for game in taken["games"]:
+    for measurement in measurements:
+        for game in measurement["games"]:
             moves = moves + _whole_game(game)["moves"]
     return moves
 
 
 def _group(measurements: list[dict], status: str) -> dict:
     games = []
-    for taken in measurements:
-        games.extend(taken["games"])
+    for measurement in measurements:
+        games.extend(measurement["games"])
 
     months = set()
     for game in games:
@@ -313,7 +314,7 @@ def _group(measurements: list[dict], status: str) -> dict:
         group_figures = figures(games)
 
     return {
-        "measured_on": [taken["measured_on"] for taken in measurements],
+        "measured_on": [measurement["measured_on"] for measurement in measurements],
         "months": sorted(months),
         "status": status,
         "games": len(games),
@@ -394,8 +395,8 @@ Written by `pipeline/new_games_matching.py` at each refresh; the method is in
 served model and the untrained Maia-3 5M on the games a refresh brought,
 before anything was trained on them: Move-Matching of each model's most
 likely move, in percent, and the gain, served minus untrained, in points,
-each ± one standard error clustered by game. A month with fewer than
-{MINIMUM_MOVES:,} of Camille's moves is pooled with the next.
+each ± one standard error clustered by game. A refresh that brings fewer
+than {MINIMUM_MOVES:,} of Camille's moves is pooled with the next.
 
 """
     return introduction + cumulative_table(groups)
@@ -411,13 +412,16 @@ if __name__ == "__main__":
     arguments = parser.parse_args()
     paths = RefreshPaths.under(REPOSITORY_ROOT)
     _, served_rating = served_model()
+    models = MeasuredModels(served=paths.served_model, untrained=paths.untrained_model, rating=served_rating)
+    every_game_file = sorted(paths.raw_dir.glob("*.pgn"))
+    new_positions = positions_of_new_games(every_game_file, arguments.new_files)
 
     result = measure_new_games(
-        positions_of_new_games(sorted(paths.raw_dir.glob("*.pgn")), arguments.new_files),
+        new_positions,
         date.today(),
         arguments.new_files,
-        MeasuredModels(served=paths.served_model, untrained=paths.untrained_model, rating=served_rating),
-        first_choices_under_node(served_rating, REPOSITORY_ROOT),
+        models,
+        first_choices_under_node(REPOSITORY_ROOT),
         paths.monthly_dir,
     )
     print(json.dumps(result, indent=1))

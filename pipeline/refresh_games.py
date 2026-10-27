@@ -88,6 +88,7 @@ class RefreshPaths:
     @classmethod
     def under(cls, root: Path) -> "RefreshPaths":
         """The repository's layout, under root."""
+        served_model_file, _ = served_model()
         return cls(
             raw_dir=root / "data" / "raw",
             dataset_dir=root / "data" / "dataset",
@@ -95,7 +96,7 @@ class RefreshPaths:
             summaries_dir=root / "docs" / "refreshes",
             site_dir=root / "src" / "explanation",
             monthly_dir=root / "docs" / "experiments" / "monthly",
-            served_model=root / served_model()[0],
+            served_model=root / served_model_file,
             untrained_model=root / UNTRAINED_MODEL,
         )
 
@@ -154,8 +155,8 @@ class RefreshTools:
     # write_yardsticks(since) writes the site's two yardsticks from the games
     # begun at since or later, every game when since is None.
     write_yardsticks: Callable[[str | None], None]
-    # first_choice_matches(model, positions) says, position by position,
-    # whether the model's most likely move is the one Camille played.
+    # first_choice_matches(model, rating, positions) says, position by
+    # position, whether the model's most likely move is the one Camille played.
     first_choice_matches: FirstChoiceMatches
     report_progress: Callable[[int, int], None] | None = field(default=None)
 
@@ -188,14 +189,11 @@ def refresh(
 
     # Before the dataset, the Opening Book or anything else takes the new
     # games in, so the served model is measured on games it has never seen.
-    _, rating = served_model()
+    _, served_rating = served_model()
+    models = MeasuredModels(served=paths.served_model, untrained=paths.untrained_model, rating=served_rating)
+    new_positions = positions_of_new_games(pgn_paths, new_files)
     new_games_matching = measure_new_games(
-        positions_of_new_games(pgn_paths, new_files),
-        day,
-        new_files,
-        MeasuredModels(served=paths.served_model, untrained=paths.untrained_model, rating=rating),
-        tools.first_choice_matches,
-        paths.monthly_dir,
+        new_positions, day, new_files, models, tools.first_choice_matches, paths.monthly_dir
     )
 
     before = _what_was_built(paths)
@@ -443,7 +441,7 @@ if __name__ == "__main__":
             browser=Engine(browser_analysers, browser_cache),
             place_moves=place_moves_with_the_served_model,
             write_yardsticks=lambda since: write_the_site_yardsticks(paths, since),
-            first_choice_matches=first_choices_under_node(served_model()[1], REPOSITORY_ROOT),
+            first_choice_matches=first_choices_under_node(REPOSITORY_ROOT),
             report_progress=ProgressPrinter(),
         )
         written = refresh(paths, date.today(), tools, fetch=not arguments.no_fetch, fetched=arguments.fetched)

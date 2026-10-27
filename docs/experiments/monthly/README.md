@@ -5,8 +5,8 @@ Written by `pipeline/new_games_matching.py` at each refresh; the method is in
 served model and the untrained Maia-3 5M on the games a refresh brought,
 before anything was trained on them: Move-Matching of each model's most
 likely move, in percent, and the gain, served minus untrained, in points,
-each ± one standard error clustered by game. A month with fewer than
-1,500 of Camille's moves is pooled with the next.
+each ± one standard error clustered by game. A refresh that brings fewer
+than 1,500 of Camille's moves is pooled with the next.
 
 | Games played | Measured on | Phase | Games | Moves | Served model | Untrained model | Gain |
 |---|---|---|---|---|---|---|---|
