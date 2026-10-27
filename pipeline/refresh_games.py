@@ -1,8 +1,8 @@
 """Brings everything built from Camille's games up to date with the games he has played since the last run.
 
 Run from the repository root, with Stockfish installed (scripts/fetch_stockfish.sh),
-the Node packages installed, the served model in models/onnx and the Lichess
-token in the environment:
+the Node packages installed, the served and the untrained model in
+models/onnx and the Lichess token in the environment:
 
     export LICHESS_TOKEN="$(cat ~/.config/chessme/lichess-token)"
     python -m pipeline.refresh_games
@@ -12,19 +12,22 @@ In order:
 1. New games are fetched from Chess.com and Lichess into new dated files in
    data/raw (pipeline/fetch_games.py); the files already there are never
    rewritten.
-2. The dataset is rebuilt from every export. When it holds moves an engine's
-   cache does not, that engine first analyses a sample of its cached moves
-   again and the run stops on any difference, so one cache never mixes two
-   machines' measures.
-3. The Level Break is looked for again (pipeline/level_break.py), then the
+2. When the dataset would hold moves an engine's cache does not, that
+   engine first analyses a sample of its cached moves again and the run
+   stops on any difference, so one cache never mixes two machines' measures.
+3. The served model and the untrained Maia-3 5M are measured on the new
+   games, before anything is trained or built on them
+   (pipeline/new_games_matching.py), into docs/experiments/monthly/. Then
+   the dataset is rebuilt from every export.
+4. The Level Break is looked for again (pipeline/level_break.py), then the
    Opening Book is rebuilt from every training game, and the Blunder
    Profile, at the pipeline's depth and at the browser's, from the games
    since the Level Break. Stockfish analyses only moves its cache does not
    hold.
-4. The served model's records on the Test Set are extended with new
+5. The served model's records on the Test Set are extended with new
    positions only, and the site's improbability and loss yardsticks written
    again from the games since the Level Break.
-5. A summary of what changed is printed and written to docs/refreshes/, for
+6. A summary of what changed is printed and written to docs/refreshes/, for
    the report of each run.
 
 A second run with no new game writes no game file, analyses nothing and
