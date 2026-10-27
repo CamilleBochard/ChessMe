@@ -84,3 +84,50 @@ def test_writes_the_level_on_open_positions_beside_the_profile_and_marks_each_mo
     assert open_positions["share_in_decided_positions"] == {"opening": 0, "middlegame": 1, "endgame": None}
     written_losses = [json.loads(line) for line in losses_path.read_text(encoding="utf-8").splitlines()]
     assert [loss["open_position"] for loss in written_losses] == [True, False]
+
+
+def test_builds_the_profile_from_the_games_begun_since_a_moment_and_says_so(tmp_path):
+    earlier = Position(
+        game_id="lichess:a", source="lichess", ply=1, phase="opening", fen=START, move="d2d4", played_at="2025-07-01T10:00:00"
+    )
+    later = Position(
+        game_id="lichess:b",
+        source="lichess",
+        ply=12,
+        phase="middlegame",
+        fen=AFTER_E4_E5_NF3,
+        move="f7f6",
+        played_at="2026-03-01T10:00:00",
+    )
+    write_json_lines([earlier, later], tmp_path / "train.jsonl")
+    write_json_lines([], tmp_path / "test.jsonl")
+    profile_path = tmp_path / "blunder-profile.json"
+
+    extract(
+        tmp_path, tmp_path / "cache.jsonl", profile_path, tmp_path / "losses.jsonl", [LosingAPawnAnalyser()], since="2026-01-01T00:00:00"
+    )
+
+    profile = json.loads(profile_path.read_text(encoding="utf-8"))
+    assert profile["since"] == "2026-01-01T00:00:00"
+    assert profile["phases"]["opening"]["moves"] == 0
+    assert profile["phases"]["middlegame"]["moves"] == 1
+
+
+def test_builds_the_same_profile_from_the_first_game_on_as_from_every_game(tmp_path):
+    first = Position(
+        game_id="lichess:a", source="lichess", ply=1, phase="opening", fen=START, move="d2d4", played_at="2025-07-01T10:00:00"
+    )
+    write_json_lines([first], tmp_path / "train.jsonl")
+    write_json_lines([], tmp_path / "test.jsonl")
+    every_game = tmp_path / "every-game.json"
+    from_the_first = tmp_path / "from-the-first.json"
+
+    extract(tmp_path, tmp_path / "cache.jsonl", every_game, tmp_path / "losses.jsonl", [LosingAPawnAnalyser()])
+    extract(
+        tmp_path, tmp_path / "cache.jsonl", from_the_first, tmp_path / "losses.jsonl", [LosingAPawnAnalyser()], since=first.played_at
+    )
+
+    profile = json.loads(from_the_first.read_text(encoding="utf-8"))
+    del profile["since"]
+    assert profile == json.loads(every_game.read_text(encoding="utf-8"))
+    assert "since" not in json.loads(every_game.read_text(encoding="utf-8"))

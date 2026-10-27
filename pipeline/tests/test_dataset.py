@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from pipeline.dataset import build_dataset
+from pipeline.dataset import build_dataset, played_since
 
 FIXTURES = Path(__file__).parent / "fixtures"
 CHESSCOM = FIXTURES / "chesscom.pgn"
@@ -127,3 +127,12 @@ def test_records_when_each_game_was_played_in_utc():
     played = {position.game_id: position.played_at for position in dataset.train}
     assert played["chesscom:1001"] == "2025-06-15T10:00:00"
     assert played["lichess:abcd1234"] == "2026-01-10T09:00:00"
+
+
+def test_keeps_the_positions_of_the_games_begun_at_or_after_a_moment():
+    dataset = build_dataset([CHESSCOM, LICHESS], player="punkycam", test_fraction=0)
+
+    since_january = played_since(dataset.train, "2026-01-10T09:00:00")
+
+    assert game_ids(since_january) == {"lichess:abcd1234", "lichess:long0001"}
+    assert played_since(dataset.train, None) == dataset.train

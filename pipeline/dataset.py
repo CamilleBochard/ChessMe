@@ -78,6 +78,17 @@ def kept_games(pgn_paths: list[Path]) -> Iterator[tuple[chess.pgn.Game, str]]:
                 yield game, game_id
 
 
+def played_since(positions: list[Position], since: str | None) -> list[Position]:
+    """The positions of the games that began at the moment since or later; every position when since is None.
+
+    since is written as played_at is, such as "2025-06-15T10:00:00", so the
+    two compare as text.
+    """
+    if since is None:
+        return positions
+    return [position for position in positions if position.played_at >= since]
+
+
 def read_dataset(dataset_dir: Path) -> Dataset:
     """Reads back the train.jsonl and test.jsonl files the dataset build wrote to dataset_dir."""
     return Dataset(
