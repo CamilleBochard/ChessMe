@@ -1,11 +1,13 @@
 """Trains the style discriminator, checks it on Camille's Test Set, then asks it about the Bot and the Baseline.
 
 Run from the repository root, once the dataset is built, the other players'
-sample fetched and both sets of games played:
+sample fetched and every set of games played:
 
     python -m pipeline.fetch_other_players
-    npm run bot-games
-    npm run bot-games -- --baseline --out data/dataset/baseline-games.jsonl
+    npm run bot-games -- --model models/onnx/maia3-5m.onnx
+    npm run bot-games -- --model models/onnx/maia3-5m.onnx --baseline --out data/dataset/baseline-games.jsonl
+    npm run bot-games -- --temperature 1 --opening-cut top-k=10 --opponent-rating 1100 --out data/dataset/bot-games-served.jsonl
+    npm run bot-games -- --model models/onnx/maia3-5m-fine-tuned.onnx --temperature 1 --opponent-rating 1100 --out data/dataset/bot-games-fine-tuned-at-1.jsonl
     python -m pipeline.measure_style_discriminator
 
 The discriminator is trained on Camille's training games against the other
@@ -16,7 +18,8 @@ the same opponent with the same seed, so they differ only by the Opening
 Book, and both are equally unlike a human game in every other way: no clock,
 nobody resigns, a model across the board. Their difference is what the
 experiment reports; their raw scores are read with that caution. The Bot as
-the site serves it is scored too, from its own games.
+the site serves it is scored too, from its own games, beside the same Bot
+played without the opening cut, so the cut's effect past the opening shows.
 
 The site scores the Bot's game at the end of each Session Game with this
 same discriminator, so the run also writes what the page needs: the
@@ -59,6 +62,7 @@ FORMAT_VERSION = 2
 BOT_GAMES_PATH = DATASET_DIR / "bot-games.jsonl"
 BASELINE_GAMES_PATH = DATASET_DIR / "baseline-games.jsonl"
 SERVED_BOT_GAMES_PATH = DATASET_DIR / "bot-games-served.jsonl"
+UNCUT_BOT_GAMES_PATH = DATASET_DIR / "bot-games-fine-tuned-at-1.jsonl"
 RESULTS_PATH = REPOSITORY_ROOT / "docs" / "experiments" / "results" / "style-discriminator.json"
 SITE_PATH = REPOSITORY_ROOT / "src" / "explanation" / "style-discriminator.json"
 PARITY_PATH = REPOSITORY_ROOT / "src" / "explanation" / "style-discriminator-parity.json"
@@ -77,6 +81,7 @@ GROUP_LABELS = {
     "bot": "Bot",
     "baseline": "Baseline",
     "served_bot": "Bot as served",
+    "uncut_bot": "Bot as served, without the opening cut",
     "camille_training_games": "Camille, training games",
     "other_players_training_games": "Other players, training games",
 }
@@ -91,7 +96,12 @@ class Measurement:
 
 
 def measure(
-    dataset_dir: Path, other_players_path: Path, bot_games_path: Path, baseline_games_path: Path, served_bot_games_path: Path
+    dataset_dir: Path,
+    other_players_path: Path,
+    bot_games_path: Path,
+    baseline_games_path: Path,
+    served_bot_games_path: Path,
+    uncut_bot_games_path: Path,
 ) -> Measurement:
     dataset = read_dataset(dataset_dir)
     other_positions = read_other_players(other_players_path)
@@ -104,6 +114,7 @@ def measure(
         "bot": games_long_enough(read_bot_games(bot_games_path)),
         "baseline": games_long_enough(read_bot_games(baseline_games_path)),
         "served_bot": games_long_enough(read_bot_games(served_bot_games_path)),
+        "uncut_bot": games_long_enough(read_bot_games(uncut_bot_games_path)),
         "camille_training_games": games_long_enough(dataset.train),
         "other_players_training_games": games_long_enough(other_training_positions),
     }
@@ -137,6 +148,11 @@ def measure(
         "baseline_against_other_players": separation(scores["baseline"], scores["other_players_test_split"]),
         "bot_against_baseline": compare_mean_scores(scores["bot"], scores["baseline"]),
         "served_bot_against_other_players": separation(scores["served_bot"], scores["other_players_test_split"]),
+        "uncut_bot_against_other_players": separation(scores["uncut_bot"], scores["other_players_test_split"]),
+        # The cut draws only among the opening's likeliest moves, before the
+        # plies the discriminator reads; whatever it changes past them comes
+        # through the positions the middlegame starts from.
+        "served_bot_against_uncut_bot": compare_mean_scores(scores["served_bot"], scores["uncut_bot"]),
         "weights": _strongest_push_first(discriminator.weights()),
     }
     return Measurement(results=results, discriminator=discriminator, groups=groups, scores=scores)
@@ -293,6 +309,8 @@ def tables(results: dict) -> str:
         ("Baseline against the other players' test split", results["baseline_against_other_players"]),
         ("Bot against Baseline", results["bot_against_baseline"]),
         ("Bot as served against the other players' test split", results["served_bot_against_other_players"]),
+        ("Bot as served without the opening cut, against the other players' test split", results["uncut_bot_against_other_players"]),
+        ("Bot as served against the same without the opening cut", results["served_bot_against_uncut_bot"]),
     ]
     for label, separation in separations:
         lines.append(f"| {label} | {_interval(separation['area_under_curve'], separation['area_under_curve_interval'])} |")
@@ -300,6 +318,9 @@ def tables(results: dict) -> str:
     comparison = results["bot_against_baseline"]
     difference = _interval(comparison["mean_score_difference"], comparison["mean_score_difference_interval"], signed=True)
     lines += ["", f"Bot's mean score minus the Baseline's: {difference}"]
+    comparison = results["served_bot_against_uncut_bot"]
+    difference = _interval(comparison["mean_score_difference"], comparison["mean_score_difference_interval"], signed=True)
+    lines += [f"Served Bot's mean score minus the same without the opening cut: {difference}"]
 
     lines += ["", "| Statistic | Weight |", "|---|---|"]
     for name, weight in results["weights"].items():
@@ -324,10 +345,16 @@ if __name__ == "__main__":
     parser.add_argument("--bot-games", type=Path, default=BOT_GAMES_PATH)
     parser.add_argument("--baseline-games", type=Path, default=BASELINE_GAMES_PATH)
     parser.add_argument("--served-bot-games", type=Path, default=SERVED_BOT_GAMES_PATH)
+    parser.add_argument("--uncut-bot-games", type=Path, default=UNCUT_BOT_GAMES_PATH)
     arguments = parser.parse_args()
 
     measurement = measure(
-        DATASET_DIR, arguments.other_players, arguments.bot_games, arguments.baseline_games, arguments.served_bot_games
+        DATASET_DIR,
+        arguments.other_players,
+        arguments.bot_games,
+        arguments.baseline_games,
+        arguments.served_bot_games,
+        arguments.uncut_bot_games,
     )
     RESULTS_PATH.write_text(json.dumps(measurement.results, indent=1), encoding="utf-8")
     SITE_PATH.write_text(json.dumps(site_record(measurement, date.today()), indent=1), encoding="utf-8")
