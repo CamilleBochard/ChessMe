@@ -120,6 +120,36 @@ export function shareScoringBelow(groupScores: readonly number[], score: number)
   return below / groupScores.length;
 }
 
+/** Which way a game's score lies from a group's typical game, and the share of the group it passes that way. */
+export interface Standing {
+  direction: 'lower' | 'higher';
+  share: number;
+}
+
+/**
+ * Where a game stands among a group's games, told from the side it lies on:
+ * a game below the group's median scores lower than most of its games, one
+ * at or above it higher than most. Said that way round, the share is always
+ * the larger one, and needs no turning over to be read.
+ */
+export function standingAmong(groupScores: readonly number[], score: number): Standing {
+  const below = shareScoringBelow(groupScores, score);
+  if (score < medianScore(groupScores)) {
+    return { direction: 'lower', share: 1 - below };
+  }
+  return { direction: 'higher', share: below };
+}
+
+/** The score half a group's games fall below: what one of its games typically scores. */
+export function medianScore(groupScores: readonly number[]): number {
+  const sorted = [...groupScores].sort((first, second) => first - second);
+  const middle = Math.floor(sorted.length / 2);
+  if (sorted.length % 2 === 1) {
+    return sorted[middle];
+  }
+  return (sorted[middle - 1] + sorted[middle]) / 2;
+}
+
 /**
  * The share of a group's games in each band between consecutive edges, so two
  * groups of different sizes draw on the same scale. A score below the first

@@ -5,9 +5,11 @@ import shippedFile from './style-discriminator.json';
 import parityFile from './style-discriminator-parity.json';
 import {
   gameStatistics,
+  medianScore,
   scoreGame,
   scoreShares,
   shareScoringBelow,
+  standingAmong,
   type ShippedStyleDiscriminator,
   type StyleMove,
 } from './style-discriminator';
@@ -153,6 +155,23 @@ describe('shareScoringBelow', () => {
     expect(shareScoringBelow(group, 0.5)).toBe(0.625);
     expect(shareScoringBelow(group, 0.1)).toBe(0);
     expect(shareScoringBelow(group, 0.9)).toBe(1);
+  });
+});
+
+describe('medianScore', () => {
+  it('gives the score half a group\'s games fall below, between the two middle ones when the group is even', () => {
+    expect(medianScore([0.2, 0.5, 0.4])).toBe(0.4);
+    expect(medianScore([0.2, 0.4, 0.5, 0.6])).toBeCloseTo(0.45, 12);
+  });
+});
+
+describe('standingAmong', () => {
+  it('says the game scores lower than a share of the group when it falls below the group\'s median, and higher otherwise', () => {
+    const group = [0.2, 0.4, 0.5, 0.6, 0.7];
+
+    expect(standingAmong(group, 0.3)).toEqual({ direction: 'lower', share: 0.8 });
+    expect(standingAmong(group, 0.65)).toEqual({ direction: 'higher', share: 0.8 });
+    expect(standingAmong(group, 0.5)).toEqual({ direction: 'higher', share: 0.5 });
   });
 });
 
