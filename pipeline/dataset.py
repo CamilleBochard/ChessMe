@@ -25,6 +25,10 @@ class Position:
     phase: str
     fen: str
     move: str
+    # When the game began, in UTC, as "2025-06-15T10:00:00": the order the
+    # Level Break is looked for in. None for games no one dated, such as the
+    # Bot's.
+    played_at: str | None = None
 
 
 @dataclass(frozen=True)
@@ -135,14 +139,22 @@ def _played_on(game: chess.pgn.Game) -> date:
     return datetime.strptime(game.headers["UTCDate"], "%Y.%m.%d").date()
 
 
+def _played_at(game: chess.pgn.Game) -> str:
+    """When the game began, in UTC, from the date and time both sites write."""
+    began = datetime.strptime(game.headers["UTCDate"] + " " + game.headers["UTCTime"], "%Y.%m.%d %H:%M:%S")
+    return began.isoformat()
+
+
 def _player_positions(game: chess.pgn.Game, game_id: str, player: str) -> list[Position]:
     player_colour = _player_colour(game, player, game_id)
     source = _source(game)
     moves = list(game.mainline_moves())
-    return positions_faced(game_id, source, moves, player_colour)
+    return positions_faced(game_id, source, moves, player_colour, played_at=_played_at(game))
 
 
-def positions_faced(game_id: str, source: str, moves: list[chess.Move], colour: chess.Color) -> list[Position]:
+def positions_faced(
+    game_id: str, source: str, moves: list[chess.Move], colour: chess.Color, played_at: str | None = None
+) -> list[Position]:
     """The positions the side playing colour faced in a game from the starting position, each with its move.
 
     Camille's games and the Bot's games both go through here, so a position
@@ -161,6 +173,7 @@ def positions_faced(game_id: str, source: str, moves: list[chess.Move], colour: 
                 phase=phase_of(ply),
                 fen=board.fen(),
                 move=move.uci(),
+                played_at=played_at,
             )
             positions.append(position)
         board.push(move)

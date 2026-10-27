@@ -119,3 +119,11 @@ def test_leaves_out_games_of_other_variants():
     dataset = build_dataset([LICHESS], player="punkycam", test_fraction=0)
 
     assert "lichess:c9600001" not in game_ids(dataset.train)
+
+
+def test_records_when_each_game_was_played_in_utc():
+    dataset = build_dataset([CHESSCOM, LICHESS], player="punkycam", test_fraction=0)
+
+    played = {position.game_id: position.played_at for position in dataset.train}
+    assert played["chesscom:1001"] == "2025-06-15T10:00:00"
+    assert played["lichess:abcd1234"] == "2026-01-10T09:00:00"

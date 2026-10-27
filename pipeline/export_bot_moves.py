@@ -37,6 +37,8 @@ def export_bot_moves(games_path: Path, out_path: Path, analysers: list[Analyser]
     with open(out_path, "w", encoding="utf-8") as out_file:
         for position, loss in zip(positions, losses):
             row = asdict(position)
+            # The Bot's games are not dated: nothing is ordered by when they were played.
+            del row["played_at"]
             row["centipawn_loss"] = loss.centipawn_loss
             out_file.write(json.dumps(row) + "\n")
     return len(positions)
