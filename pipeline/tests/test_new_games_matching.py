@@ -1,7 +1,7 @@
 import math
 
 from pipeline.dataset import Position
-from pipeline.new_games_matching import figures, game_tallies
+from pipeline.new_games_matching import figures, game_tallies, table_groups
 
 
 def position(game_id: str, ply: int, phase: str) -> Position:
@@ -58,3 +58,42 @@ def test_each_phase_counts_only_the_games_with_moves_in_it_and_gives_no_error_fo
     # One game's spread cannot be measured; the record says so with null,
     # which JSON can hold, rather than NaN, which it cannot.
     assert endgame["gain"]["standard_error"] is None
+
+
+def game(game_id: str, played_at: str, moves: int, served: int, untrained: int) -> dict:
+    """One game's tallies, every move in the middlegame."""
+    by_phase = {
+        "opening": {"moves": 0, "served": 0, "untrained": 0},
+        "middlegame": {"moves": moves, "served": served, "untrained": untrained},
+        "endgame": {"moves": 0, "served": 0, "untrained": 0},
+    }
+    return {"game_id": game_id, "played_at": played_at, "by_phase": by_phase}
+
+
+def measurement(measured_on: str, games: list[dict], served_model: str = "served-sha") -> dict:
+    return {"measured_on": measured_on, "served_model": {"sha256": served_model}, "games": games}
+
+
+def test_a_month_below_the_minimum_is_pooled_with_the_next_and_the_last_one_waits_for_more():
+    measurements = [
+        measurement("2026-11-01", [game("a", "2026-10-03T10:00:00", 40, 20, 10), game("b", "2026-10-20T10:00:00", 30, 15, 15)]),
+        measurement("2026-12-01", [game("c", "2026-11-12T10:00:00", 20, 10, 5)]),
+        measurement("2027-01-01", [game("d", "2026-12-02T10:00:00", 30, 12, 12), game("e", "2026-12-24T10:00:00", 10, 4, 4)]),
+        measurement("2027-02-01", [game("f", "2027-01-05T10:00:00", 25, 10, 10)]),
+    ]
+
+    groups = table_groups(measurements, minimum=50)
+
+    assert [group["measured_on"] for group in groups] == [
+        ["2026-11-01"],
+        ["2026-12-01", "2027-01-01"],
+        ["2027-02-01"],
+    ]
+    assert [group["status"] for group in groups] == ["reported", "pooled", "waiting"]
+    assert groups[1]["months"] == ["2026-11", "2026-12"]
+    assert (groups[1]["figures"]["all"]["games"], groups[1]["figures"]["all"]["moves"]) == (3, 60)
+    # 26 matches against 21 over 60 moves.
+    assert math.isclose(groups[1]["figures"]["all"]["gain"]["share"], 5 / 60)
+    # Below the minimum, nothing is reported: only how many moves are waiting.
+    assert groups[2]["moves"] == 25
+    assert groups[2]["figures"] is None

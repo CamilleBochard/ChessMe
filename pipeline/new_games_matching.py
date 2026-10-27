@@ -105,3 +105,63 @@ def _mean_with_error(games: list[GameTally]) -> dict:
     if math.isnan(standard_error):
         standard_error = None
     return {"share": total / moves, "standard_error": standard_error}
+
+
+def table_groups(measurements: list[dict], minimum: int) -> list[dict]:
+    """The measurements, in the order they were taken, gathered into the rows of the cumulative table.
+
+    A measurement with at least `minimum` of Camille's moves is reported
+    alone. One with fewer is not reported: its games wait for the next
+    measurement's and are pooled with them, until the group holds the
+    minimum. A group still short of it at the end is "waiting", and carries
+    no figures.
+    """
+    groups = []
+    open_group = []
+    for taken in measurements:
+        open_group.append(taken)
+        if _moves_in(open_group) >= minimum:
+            groups.append(_group(open_group, closed=True))
+            open_group = []
+    if open_group:
+        groups.append(_group(open_group, closed=False))
+    return groups
+
+
+def _moves_in(measurements: list[dict]) -> int:
+    moves = 0
+    for taken in measurements:
+        for game in taken["games"]:
+            moves = moves + _whole_game(game)["moves"]
+    return moves
+
+
+def _group(measurements: list[dict], closed: bool) -> dict:
+    games = []
+    for taken in measurements:
+        games.extend(taken["games"])
+
+    months = set()
+    for game in games:
+        # "2026-10-03T10:00:00" was played in "2026-10".
+        months.add(game["played_at"][:7])
+
+    if not closed:
+        status = "waiting"
+    elif len(measurements) > 1:
+        status = "pooled"
+    else:
+        status = "reported"
+
+    group_figures = None
+    if closed:
+        group_figures = figures(games)
+
+    return {
+        "measured_on": [taken["measured_on"] for taken in measurements],
+        "months": sorted(months),
+        "status": status,
+        "games": len(games),
+        "moves": _moves_in(measurements),
+        "figures": group_figures,
+    }
