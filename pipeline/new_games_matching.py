@@ -115,17 +115,32 @@ def table_groups(measurements: list[dict], minimum: int) -> list[dict]:
     measurement's and are pooled with them, until the group holds the
     minimum. A group still short of it at the end is "waiting", and carries
     no figures.
+
+    Months measured on two different served models are never pooled: the
+    gain would then mix two models. A short group the served model changed
+    under is closed "below the minimum", with no figures either.
     """
     groups = []
     open_group = []
     for taken in measurements:
+        if open_group and _served_model(taken) != _served_model(open_group[-1]):
+            groups.append(_group(open_group, "below the minimum"))
+            open_group = []
+
         open_group.append(taken)
         if _moves_in(open_group) >= minimum:
-            groups.append(_group(open_group, closed=True))
+            if len(open_group) > 1:
+                groups.append(_group(open_group, "pooled"))
+            else:
+                groups.append(_group(open_group, "reported"))
             open_group = []
     if open_group:
-        groups.append(_group(open_group, closed=False))
+        groups.append(_group(open_group, "waiting"))
     return groups
+
+
+def _served_model(taken: dict) -> str:
+    return taken["served_model"]["sha256"]
 
 
 def _moves_in(measurements: list[dict]) -> int:
@@ -136,7 +151,7 @@ def _moves_in(measurements: list[dict]) -> int:
     return moves
 
 
-def _group(measurements: list[dict], closed: bool) -> dict:
+def _group(measurements: list[dict], status: str) -> dict:
     games = []
     for taken in measurements:
         games.extend(taken["games"])
@@ -146,15 +161,9 @@ def _group(measurements: list[dict], closed: bool) -> dict:
         # "2026-10-03T10:00:00" was played in "2026-10".
         months.add(game["played_at"][:7])
 
-    if not closed:
-        status = "waiting"
-    elif len(measurements) > 1:
-        status = "pooled"
-    else:
-        status = "reported"
-
+    # Only a group that reached the minimum is reported.
     group_figures = None
-    if closed:
+    if status in ("reported", "pooled"):
         group_figures = figures(games)
 
     return {

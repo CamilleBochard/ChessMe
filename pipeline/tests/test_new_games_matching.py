@@ -97,3 +97,18 @@ def test_a_month_below_the_minimum_is_pooled_with_the_next_and_the_last_one_wait
     # Below the minimum, nothing is reported: only how many moves are waiting.
     assert groups[2]["moves"] == 25
     assert groups[2]["figures"] is None
+
+
+def test_months_measured_on_two_different_served_models_are_never_pooled():
+    measurements = [
+        measurement("2026-11-01", [game("a", "2026-10-03T10:00:00", 20, 10, 5)], served_model="before-retraining"),
+        measurement("2026-12-01", [game("b", "2026-11-12T10:00:00", 60, 30, 30)], served_model="after-retraining"),
+    ]
+
+    groups = table_groups(measurements, minimum=50)
+
+    # The first model's short month can no longer be completed: it stays
+    # unreported rather than mixing two models in one gain.
+    assert [group["measured_on"] for group in groups] == [["2026-11-01"], ["2026-12-01"]]
+    assert [group["status"] for group in groups] == ["below the minimum", "reported"]
+    assert groups[0]["figures"] is None
