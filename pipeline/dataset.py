@@ -72,11 +72,11 @@ def kept_games(pgn_paths: list[Path], first_day: date = FIRST_DAY_KEPT) -> Itera
                     continue
                 if _played_on(game) < first_day:
                     continue
-                game_id = _game_id(game)
-                if game_id in seen_game_ids:
+                kept_id = game_id(game.headers)
+                if kept_id in seen_game_ids:
                     continue
-                seen_game_ids.add(game_id)
-                yield game, game_id
+                seen_game_ids.add(kept_id)
+                yield game, kept_id
 
 
 def played_since(positions: list[Position], since: str | None) -> list[Position]:
@@ -159,7 +159,7 @@ def _played_at(game: chess.pgn.Game) -> str:
 
 def _player_positions(game: chess.pgn.Game, game_id: str, player: str) -> list[Position]:
     player_colour = _player_colour(game, player, game_id)
-    source = _source(game)
+    source = source_of(game.headers)
     moves = list(game.mainline_moves())
     return positions_faced(game_id, source, moves, player_colour, played_at=_played_at(game))
 
@@ -216,18 +216,19 @@ def _player_colour(game: chess.pgn.Game, player: str, game_id: str) -> chess.Col
     raise ValueError(f"{player} played neither side of {game_id}")
 
 
-def _game_id(game: chess.pgn.Game) -> str:
-    """Names a game uniquely across both sites, as "<source>:<site's own id>"."""
-    source = _source(game)
+def game_id(headers: chess.pgn.Headers) -> str:
+    """Names a game uniquely across both sites, as "<source>:<site's own id>", from its PGN headers."""
+    source = source_of(headers)
     if source == "lichess":
-        return "lichess:" + game.headers["GameId"]
+        return "lichess:" + headers["GameId"]
     # Chess.com gives no id header; the game's URL ends with it.
-    link = game.headers["Link"]
+    link = headers["Link"]
     return "chesscom:" + link.rsplit("/", 1)[-1]
 
 
-def _source(game: chess.pgn.Game) -> str:
-    site = game.headers["Site"]
+def source_of(headers: chess.pgn.Headers) -> str:
+    """The site a game was played on, "chesscom" or "lichess", from its PGN headers."""
+    site = headers["Site"]
     if site == "Chess.com":
         return "chesscom"
     if "lichess.org" in site:

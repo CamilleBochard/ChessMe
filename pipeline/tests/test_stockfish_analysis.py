@@ -6,7 +6,7 @@ from chess.engine import Cp, Mate
 
 from pipeline.blunder_profile import centipawn_loss
 from pipeline.dataset import Position
-from pipeline.stockfish_analysis import Analysis, StockfishAnalyser, analyse_positions
+from pipeline.stockfish_analysis import Analysis, StockfishAnalyser, analyse_positions, differences_from_the_cache
 
 START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 AFTER_E4 = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1"
@@ -185,3 +185,38 @@ def test_stockfish_finds_no_loss_in_the_best_move():
         analysis = analyser.analyse(BLACK_CAN_WIN_THE_QUEEN, "c3d5")
 
     assert centipawn_loss(best=analysis.best, played=analysis.played) == 0
+
+
+def test_finds_no_difference_when_the_engine_analyses_cached_moves_again_as_the_cache_holds_them(tmp_path):
+    cache = tmp_path / "cache.jsonl"
+    analyse_positions([played("lichess:a", START, "d2d4"), played("lichess:a", AFTER_E4, "c7c5", ply=2)], [FakeAnalyser()], cache)
+    engine_here = FakeAnalyser()
+
+    check = differences_from_the_cache([engine_here], cache, sample_size=300)
+
+    assert check.compared == 2
+    assert check.differences == []
+    assert sorted(engine_here.asked) == sorted([(START, "d2d4"), (AFTER_E4, "c7c5")])
+
+
+def test_names_each_cached_move_the_engine_here_scores_differently(tmp_path):
+    cache = tmp_path / "cache.jsonl"
+    analyse_positions([played("lichess:a", START, "d2d4")], [FakeAnalyser()], cache)
+
+    check = differences_from_the_cache([FakeAnalyser(played_score=Cp(-71))], cache, sample_size=300)
+
+    assert len(check.differences) == 1
+    assert "d2d4" in check.differences[0]
+
+
+def test_reports_an_engine_that_finds_none_of_its_own_analyses_in_a_cache_that_holds_some(tmp_path):
+    cache = tmp_path / "cache.jsonl"
+    analyse_positions([played("lichess:a", START, "d2d4")], [FakeAnalyser()], cache)
+    another_build = FakeAnalyser()
+    another_build.engine = "Another engine"
+
+    check = differences_from_the_cache([another_build], cache, sample_size=300)
+
+    assert check.compared == 0
+    assert len(check.differences) == 1
+    assert "Another engine" in check.differences[0]

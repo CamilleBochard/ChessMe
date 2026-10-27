@@ -7,6 +7,7 @@ stopped, and a finished one is never repeated.
 
 import json
 import queue
+import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
@@ -138,6 +139,67 @@ def analyse_positions(
         # analysed before the run can stop.
         executor.shutdown(cancel_futures=True)
     return analyses
+
+
+def moves_not_cached(positions: list[Position], analysers: list[Analyser], cache_path: Path) -> list[Position]:
+    """The positions whose move the cache holds no analysis of by these analysers' engine and depth."""
+    cached = _read_cache(cache_path, analysers[0].engine, analysers[0].depth)
+    return [position for position in positions if (position.fen, position.move) not in cached]
+
+
+# Enough cached moves to catch a build that scores differently, analysed in
+# a minute or two; the same draw on every run.
+IDENTITY_SAMPLE_SIZE = 300
+IDENTITY_SAMPLE_SEED = 31
+
+
+@dataclass(frozen=True)
+class IdentityCheck:
+    """How many cached moves were analysed again, and each one scored differently from the cache."""
+
+    compared: int
+    differences: list[str]
+
+
+def differences_from_the_cache(
+    analysers: list[Analyser], cache_path: Path, sample_size: int = IDENTITY_SAMPLE_SIZE
+) -> IdentityCheck:
+    """Analyses a sample of the cached moves again and names each one scored differently from the cache.
+
+    A machine whose Stockfish scores a move differently would mix two
+    measures in one cache, so a refresh runs this before analysing anything
+    new and stops on any difference.
+    """
+    engine = analysers[0].engine
+    depth = analysers[0].depth
+    cached = _read_cache(cache_path, engine, depth)
+    # A cache with moves in it but none by this engine at this depth means
+    # another build or depth: nothing would be compared, and new analyses
+    # would sit beside old ones made by something else.
+    if not cached and cache_path.exists() and cache_path.stat().st_size > 0:
+        return IdentityCheck(compared=0, differences=[f"{cache_path} holds no analysis by {engine} at depth {depth}"])
+    keys = sorted(cached)
+    sample = random.Random(IDENTITY_SAMPLE_SEED).sample(keys, min(sample_size, len(keys)))
+
+    free_analysers: queue.Queue[Analyser] = queue.Queue()
+    for analyser in analysers:
+        free_analysers.put(analyser)
+
+    def analyse_again(key: tuple[str, str]) -> Analysis:
+        analyser = free_analysers.get()
+        try:
+            return analyser.analyse(key[0], key[1])
+        finally:
+            free_analysers.put(analyser)
+
+    with ThreadPoolExecutor(max_workers=len(analysers)) as executor:
+        analysed_here = list(executor.map(analyse_again, sample))
+
+    differences = []
+    for key, here in zip(sample, analysed_here):
+        if here != cached[key]:
+            differences.append(f"{key[0]} {key[1]}: cache {cached[key]}, here {here}")
+    return IdentityCheck(compared=len(sample), differences=differences)
 
 
 def _read_cache(cache_path: Path, engine: str, depth: int) -> dict[tuple[str, str], Analysis]:
