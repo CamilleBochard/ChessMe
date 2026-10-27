@@ -34,6 +34,8 @@ export interface SweepRecord {
   runtime: string;
   /** Camille's Lichess rating, the scale Maia is trained on, which the Maia-Equivalent Rating is compared with. */
   lichessRating: number;
+  /** When the sweep was run on the games begun at this moment or later only, such as the Level Break. */
+  since?: string;
   candidates: CandidateResult[];
 }
 

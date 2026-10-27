@@ -44,6 +44,8 @@ export interface ShippedImprobabilityYardstick extends ImprobabilityYardstick {
   moves: number;
   movesOutsideOpeningBook: number;
   movesForAVerdict: number;
+  /** When it was built from the games begun at this moment or later only, such as the Level Break. */
+  since?: string;
 }
 
 export interface PhaseImprobabilityYardstick {
@@ -183,6 +185,8 @@ export interface ShippedLossYardstick extends LossYardstick {
   games: number;
   moves: number;
   movesForAVerdict: number;
+  /** When it was built from the games begun at this moment or later only, such as the Level Break. */
+  since?: string;
 }
 
 /**

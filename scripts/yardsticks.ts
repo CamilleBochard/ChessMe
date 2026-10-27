@@ -16,6 +16,12 @@
 // writes it, measured with the engine and depth analysis mode runs in the
 // browser; --loss-profile is the profile written beside it, which names
 // them. Written to src/explanation/loss-yardstick.json.
+//
+// --since 2025-06-15T10:00:00 builds either from the games begun at that
+// moment or later, such as the games since the Level Break
+// (docs/experiments/level-break.md), when each began read from the dataset.
+// It needs --out: the site keeps serving the yardsticks of every game until
+// a refresh publishes new ones.
 
 import { readFile, writeFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
@@ -33,11 +39,13 @@ import {
 } from '../src/explanation/yardsticks';
 import { gameFromFen } from '../src/game/game';
 import { readPlacedMoves } from '../src/evaluation/improbability';
+import { playedSince, readGameStarts } from '../src/evaluation/played-since';
 import { PHASE_LABELS, PHASES } from '../src/evaluation/move-matching';
 
 const OPENING_BOOK = 'data/dataset/opening-book.json';
 const IMPROBABILITY_YARDSTICK = 'src/explanation/improbability-yardstick.json';
 const LOSS_YARDSTICK = 'src/explanation/loss-yardstick.json';
+const DATASET_FILES = ['data/dataset/train.jsonl', 'data/dataset/test.jsonl'];
 
 const { values: flags } = parseArgs({
   options: {
@@ -45,6 +53,8 @@ const { values: flags } = parseArgs({
     probabilities: { type: 'string' },
     losses: { type: 'string' },
     'loss-profile': { type: 'string' },
+    since: { type: 'string' },
+    out: { type: 'string' },
   },
 });
 const writesImprobability = flags.probabilities !== undefined && flags.model !== undefined;
@@ -53,6 +63,22 @@ if (!writesImprobability && !writesLosses) {
   console.error('Usage: npm run yardsticks -- --model <model.onnx> --probabilities <records>');
   console.error('       npm run yardsticks -- --losses <losses.jsonl> --loss-profile <profile.json>');
   process.exit(1);
+}
+
+if (writesImprobability && writesLosses && flags.out !== undefined) {
+  console.error('--out names one file: write the two yardsticks in two runs.');
+  process.exit(1);
+}
+const since = flags.since ?? null;
+if (since !== null && flags.out === undefined) {
+  console.error('--since needs --out: the site keeps its yardsticks of every game until a refresh publishes new ones.');
+  process.exit(1);
+}
+let gameStarts = new Map<string, string>();
+if (since !== null) {
+  for (const path of DATASET_FILES) {
+    gameStarts = new Map([...gameStarts, ...readGameStarts(await readFile(path, 'utf-8'))]);
+  }
 }
 
 const measuredOn = new Date().toISOString().slice(0, 10);
@@ -65,7 +91,7 @@ if (writesImprobability) {
     process.exit(1);
   }
   const openingBook = readOpeningBook(await readFile(OPENING_BOOK, 'utf-8'));
-  const camilleMoves = readPlacedMoves(await readFile(flags.probabilities!, 'utf-8'));
+  const camilleMoves = playedSince(readPlacedMoves(await readFile(flags.probabilities!, 'utf-8')), gameStarts, since);
   const outsideBook = camilleMoves.filter((move) => openingBook.move(gameFromFen(move.fen)) === undefined);
   const yardstick = improbabilityYardstick(outsideBook);
   const games = new Set(outsideBook.map((move) => move.game)).size;
@@ -81,7 +107,11 @@ if (writesImprobability) {
     movesForAVerdict: MOVES_FOR_A_VERDICT,
     ...yardstick,
   };
-  await writeFile(IMPROBABILITY_YARDSTICK, JSON.stringify(record, null, 1) + '\n');
+  if (since !== null) {
+    record.since = since;
+  }
+  const written = flags.out ?? IMPROBABILITY_YARDSTICK;
+  await writeFile(written, JSON.stringify(record, null, 1) + '\n');
 
   console.log(`Camille's improbability yardstick, ${outsideBook.length} of his ${camilleMoves.length} Test Set moves outside the book, ${games} games.`);
   console.log('');
@@ -92,7 +122,7 @@ if (writesImprobability) {
     console.log(`| ${PHASE_LABELS[phase]} | ${inPhase.moves} | ${spreadGames(inPhase.perGame)} | ${spreadRange(inPhase.perGame, percent)} |`);
   }
   console.log('');
-  console.error(`Written to ${IMPROBABILITY_YARDSTICK}`);
+  console.error(`Written to ${written}`);
 }
 
 if (writesLosses) {
@@ -103,7 +133,7 @@ if (writesLosses) {
     console.error(`The losses were measured at depth ${profile.depth}; analysis mode searches to depth ${ANALYSIS_DEPTH}.`);
     process.exit(1);
   }
-  const camilleMoves = readLossMoves(await readFile(flags.losses!, 'utf-8'));
+  const camilleMoves = playedSince(readLossMoves(await readFile(flags.losses!, 'utf-8')), gameStarts, since);
   const yardstick = lossYardstick(camilleMoves);
   const games = new Set(camilleMoves.map((move) => move.game)).size;
 
@@ -117,7 +147,11 @@ if (writesLosses) {
     movesForAVerdict: MOVES_FOR_A_VERDICT,
     ...yardstick,
   };
-  await writeFile(LOSS_YARDSTICK, JSON.stringify(record, null, 1) + '\n');
+  if (since !== null) {
+    record.since = since;
+  }
+  const written = flags.out ?? LOSS_YARDSTICK;
+  await writeFile(written, JSON.stringify(record, null, 1) + '\n');
 
   console.log(`Camille's loss yardstick, ${profile.engine} at depth ${profile.depth}, ${camilleMoves.length} moves in ${games} games.`);
   console.log('');
@@ -136,7 +170,7 @@ if (writesLosses) {
     console.log(`| ${edge} cp | ${percent(yardstick.profile.atMost[index])} |`);
   }
   console.log('');
-  console.error(`Written to ${LOSS_YARDSTICK}`);
+  console.error(`Written to ${written}`);
 }
 
 /** Every move's loss as pipeline/extract_blunder_profile.py writes them, one JSON line each. */

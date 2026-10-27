@@ -9,7 +9,9 @@
 // standard error. --record <file> also writes every candidate's raw counts
 // as JSON, the form the write-up page reads (docs/experiments/results/).
 // --positions <file> replaces the dataset with other JSON Lines files, for a
-// quick run on a few positions.
+// quick run on a few positions. --since 2025-06-15T10:00:00 keeps the
+// positions of the games begun at that moment or later, such as the games
+// since the Level Break (docs/experiments/level-break.md).
 //
 // Candidates are read from pipeline/base_model_candidates.json and their
 // converted files from models/onnx. Maia-3 takes its rating as an input, so
@@ -37,6 +39,7 @@ import {
   type MoveMatchingScore,
   type PlayedPosition,
 } from '../src/evaluation/move-matching';
+import { playedSince, readGameStarts } from '../src/evaluation/played-since';
 
 const CANDIDATES_FILE = 'pipeline/base_model_candidates.json';
 const ONNX_DIR = 'models/onnx';
@@ -64,19 +67,28 @@ const { values: flags } = parseArgs({
   options: {
     positions: { type: 'string', multiple: true },
     record: { type: 'string' },
+    since: { type: 'string' },
   },
 });
 const datasetFiles = flags.positions ?? DATASET_FILES;
+const since = flags.since ?? null;
 
 const entries: CandidateEntry[] = JSON.parse(await readFile(CANDIDATES_FILE, 'utf-8'));
 const runs = candidateRuns(entries);
 
 let positions: PlayedPosition[] = [];
+let gameStarts = new Map<string, string>();
 for (const path of datasetFiles) {
-  const filePositions = readPositions(await readFile(path, 'utf-8'));
-  positions = positions.concat(filePositions);
+  const lines = await readFile(path, 'utf-8');
+  positions = positions.concat(readPositions(lines));
+  gameStarts = new Map([...gameStarts, ...readGameStarts(lines)]);
 }
-progress(`${positions.length} positions from ${datasetFiles.join(', ')}; ${runs.length} candidates`);
+positions = playedSince(positions, gameStarts, since);
+let sinceText = '';
+if (since !== null) {
+  sinceText = ` begun since ${since}`;
+}
+progress(`${positions.length} positions${sinceText} from ${datasetFiles.join(', ')}; ${runs.length} candidates`);
 
 const downloadSizes = new Map<string, number>();
 const results: CandidateResult[] = [];
@@ -120,6 +132,9 @@ if (flags.record !== undefined) {
     lichessRating: LICHESS_RATING,
     candidates: results,
   };
+  if (since !== null) {
+    record.since = since;
+  }
   await writeFile(flags.record, JSON.stringify(record, null, 1) + '\n');
   progress(`Recorded in ${flags.record}`);
 }
