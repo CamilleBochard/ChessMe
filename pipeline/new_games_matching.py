@@ -15,7 +15,7 @@ union of their games.
 
 import math
 
-from pipeline.dataset import PHASES, Position
+from pipeline.dataset import PHASE_LABELS, PHASES, Position
 from pipeline.move_matching import GameTally, clustered_standard_error
 
 
@@ -174,3 +174,66 @@ def _group(measurements: list[dict], status: str) -> dict:
         "moves": _moves_in(measurements),
         "figures": group_figures,
     }
+
+
+# What the table writes in place of a Phase for a group that is not reported.
+UNREPORTED_LABELS = {
+    "waiting": "Waiting for the next month",
+    "below the minimum": "Below the minimum; the served model changed",
+}
+
+
+def cumulative_table(groups: list[dict]) -> str:
+    """The cumulative table in Markdown: one block of rows per group, every move first, then each Phase.
+
+    Move-Matching is in percent and the gain in points, each ± one standard
+    error clustered by game. A group not reported gets a single row saying
+    why, with its games and moves.
+    """
+    lines = [
+        "| Games played | Measured on | Phase | Games | Moves | Served model | Untrained model | Gain |",
+        "|---|---|---|---|---|---|---|---|",
+    ]
+    for group in groups:
+        months = ", ".join(group["months"])
+        measured_on = ", ".join(group["measured_on"])
+        if group["status"] == "pooled":
+            measured_on = f"{measured_on} (pooled)"
+
+        if group["figures"] is None:
+            label = UNREPORTED_LABELS[group["status"]]
+            lines.append(f"| {months} | {measured_on} | {label} | {group['games']} | {group['moves']} |  |  |  |")
+            continue
+
+        slice_labels = {"all": "All"}
+        slice_labels.update(PHASE_LABELS)
+        for slice_name, slice_label in slice_labels.items():
+            slice_figures = group["figures"][slice_name]
+            served = _percent(slice_figures["served"])
+            untrained = _percent(slice_figures["untrained"])
+            gain = _points(slice_figures["gain"])
+            counts = f"{slice_figures['games']} | {slice_figures['moves']}"
+            row = f"| {months} | {measured_on} | {slice_label} | {counts} | {served} | {untrained} | {gain} |"
+            lines.append(row)
+            # Only the first row of a group names its months and dates.
+            months = ""
+            measured_on = ""
+    return "\n".join(lines) + "\n"
+
+
+def _percent(figure: dict) -> str:
+    if figure["share"] is None:
+        return ""
+    return f"{100 * figure['share']:.2f} ± {_error(figure)}"
+
+
+def _points(figure: dict) -> str:
+    if figure["share"] is None:
+        return ""
+    return f"{100 * figure['share']:+.2f} ± {_error(figure)}"
+
+
+def _error(figure: dict) -> str:
+    if figure["standard_error"] is None:
+        return "n/a"
+    return f"{100 * figure['standard_error']:.2f}"

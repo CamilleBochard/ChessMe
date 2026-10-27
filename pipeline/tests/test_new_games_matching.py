@@ -1,7 +1,7 @@
 import math
 
 from pipeline.dataset import Position
-from pipeline.new_games_matching import figures, game_tallies, table_groups
+from pipeline.new_games_matching import cumulative_table, figures, game_tallies, table_groups
 
 
 def position(game_id: str, ply: int, phase: str) -> Position:
@@ -112,3 +112,21 @@ def test_months_measured_on_two_different_served_models_are_never_pooled():
     assert [group["measured_on"] for group in groups] == [["2026-11-01"], ["2026-12-01"]]
     assert [group["status"] for group in groups] == ["below the minimum", "reported"]
     assert groups[0]["figures"] is None
+
+
+def test_the_table_gives_each_row_its_months_figures_in_percent_and_gain_in_points_and_says_what_waits():
+    measurements = [
+        measurement("2026-11-01", [game("a", "2026-10-03T10:00:00", 40, 20, 10), game("b", "2026-10-20T10:00:00", 40, 22, 18)]),
+        measurement("2026-12-01", [game("c", "2026-11-12T10:00:00", 20, 10, 5)]),
+    ]
+
+    table = cumulative_table(table_groups(measurements, minimum=50))
+
+    lines = table.splitlines()
+    # Served 42 of 80, untrained 28 of 80: a gain of 17.5 points. The games
+    # stray by 1, 4 and 3 matches from what each figure predicts for them,
+    # so the errors are 2.5, 10 and 7.5 points.
+    assert "| 2026-10 | 2026-11-01 | All | 2 | 80 | 52.50 ± 2.50 | 35.00 ± 10.00 | +17.50 ± 7.50 |" in lines
+    # The Phase rows of a group leave its months and dates blank.
+    assert "|  |  | Middlegame (11-30) | 2 | 80 | 52.50 ± 2.50 | 35.00 ± 10.00 | +17.50 ± 7.50 |" in lines
+    assert "| 2026-11 | 2026-12-01 | Waiting for the next month | 1 | 20 |  |  |  |" in lines
