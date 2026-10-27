@@ -462,9 +462,12 @@ const ENGLISH: Texts = {
       return `${groups} This game scores ${score}.`;
     },
     styleSource: (trainedCamille, trainedOthers) =>
-      `Style discriminator: a logistic regression trained on ${trainedCamille.toLocaleString('en')} of Camille's games and ` +
-      `${trainedOthers.toLocaleString('en')} of other Lichess players' at his level, read from move 6 on. The curves are its scores ` +
-      "on games it never saw. On Camille's Lichess games alone it does no better than chance.",
+      "How this score is worked out: a small statistical model learnt Camille's playing habits (which pieces he moves, " +
+      'whether he takes when he can, which side he castles). To know what is his own, he has to be compared with others, ' +
+      `so the model learnt from ${trainedCamille.toLocaleString('en')} of his games and ${trainedOthers.toLocaleString('en')} games ` +
+      'of other players at his level. The same level, so that it learns a way of playing rather than a strength. ' +
+      'It skips the first 5 moves, which the opening book often plays for the Bot. ' +
+      'The curves show its scores on games it had never seen.',
     followed: 'Where it followed Camille',
     fromBook: (moves) => `${english(moves, 'move', 'moves')} from Camille's opening repertoire.`,
     reached: (count) =>
@@ -740,9 +743,12 @@ const FRENCH: Texts = {
       return `${groups} Cette partie obtient ${score}.`;
     },
     styleSource: (trainedCamille, trainedOthers) =>
-      `Discriminateur de style${NO_BREAK}: une régression logistique entraînée sur ${trainedCamille.toLocaleString('fr')} parties de Camille et ` +
-      `${trainedOthers.toLocaleString('fr')} parties d’autres joueurs Lichess de son niveau, lues à partir du 6e coup. Les courbes sont ses scores ` +
-      'sur des parties qu’il n’a jamais vues. Sur les seules parties Lichess de Camille, il ne fait pas mieux que le hasard.',
+      `Comment ce score est calculé${NO_BREAK}: un petit modèle statistique a appris les habitudes de jeu de Camille ` +
+      '(quelles pièces il bouge, s’il prend quand il le peut, de quel côté il roque). Pour savoir ce qui lui est propre, ' +
+      `il faut le comparer à d’autres. Le modèle a donc appris sur ${trainedCamille.toLocaleString('fr')} parties de Camille ` +
+      `et ${trainedOthers.toLocaleString('fr')} parties d’autres joueurs de son niveau. Du même niveau, pour qu’il apprenne ` +
+      'une façon de jouer et non une force de jeu. Il ignore les 5 premiers coups, que le livre d’ouvertures joue souvent ' +
+      'à la place du Bot. Les courbes montrent ses scores sur des parties qu’il n’avait jamais vues.',
     followed: 'Où il a suivi Camille',
     fromBook: (moves) => `${french(moves, 'coup tiré', 'coups tirés')} du répertoire d’ouverture de Camille.`,
     reached: (count) => {
