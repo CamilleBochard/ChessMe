@@ -98,12 +98,13 @@ jobs:
 
       # What the site was built from, rebuilt from the repository and the
       # caches, so the summary compares the refresh with it. Nothing is
-      # analysed; its own summary and yardsticks are dropped.
+      # analysed; the summary and yardsticks it writes are dropped, and the
+      # committed ones restored.
       - name: Rebuild what was served
         run: |
           python -m pipeline.refresh_games --no-fetch --workers 4
-          rm -f "docs/refreshes/$(date -u +%Y-%m-%d).json"
-          git checkout -- src/explanation
+          git checkout -- docs/refreshes src/explanation
+          git clean -fq -- docs/refreshes
 
       # The only step that sees the Lichess token.
       - name: Fetch the new games
