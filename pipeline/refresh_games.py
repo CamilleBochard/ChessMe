@@ -49,10 +49,18 @@ from pipeline.dataset import FIRST_DAY_KEPT, Dataset, build_dataset, read_datase
 from pipeline.extract_blunder_profile import REPOSITORY_ROOT, ProgressPrinter, extract, running_stockfish
 from pipeline.fetch_games import fetch_new_games, http_get
 from pipeline.measure_level_break import measure as measure_level_break
+from pipeline.new_games_matching import (
+    UNTRAINED_MODEL,
+    FirstChoiceMatches,
+    MeasuredModels,
+    first_choices_under_node,
+    measure_new_games,
+    positions_of_new_games,
+)
 from pipeline.refresh_summary import book_changes, new_games_summary, profile_movement
 from pipeline.stockfish_analysis import Analyser, differences_from_the_cache, moves_not_cached
 
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2
 
 # The depth the browser's analysis mode searches to (src/analysis/browser-engine.ts).
 BROWSER_DEPTH = 14
@@ -70,6 +78,9 @@ class RefreshPaths:
     analysis_dir: Path
     summaries_dir: Path
     site_dir: Path
+    monthly_dir: Path
+    served_model: Path
+    untrained_model: Path
 
     @classmethod
     def under(cls, root: Path) -> "RefreshPaths":
@@ -80,6 +91,9 @@ class RefreshPaths:
             analysis_dir=root / "data" / "analysis",
             summaries_dir=root / "docs" / "refreshes",
             site_dir=root / "src" / "explanation",
+            monthly_dir=root / "docs" / "experiments" / "monthly",
+            served_model=root / served_model()[0],
+            untrained_model=root / UNTRAINED_MODEL,
         )
 
     @property
@@ -137,6 +151,9 @@ class RefreshTools:
     # write_yardsticks(since) writes the site's two yardsticks from the games
     # begun at since or later, every game when since is None.
     write_yardsticks: Callable[[str | None], None]
+    # first_choice_matches(model, positions) says, position by position,
+    # whether the model's most likely move is the one Camille played.
+    first_choice_matches: FirstChoiceMatches
     report_progress: Callable[[int, int], None] | None = field(default=None)
 
 
@@ -165,6 +182,18 @@ def refresh(
         if moves_not_cached(every_position, engine.analysers, engine.cache_path):
             compared = _stop_on_a_difference(engine)
             identity_checks[_engine_name(engine)] = {"compared": compared, "differences": 0}
+
+    # Before the dataset, the Opening Book or anything else takes the new
+    # games in, so the served model is measured on games it has never seen.
+    _, rating = served_model()
+    new_games_matching = measure_new_games(
+        positions_of_new_games(pgn_paths, new_files),
+        day,
+        new_files,
+        MeasuredModels(served=paths.served_model, untrained=paths.untrained_model, rating=rating),
+        tools.first_choice_matches,
+        paths.monthly_dir,
+    )
 
     before = _what_was_built(paths)
     deep_lines_before = _line_count(tools.deep.cache_path)
@@ -226,6 +255,7 @@ def refresh(
         },
         "opening_book": book_changes(before["book"], after["book"]),
         "profiles": profile_movement(before["profiles"], after["profiles"]),
+        "new_games_matching": new_games_matching,
     }
     paths.summaries_dir.mkdir(parents=True, exist_ok=True)
     new_dated_file(paths.summaries_dir, day).write_text(json.dumps(summary, indent=1), encoding="utf-8")
@@ -348,6 +378,15 @@ def summary_tables(summary: dict) -> str:
     lines.append(f"New games: {new['games']} (files written: {files}); moves per Phase: {new['moves']}")
     lines.append(f"Identity checks: {summary['identity_checks'] or 'none needed, nothing new to analyse'}")
     lines.append(f"Analyses added: {summary['analyses_added']}; model records added: {summary['model_records_added']}")
+    matching = summary["new_games_matching"]
+    if "skipped" in matching:
+        lines.append(f"New games' Move-Matching: skipped, {matching['skipped']}")
+    else:
+        status = matching["group"]["status"]
+        lines.append(
+            f"New games' Move-Matching: {matching['games']} games, {matching['moves']} moves, {status} "
+            f"(docs/experiments/monthly/README.md)"
+        )
     level_break = summary["level_break"]
     verdict = "none found" if level_break["at"] is None else f"games begun at {level_break['at']} or later"
     lines.append(f"Level Break: {verdict} (new: {'yes' if level_break['is_new'] else 'no'})")
@@ -401,6 +440,7 @@ if __name__ == "__main__":
             browser=Engine(browser_analysers, browser_cache),
             place_moves=place_moves_with_the_served_model,
             write_yardsticks=lambda since: write_the_site_yardsticks(paths, since),
+            first_choice_matches=first_choices_under_node(served_model()[1], REPOSITORY_ROOT),
             report_progress=ProgressPrinter(),
         )
         written = refresh(paths, date.today(), tools, fetch=not arguments.no_fetch, fetched=arguments.fetched)

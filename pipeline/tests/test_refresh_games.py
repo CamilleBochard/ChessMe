@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 from chess.engine import Cp
 
+from pipeline.dataset import read_dataset
 from pipeline.dated_files import dated_files_in_order
 from pipeline.extract_blunder_profile import REPOSITORY_ROOT
 from pipeline.refresh_games import Engine, RefreshPaths, RefreshTools, refresh, site_yardstick_commands
@@ -56,11 +57,36 @@ def write_yardsticks_with_a_stand_in(paths: RefreshPaths, since: str | None) -> 
     paths.loss_yardstick.write_text(json.dumps({"phases": phases}), encoding="utf-8")
 
 
+class FirstChoicesStandIn:
+    """Stands in for the two models under Node: the served model's first choice is Camille's move, the untrained one's never.
+
+    Remembers which model was asked about which games, and which games the
+    dataset held at that moment.
+    """
+
+    def __init__(self, paths: RefreshPaths):
+        self.paths = paths
+        self.asked = []
+
+    def __call__(self, model: Path, positions: list) -> list[bool]:
+        games_in_the_dataset = set()
+        if (self.paths.dataset_dir / "train.jsonl").exists():
+            dataset = read_dataset(self.paths.dataset_dir)
+            games_in_the_dataset = {position.game_id for position in dataset.train + dataset.test}
+        asked_games = {position.game_id for position in positions}
+        self.asked.append({"model": model, "games": asked_games, "games_in_the_dataset": games_in_the_dataset})
+        return [model == self.paths.served_model] * len(positions)
+
+
 def repository_under(tmp_path: Path) -> RefreshPaths:
     paths = RefreshPaths.under(tmp_path)
     paths.raw_dir.mkdir(parents=True)
     for fixture in FIXTURES.glob("*.pgn"):
         shutil.copy(fixture, paths.raw_dir / fixture.name)
+    # Two different files, so each model has a checksum of its own.
+    paths.served_model.parent.mkdir(parents=True)
+    paths.served_model.write_bytes(b"the served model")
+    paths.untrained_model.write_bytes(b"the untrained model")
     return paths
 
 
@@ -72,6 +98,7 @@ def tools_with(deep: FakeAnalyser, browser: FakeAnalyser, paths: RefreshPaths) -
         browser=Engine(analysers=[browser], cache_path=paths.analysis_dir / "browser.jsonl"),
         place_moves=place_moves_with_a_stand_in,
         write_yardsticks=lambda since: write_yardsticks_with_a_stand_in(paths, since),
+        first_choice_matches=FirstChoicesStandIn(paths),
     )
 
 
@@ -187,3 +214,41 @@ def test_never_writes_over_a_summary_of_the_same_day_and_reads_the_last_one_writ
     assert (paths.summaries_dir / "2026-10-27.json").read_bytes() == first
     assert sorted(path.name for path in paths.summaries_dir.iterdir()) == ["2026-10-27-2.json", "2026-10-27-3.json", "2026-10-27.json"]
     assert dated_files_in_order(paths.summaries_dir)[-1].name == "2026-10-27-3.json"
+
+
+def test_measures_both_models_on_the_new_games_only_before_the_dataset_takes_them_in(tmp_path):
+    paths = repository_under(tmp_path)
+    refresh(paths, date(2026, 10, 27), tools_with(FakeAnalyser("Fake deep engine", 18), FakeAnalyser("Fake browser engine", 14), paths))
+    games_before = {position.game_id for position in read_dataset(paths.dataset_dir).train + read_dataset(paths.dataset_dir).test}
+    shutil.copy(FIXTURES / "responses" / "lichess-games.pgn", paths.raw_dir / "lichess-2026-10-28.pgn")
+    tools = tools_with(FakeAnalyser("Fake deep engine", 18), FakeAnalyser("Fake browser engine", 14), paths)
+
+    summary = refresh(paths, date(2026, 10, 28), tools, fetch=False, fetched=[paths.raw_dir / "lichess-2026-10-28.pgn"])
+
+    after = read_dataset(paths.dataset_dir)
+    new_positions = [position for position in after.train + after.test if position.game_id not in games_before]
+    new_games = {position.game_id for position in new_positions}
+    asked = tools.first_choice_matches.asked
+    assert [question["model"] for question in asked] == [paths.served_model, paths.untrained_model]
+    for question in asked:
+        assert question["games"] == new_games
+        assert question["games_in_the_dataset"] == games_before
+    measured = summary["new_games_matching"]
+    assert (measured["games"], measured["moves"]) == (len(new_games), len(new_positions))
+    assert measured["measurement"] == "2026-10-28.json"
+    recorded = json.loads((paths.monthly_dir / "2026-10-28.json").read_text())
+    assert recorded["game_files"] == ["lichess-2026-10-28.pgn"]
+    assert len(recorded["games"]) == len(new_games)
+    assert "Games played" in (paths.monthly_dir / "README.md").read_text()
+
+
+def test_skips_the_measure_with_a_message_when_the_refresh_brings_no_new_game(tmp_path, capsys):
+    paths = repository_under(tmp_path)
+    tools = tools_with(FakeAnalyser("Fake deep engine", 18), FakeAnalyser("Fake browser engine", 14), paths)
+
+    summary = refresh(paths, date(2026, 10, 27), tools)
+
+    assert tools.first_choice_matches.asked == []
+    assert summary["new_games_matching"] == {"skipped": "no new game"}
+    assert "no new game" in capsys.readouterr().out
+    assert not paths.monthly_dir.exists()
