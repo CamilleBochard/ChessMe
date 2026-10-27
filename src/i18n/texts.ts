@@ -437,7 +437,7 @@ const ENGLISH: Texts = {
     moveCounts: (bot, visitor) => `Moves played: Bot ${bot}, you ${visitor}.`,
     styleTitle: "Does this game look like one of Camille's?",
     styleStanding: (camilleBelow, othersBelow) =>
-      `It scores higher than ${camilleBelow} of Camille's real games and ${othersBelow} of other players' at his level.`,
+      `This game scores higher than ${camilleBelow} of Camille's real games, and higher than ${othersBelow} of other players' games.`,
     styleLimit: (camilleRecognised, othersTaken) =>
       `On a single game this test is wrong almost one time in two, even on Camille's own games: it recognises ${camilleRecognised} of them, and takes ${othersTaken} of other players' games for his too.`,
     styleTooShort: (movesRead, needed) =>
@@ -708,7 +708,7 @@ const FRENCH: Texts = {
     moveCounts: (bot, visitor) => `Nombre de coups${NO_BREAK}: Bot ${bot}, vous ${visitor}.`,
     styleTitle: `Cette partie ressemble-t-elle à une partie de Camille${NO_BREAK}?`,
     styleStanding: (camilleBelow, othersBelow) =>
-      `Son score dépasse celui de ${camilleBelow} des vraies parties de Camille et de ${othersBelow} des parties d’autres joueurs de son niveau.`,
+      `Cette partie a un meilleur score que ${camilleBelow} des vraies parties de Camille, et que ${othersBelow} des parties des autres joueurs.`,
     styleLimit: (camilleRecognised, othersTaken) =>
       `Sur une seule partie, ce test se trompe presque une fois sur deux, même sur les vraies parties de Camille${NO_BREAK}: ` +
       `il en reconnaît ${camilleRecognised}, et prend aussi ${othersTaken} des parties des autres joueurs pour les siennes.`,
