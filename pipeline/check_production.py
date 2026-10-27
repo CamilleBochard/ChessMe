@@ -215,7 +215,9 @@ if __name__ == "__main__":
     failed = run_checks(checks, retry_seconds=arguments.retry_seconds, between_tries=SECONDS_BETWEEN_TRIES)
     if arguments.fail_on_purpose:
         failed["failing on purpose"] = ["--fail-on-purpose was given, to exercise the rollback"]
-    for name in checks:
+    # Every check in order, then a failure that is no check's, so the log
+    # says why the run failed even when every check passed.
+    for name in list(checks) + [name for name in failed if name not in checks]:
         verdict = "FAILED" if name in failed else "passed"
         print(f"{verdict}: {name}")
         for problem in failed.get(name, []):
