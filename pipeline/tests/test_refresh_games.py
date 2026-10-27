@@ -162,3 +162,13 @@ def test_names_the_files_the_site_yardsticks_are_read_from_relative_to_the_repos
             assert not argument.startswith("/"), argument
     assert "data/dataset/move-probabilities/fine-tuned-test.jsonl" in commands[0]
     assert commands[0][-2:] == ["--since", "2026-03-01T10:00:00"]
+
+
+def test_names_in_its_summary_the_game_files_a_separate_fetch_wrote_when_told_which(tmp_path):
+    paths = repository_under(tmp_path)
+    tools = tools_with(FakeAnalyser("Fake deep engine", 18), FakeAnalyser("Fake browser engine", 14), paths)
+    shutil.copy(FIXTURES / "responses" / "lichess-games.pgn", paths.raw_dir / "lichess-2026-10-27.pgn")
+
+    summary = refresh(paths, date(2026, 10, 27), tools, fetch=False, fetched=[paths.raw_dir / "lichess-2026-10-27.pgn"])
+
+    assert summary["new_game_files"] == ["lichess-2026-10-27.pgn"]

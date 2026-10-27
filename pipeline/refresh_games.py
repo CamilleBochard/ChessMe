@@ -139,14 +139,17 @@ class RefreshTools:
     report_progress: Callable[[int, int], None] | None = field(default=None)
 
 
-def refresh(paths: RefreshPaths, day: date, tools: RefreshTools, fetch: bool = True) -> dict:
+def refresh(
+    paths: RefreshPaths, day: date, tools: RefreshTools, fetch: bool = True, fetched: list[Path] | None = None
+) -> dict:
     """Runs one refresh and returns its summary, which is also written to paths.summaries_dir.
 
     With fetch False, everything is rebuilt from the exports data/raw holds,
-    without asking the sites: the games can be fetched on the machine that
-    holds the Lichess token and the rest run on another.
+    without asking the sites: the games can be fetched on the machine, or in
+    the step, that holds the Lichess token, and the rest run elsewhere.
+    fetched then names the files that fetch wrote, for the summary.
     """
-    new_files = []
+    new_files = list(fetched or [])
     if fetch:
         new_files = fetch_new_games(paths.raw_dir, day, tools.get, tools.environ)
 
@@ -375,6 +378,13 @@ if __name__ == "__main__":
         action="store_true",
         help="rebuild from the exports data/raw holds, without asking the sites for new games",
     )
+    parser.add_argument(
+        "--fetched",
+        nargs="*",
+        type=Path,
+        default=[],
+        help="with --no-fetch, the game files a separate fetch wrote, named in the summary",
+    )
     arguments = parser.parse_args()
     paths = RefreshPaths.under(REPOSITORY_ROOT)
 
@@ -392,7 +402,7 @@ if __name__ == "__main__":
             write_yardsticks=lambda since: write_the_site_yardsticks(paths, since),
             report_progress=ProgressPrinter(),
         )
-        written = refresh(paths, date.today(), tools, fetch=not arguments.no_fetch)
+        written = refresh(paths, date.today(), tools, fetch=not arguments.no_fetch, fetched=arguments.fetched)
 
     print(summary_tables(written))
     print(f"Written to {paths.summaries_dir / (written['day'] + '.json')}")
