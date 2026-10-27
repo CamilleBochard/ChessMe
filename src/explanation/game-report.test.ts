@@ -6,7 +6,6 @@ import { currentFen, newGame, playMove } from '../game/game';
 import type { BotMove } from '../engine/move-selection';
 import {
   camilleFigures,
-  camillePlausibleShare,
   gameReport,
   moveMatching,
   reportedMovesOf,
@@ -15,12 +14,7 @@ import {
 import { botMovesOf, replyKey } from './explained-moves';
 import type { MoveEvaluation } from './panel';
 import type { MoveCut } from '../engine/move-cut';
-import {
-  IMPROBABLE_BELOW,
-  RARITY_LADDER,
-  type ShippedImprobabilityYardstick,
-  type ShippedLossYardstick,
-} from './yardsticks';
+import type { ShippedLossYardstick } from './yardsticks';
 
 /** A Base Model move in the middlegame that lost nothing, changed as each test needs. */
 function move(changes: Partial<ReportedMove> = {}): ReportedMove {
@@ -31,6 +25,8 @@ function move(changes: Partial<ReportedMove> = {}): ReportedMove {
     source: 'base-model',
     modelProbability: 0.4,
     positionAfter: 'a-position w -',
+    fen: 'a-position w - - 0 10',
+    uci: 'g1f3',
     evaluation: { centipawnLoss: 0, openPosition: true },
     ...changes,
   };
@@ -44,20 +40,6 @@ describe('the report of the Bot\'s game', () => {
 
     expect(report.moves).toBe(2);
     expect(report.visitorMoves).toBe(3);
-  });
-
-  it('counts as plausible for Camille a move from his Opening Book or one the model gave at least 1%', () => {
-    const moves = [
-      move({ source: 'opening-book', modelProbability: undefined }),
-      move({ modelProbability: 0.01 }),
-      move({ modelProbability: 0.009 }),
-      move({ source: 'random', modelProbability: undefined }),
-    ];
-
-    const report = gameReport(moves, null, []);
-
-    expect(report.moves).toBe(4);
-    expect(report.plausible).toBe(2);
   });
 
   it("counts its Opening Book moves, and its model moves of the first fifteen that led to one of Camille's positions", () => {
@@ -176,37 +158,6 @@ describe("Camille's figures the report sets the Bot's beside", () => {
     expect(figures.lossRanges.middlegame).toEqual({ games: 3, low: 24, high: 160 });
     expect(figures.lossRanges.opening).toBeNull();
   });
-
-  it('counts as plausible his Opening Book moves and those the model gave at least 1%, out of all his moves', () => {
-    /** A Phase of his where the share given at the 1% rung of the ladder is the share under 1%. */
-    function phase(moves: number, shareUnderOnePercent: number) {
-      const atOrBelow = RARITY_LADDER.map((rung) => {
-        if (rung < IMPROBABLE_BELOW) {
-          return 0;
-        }
-        if (rung === IMPROBABLE_BELOW) {
-          return shareUnderOnePercent;
-        }
-        return 1;
-      });
-      return { moves: moves, atOrBelow: atOrBelow, perGame: null };
-    }
-    const improbability: ShippedImprobabilityYardstick = {
-      measuredOn: '2026-10-14',
-      baseModel: 'model.onnx',
-      rating: 1100,
-      records: 'records.jsonl',
-      games: 3,
-      moves: 10,
-      movesOutsideOpeningBook: 8,
-      movesForAVerdict: 8,
-      // 1 of 4 and 2 of 4 under 1%; the endgame holds none of his moves.
-      phases: { opening: phase(4, 0.25), middlegame: phase(4, 0.5), endgame: phase(0, NaN) },
-    };
-
-    // 2 Opening Book moves and 5 of the 8 others.
-    expect(camillePlausibleShare(improbability)).toBeCloseTo(0.7);
-  });
 });
 
 describe("the Bot's moves as the report reads them", () => {
@@ -232,6 +183,26 @@ describe("the Bot's moves as the report reads them", () => {
     expect(reported.modelProbability).toBe(0.3);
     expect(reported.positionAfter).toBe('rnbqkbnr/pp1ppppp/8/2p5/4P3/8/PPPP1PPP/RNBQKBNR w KQkq');
     expect(reported.evaluation).toBe('pending');
+  });
+
+  it('keeps the position each move was played from and the move in UCI form, for the style discriminator to read', () => {
+    const afterE4 = playMove(newGame(), { from: 'e2', to: 'e4' })!;
+    const reply: BotMove = {
+      move: { from: 'c7', to: 'c5' },
+      source: 'base-model',
+      legalMoves: 20,
+      candidates: [{ move: { from: 'c7', to: 'c5' }, modelProbability: 0.3, drawnProbability: 0.3 }],
+      rank: 1,
+      temperature: 1,
+      cut: { kind: 'none' },
+    };
+    const game = playMove(afterE4, reply.move)!;
+    const botMoves = botMovesOf(game, 'black', new Map([[replyKey(currentFen(afterE4), reply.move), reply]]));
+
+    const [reported] = reportedMovesOf(botMoves, new Map());
+
+    expect(reported.fen).toBe(currentFen(afterE4));
+    expect(reported.uci).toBe('c7c5');
   });
 });
 

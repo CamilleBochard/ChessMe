@@ -20,15 +20,26 @@ weaker signal.
 python -m pipeline.fetch_other_players
 npm run bot-games -- --model models/onnx/maia3-5m.onnx
 npm run bot-games -- --model models/onnx/maia3-5m.onnx --baseline --out data/dataset/baseline-games.jsonl
+npm run bot-games -- --temperature 1 --opening-cut top-k=10 --opponent-rating 1100 --out data/dataset/bot-games-served.jsonl
+npm run bot-games -- --model models/onnx/maia3-5m-fine-tuned.onnx --temperature 1 --opponent-rating 1100 --out data/dataset/bot-games-fine-tuned-at-1.jsonl
 python -m pipeline.measure_style_discriminator
 ```
 
 The first command samples the other players from the Lichess database (it
-needs `curl` and `zstd`, and takes about two minutes). The next two play the
-Bot's 400 games and the Baseline's 400 under Node, about fifteen minutes
-each. The last trains the discriminator, scores every group of games and
-writes `docs/experiments/results/style-discriminator.json`, with the tables
-below on standard output. No Stockfish analysis is needed.
+needs `curl` and `zstd`, and takes about two minutes). The next four play
+400 games each under Node: the Bot's and the Baseline's, about fifteen
+minutes each, then the Bot as the site serves it, with and without its
+opening cut, about five minutes each on a desktop. The last trains the
+discriminator, scores every group of games and writes
+`docs/experiments/results/style-discriminator.json`, with the tables below
+on standard output. No Stockfish analysis is needed.
+
+The same run writes what the site needs to score a game at the end of each
+Session Game: `src/explanation/style-discriminator.json` holds the
+discriminator's parameters, the scores of Camille's Test Set and of the other
+players' test split, and the separations below;
+`src/explanation/style-discriminator-parity.json` holds twelve of his Test
+Set games with their scores, which the page's own scoring is tested against.
 
 ## The other players
 
@@ -127,10 +138,14 @@ games show by chance.
 
 ## Results
 
-Measured on 2026-10-08. The discriminator was trained on 702 of Camille's
-training games and 2,010 of the other players'. The Bot's and the
-Baseline's games were played against the Base Model at 2000, seed 13; the
-Bot scored 175 wins, 82 draws and 143 losses, the Baseline 179, 66 and 155.
+Measured on 2026-10-08, and again on 2026-10-27 with the Bot as served
+added: trained again on the same games, the discriminator gives every
+earlier figure exactly. It was trained on 702 of Camille's training games
+and 2,010 of the other players'. The Bot's and the Baseline's games were
+played against the Base Model at 2000, seed 13; the Bot scored 175 wins, 82
+draws and 143 losses, the Baseline 179, 66 and 155. The Bot as served, and
+the same without its opening cut, played the Base Model at 1100, seed 13
+(see [the Bot as served](#the-bot-as-served)).
 
 A game's score is the probability, by the discriminator, that Camille played
 it. "Scored as Camille" is the share of games whose score is above one half.
@@ -141,6 +156,8 @@ it. "Scored as Camille" is the share of games whose score is above one half.
 | Other players, test split | 522 | 0.480 (0.471 to 0.488) | 43.1% |
 | Bot | 395 | 0.487 (0.477 to 0.496) | 46.8% |
 | Baseline | 378 | 0.485 (0.475 to 0.493) | 47.4% |
+| Bot as served | 387 | 0.493 (0.484 to 0.503) | 50.4% |
+| Bot as served, without the opening cut | 384 | 0.509 (0.500 to 0.518) | 53.4% |
 | Camille, training games | 702 | 0.517 (0.511 to 0.524) | 59.3% |
 | Other players, training games | 2,010 | 0.483 (0.479 to 0.487) | 43.7% |
 
@@ -153,8 +170,13 @@ it. "Scored as Camille" is the share of games whose score is above one half.
 | Bot against the other players' test split | 0.519 (0.483 to 0.559) |
 | Baseline against the other players' test split | 0.514 (0.476 to 0.550) |
 | Bot against Baseline | 0.505 (0.465 to 0.543) |
+| Bot as served against the other players' test split | 0.538 (0.502 to 0.578) |
+| Bot as served without the opening cut, against the other players' test split | 0.579 (0.544 to 0.615) |
+| Bot as served against the same without the opening cut | 0.459 (0.418 to 0.498) |
 
-The Bot's mean score minus the Baseline's: +0.002 (-0.010 to +0.015).
+The Bot's mean score minus the Baseline's: +0.002 (-0.010 to +0.015). The
+served Bot's minus the same without the opening cut: -0.015 (-0.029 to
+-0.003).
 
 The weights, strongest first. A positive weight pushes a game towards
 Camille, and the size is the push of one standard deviation of the statistic.
@@ -242,6 +264,46 @@ reaches 0.559 and Camille's starts at 0.527, so the data does not show that
 the Bot is less like him than his own games are; and the Bot's games, with no
 clock and a model across the board, are not the kind of game the
 discriminator learnt from.
+
+## The Bot as served
+
+The Bot above is the one this experiment started with: the original model
+playing its top move. The site now serves another: the fine-tuned model,
+drawn at temperature 1, with the opening cut top-10 on plies 1 to 10 and the
+Opening Book in front ([choosing the model on open
+positions](model-choice-on-open-positions.md)). It played 400 games against
+the Base Model at 1100, seed 13, and scored 186 wins, 65 draws and 149
+losses; 387 are long enough to read. It is set beside the same Bot without
+the cut, whose 400 games that experiment played against the same opponent
+with the same seed (205 wins, 54 draws, 141 losses; 384 read). The opponent
+is 1100 rather than the 2000 of the first Bot so that the cut is the only
+difference between the two; against 2000, ten trial games of the served Bot
+gave nine losses, and a Bot that is losing captures, trades and lasts
+differently from one that is not.
+
+**Without the cut, the Bot stands out from the other players as Camille
+does:** 0.579 (0.544 to 0.615), against his own 0.573 (0.527 to 0.620).
+**With the cut, as served, it stands out less:** 0.538 (0.502 to 0.578),
+an interval that barely clears 0.5. Set against each other, the served Bot's
+games score 0.015 lower on average, with an interval of -0.029 to -0.003,
+and one of its games outranks one of the uncut Bot's 46 times in 100.
+
+**The cut moved the Bot away from Camille past the opening, by a little,
+and the evidence for it is thin.** The interval clears zero by 0.003, it
+counts only the chance in which games were played, not the one seed both
+runs share or the training of the discriminator, and it is one of several
+comparisons this write-up reports. The cut changes no move after ply 10,
+which is all the discriminator reads, so anything it changes there comes
+through the positions the middlegame starts from; which of them, this run
+does not show. The cut was served on a narrow pass, a share of improbable
+opening moves closer to Camille's by less than his own uncertainty; this
+measurement points the other way by about as little. A second seed for both
+runs is what would separate a cost from chance.
+
+**What the served Bot is, read one game at a time:** a player the
+discriminator scores as Camille's in 50% of its games, between his 55% and
+his peers' 43%. That is where a single game of it lands in the report, among
+two groups that overlap almost entirely.
 
 ## The answer, stated plainly
 

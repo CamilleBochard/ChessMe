@@ -127,6 +127,8 @@ const english = TEXTS.en.page;
   import { clockFaces, createSessionGame, type ClockFace, type FinishedGame } from '../../session/session-game';
   import { connectTelemetry, ratingsFromFields, sessionGameReport } from '../../telemetry/session-game';
   import { gameReport, reportedMovesOf } from '../../explanation/game-report';
+  import discriminatorFile from '../../explanation/style-discriminator.json';
+  import { scoreGame, type ShippedStyleDiscriminator } from '../../explanation/style-discriminator';
   import { showGameReport, type PositionsState } from '../game-report-view';
   import { SESSION_GAMES_CHANGED } from '../../telemetry/session-game-summary';
   import { startBrowserAnalyser, type BrowserAnalyser } from '../../analysis/browser-analyser';
@@ -229,6 +231,8 @@ const english = TEXTS.en.page;
     // Every reply of the Bot, filed by the position and the move, for the
     // panel to explain the moves on the board with.
     const replies = new Map<string, BotMove>();
+    // The style discriminator the report scores the Bot's game with.
+    const styleDiscriminator = discriminatorFile as ShippedStyleDiscriminator;
     // Stockfish while it runs, from the start of a game and in analysis
     // mode, and what it has found, filed like the replies.
     let analysis: BrowserAnalyser | null = null;
@@ -523,9 +527,11 @@ const english = TEXTS.en.page;
       for (const played of movesOfSide(session.game(), visitor)) {
         visitorEvaluations.push(evaluations.get(played.key) ?? 'pending');
       }
-      const report = gameReport(reportedMovesOf(botMoves, evaluations), camillePositions, visitorEvaluations);
+      const reportedMoves = reportedMovesOf(botMoves, evaluations);
+      const report = gameReport(reportedMoves, camillePositions, visitorEvaluations);
+      const style = scoreGame(reportedMoves, styleDiscriminator);
       const texts = pageTexts();
-      showGameReport(reportBody, report, positionsState, texts);
+      showGameReport(reportBody, report, style, positionsState, texts);
       if (ratingsSent) {
         ratingThanks.textContent = texts.report.ratingSent;
       }

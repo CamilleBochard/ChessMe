@@ -106,12 +106,24 @@ export interface ReportTexts {
   botThisGame: string;
   /** How many moves each side played. */
   moveCounts(bot: number, visitor: number): string;
-  /** What the share of the Bot's moves Camille could have played counts, out of its moves. */
-  plausible(moves: number, share: string): string;
-  /** What the share of Camille's own moves beside it counts. */
-  camilleReference(games: number): string;
-  /** The name over Camille's share beside the Bot's. */
-  camille: string;
+  /** The question the style discriminator answers about the game. */
+  styleTitle: string;
+  /** What a game of Camille's and one of another player's typically score, already written as decimals. */
+  styleTypical(camille: string, others: string): string;
+  /** Where the game's score stands among Camille's games, from the side of his typical game it lies on. */
+  styleStanding(score: string, direction: 'lower' | 'higher', share: string): string;
+  /** What one game allows: how often the discriminator recognises Camille, and takes other players for him. */
+  styleLimit(camilleRecognised: string, othersTaken: string): string;
+  /** A game too short to read: how many of the Bot's moves were read, and how many are needed. */
+  styleTooShort(movesRead: number, needed: number): string;
+  styleLegendCamille(games: number): string;
+  styleLegendOthers(games: number): string;
+  styleLegendGame: string;
+  styleAxis: string;
+  /** The chart for a screen reader. */
+  styleChartDescription(score: string | null): string;
+  /** What the discriminator learnt from and is checked on. */
+  styleSource(trainedCamille: number, trainedOthers: number): string;
   /** What the share of Camille's moves the Bot plays counts. */
   guessed(games: number): string;
   followed: string;
@@ -425,10 +437,37 @@ const ENGLISH: Texts = {
     theGame: 'The game',
     botThisGame: 'The Bot in this game',
     moveCounts: (bot, visitor) => `Moves played: Bot ${bot}, you ${visitor}.`,
-    plausible: (moves, share) =>
-      `Of the Bot's ${english(moves, 'move', 'moves')}, ${share} had at least a 1% chance of being played by Camille, or came from his opening repertoire.`,
-    camilleReference: (games) => `Beside it, the same count on his own moves, in ${games} of his games the model never saw.`,
-    camille: 'Camille',
+    styleTitle: "Does this game look like one of Camille's?",
+    styleTypical: (camille, others) =>
+      `A game of Camille's typically scores ${camille}, one of another player at his level ${others}.`,
+    styleStanding: (score, direction, share) => {
+      if (direction === 'lower') {
+        return `At ${score}, this game scores lower than ${share} of Camille's real games.`;
+      }
+      return `At ${score}, this game scores higher than ${share} of Camille's real games.`;
+    },
+    styleLimit: (camilleRecognised, othersTaken) =>
+      `On a single game this test is unreliable: it recognises ${camilleRecognised} of Camille's real games, but takes ${othersTaken} of other players' games for his too.`,
+    styleTooShort: (movesRead, needed) =>
+      `Too short to read: the Bot played ${english(movesRead, 'move', 'moves')} after move 5, and ${needed} are needed.`,
+    styleLegendCamille: (games) => `Camille's real games, ${games.toLocaleString('en')}`,
+    styleLegendOthers: (games) => `Other players at his level, ${games.toLocaleString('en')}`,
+    styleLegendGame: 'This game',
+    styleAxis: 'score, further right: more like Camille',
+    styleChartDescription: (score) => {
+      const groups = "Camille's games and other players' games overlap almost entirely.";
+      if (score === null) {
+        return groups;
+      }
+      return `${groups} This game scores ${score}.`;
+    },
+    styleSource: (trainedCamille, trainedOthers) =>
+      "How this score is worked out: a small statistical model learnt Camille's playing habits (which pieces he moves, " +
+      'whether he takes when he can, which side he castles). To know what is his own, he has to be compared with others, ' +
+      `so the model learnt from ${trainedCamille.toLocaleString('en')} of his games and ${trainedOthers.toLocaleString('en')} games ` +
+      'of other players at his level. The same level, so that it learns a way of playing rather than a strength. ' +
+      'It skips the first 5 moves, which the opening book often plays for the Bot. ' +
+      'The curves show its scores on games it had never seen.',
     followed: 'Where it followed Camille',
     fromBook: (moves) => `${english(moves, 'move', 'moves')} from Camille's opening repertoire.`,
     reached: (count) =>
@@ -678,11 +717,38 @@ const FRENCH: Texts = {
     theGame: 'La partie',
     botThisGame: 'Le Bot dans cette partie',
     moveCounts: (bot, visitor) => `Nombre de coups${NO_BREAK}: Bot ${bot}, vous ${visitor}.`,
-    plausible: (moves, share) =>
-      `Sur ${french(moves, 'coup', 'coups')} du Bot, ${share} ont au moins 1${NO_BREAK}% de chance d’être joués par Camille, ou viennent de son répertoire d’ouverture.`,
-    camilleReference: (games) =>
-      `À côté, le même compte sur ses propres coups, dans ${games} de ses parties que le modèle n’a jamais vues.`,
-    camille: 'Camille',
+    styleTitle: `Cette partie ressemble-t-elle à une partie de Camille${NO_BREAK}?`,
+    styleTypical: (camille, others) =>
+      `Une partie de Camille obtient en général ${camille}, celle d’un autre joueur de son niveau ${others}.`,
+    styleStanding: (score, direction, share) => {
+      if (direction === 'lower') {
+        return `Avec ${score}, cette partie fait moins bien que ${share} des vraies parties de Camille.`;
+      }
+      return `Avec ${score}, cette partie fait mieux que ${share} des vraies parties de Camille.`;
+    },
+    styleLimit: (camilleRecognised, othersTaken) =>
+      `Sur une seule partie, ce test est peu fiable${NO_BREAK}: il reconnaît ${camilleRecognised} des vraies parties de Camille, ` +
+      `mais prend aussi ${othersTaken} des parties des autres joueurs pour les siennes.`,
+    styleTooShort: (movesRead, needed) =>
+      `Partie trop courte pour être lue${NO_BREAK}: le Bot a joué ${french(movesRead, 'coup', 'coups')} après le 5e, il en faut ${needed}.`,
+    styleLegendCamille: (games) => `Vraies parties de Camille, ${games.toLocaleString('fr')}`,
+    styleLegendOthers: (games) => `Autres joueurs de son niveau, ${games.toLocaleString('fr')}`,
+    styleLegendGame: 'Cette partie',
+    styleAxis: `score, plus à droite${NO_BREAK}: plus proche de Camille`,
+    styleChartDescription: (score) => {
+      const groups = 'Les parties de Camille et celles des autres joueurs se recouvrent presque entièrement.';
+      if (score === null) {
+        return groups;
+      }
+      return `${groups} Cette partie obtient ${score}.`;
+    },
+    styleSource: (trainedCamille, trainedOthers) =>
+      `Comment ce score est calculé${NO_BREAK}: un petit modèle statistique a appris les habitudes de jeu de Camille ` +
+      '(quelles pièces il bouge, s’il prend quand il le peut, de quel côté il roque). Pour savoir ce qui lui est propre, ' +
+      `il faut le comparer à d’autres. Le modèle a donc appris sur ${trainedCamille.toLocaleString('fr')} parties de Camille ` +
+      `et ${trainedOthers.toLocaleString('fr')} parties d’autres joueurs de son niveau. Du même niveau, pour qu’il apprenne ` +
+      'une façon de jouer et non une force de jeu. Il ignore les 5 premiers coups, que le livre d’ouvertures joue souvent ' +
+      'à la place du Bot. Les courbes montrent ses scores sur des parties qu’il n’avait jamais vues.',
     followed: 'Où il a suivi Camille',
     fromBook: (moves) => `${french(moves, 'coup tiré', 'coups tirés')} du répertoire d’ouverture de Camille.`,
     reached: (count) => {

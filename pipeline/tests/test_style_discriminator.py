@@ -1,7 +1,10 @@
+import math
+
 import chess
+import pytest
 
 from pipeline.dataset import Position, positions_faced
-from pipeline.style_discriminator import games_long_enough, train_discriminator
+from pipeline.style_discriminator import game_features, games_long_enough, train_discriminator
 
 # Ten plies of development, then White castles at ply 11, the first ply the
 # discriminator reads, on the side the name says.
@@ -96,3 +99,25 @@ def test_keeps_each_weight_on_its_own_statistic_when_no_game_reaches_the_endgame
     assert weights["castled queenside"] > 0
     assert weights["castled kingside"] < 0
     assert weights["king moves, endgame"] == 0
+
+
+def test_its_exported_parameters_give_the_same_probability_as_the_discriminator():
+    camille = games("camille", CASTLES_QUEENSIDE + KNIGHTS_SHUFFLE, 5)
+    others = games("other", CASTLES_KINGSIDE + KNIGHTS_SHUFFLE, 5)
+    discriminator = train_discriminator(camille, others)
+    unseen = white_game("unseen:queenside", CASTLES_QUEENSIDE + KNIGHTS_SHUFFLE)
+
+    exported = discriminator.exported()
+
+    # What the page does with the file: fill a missing statistic, rescale,
+    # weigh, and turn the sum into a probability.
+    features = game_features(unseen)
+    total = exported["intercept"]
+    for index, name in enumerate(exported["statistics"]):
+        value = features[name]
+        if value is None:
+            value = exported["fill_values"][index]
+        rescaled = (value - exported["means"][index]) / exported["scales"][index]
+        total += exported["weights"][index] * rescaled
+    probability = 1 / (1 + math.exp(-total))
+    assert probability == pytest.approx(discriminator.camille_probability(unseen), abs=1e-12)
