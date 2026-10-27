@@ -16,9 +16,12 @@
 // Base Model alone, against the same opponent, so that what the book changes
 // can be measured on whole games. With --model the Bot consults another Base
 // Model file, such as a fine-tuned one, at the same rating. The opponent is
-// always the original Maia-3 5M at --opponent-rating, whichever model the site
+// the original Maia-3 5M at --opponent-rating, whichever model the site
 // serves, drawing each move at random from its probabilities, as a crowd of
-// players at that rating would choose. Both sides' draws are seeded,
+// players at that rating would choose. --opponent-model replaces it, for a
+// machine that holds only the served model, such as the monthly refresh's
+// runner, which plays a few games to check the Bot runs rather than to
+// measure it. Both sides' draws are seeded,
 // each from a stream of its own, so a run can be replayed exactly and a Bot
 // at temperature 0 meets the opponent the recorded games were played against.
 //
@@ -66,6 +69,7 @@ const { values: flags } = parseArgs({
     'opponent-rating': { type: 'string', default: String(BALANCED_OPPONENT_RATING) },
     baseline: { type: 'boolean', default: false },
     model: { type: 'string', default: SERVED_MODEL_SOURCE },
+    'opponent-model': { type: 'string', default: OPPONENT_MODEL },
     out: { type: 'string', default: 'data/dataset/bot-games.jsonl' },
   },
 });
@@ -85,7 +89,7 @@ if (openingCut.kind !== 'none' && temperature === 0) {
 }
 
 const baseModel = await loadBaseModel(await readFile(flags.model), { rating: SERVED_MODEL_RATING });
-const opponentModel = await loadBaseModel(await readFile(OPPONENT_MODEL), { rating: opponentRating });
+const opponentModel = await loadBaseModel(await readFile(flags['opponent-model']), { rating: opponentRating });
 // Who plays: the Bot with its Opening Book, or the Baseline without one. The
 // name labels the games and the summary.
 let playerName = 'bot';
@@ -142,7 +146,7 @@ await mkdir(dirname(flags.out), { recursive: true });
 await writeFile(flags.out, lines.join('\n') + '\n');
 
 console.log(`${playerName}: ${playerDescription}`);
-console.log(`Opponent: ${OPPONENT_MODEL} at ${opponentRating}, drawn from its probabilities, seed ${seed}`);
+console.log(`Opponent: ${flags['opponent-model']} at ${opponentRating}, drawn from its probabilities, seed ${seed}`);
 console.log(`Games: ${gameCount}, ${playerName} ${results.win} won, ${results.draw} drawn, ${results.loss} lost`);
 console.log(`Average length: ${(totalPlies / gameCount).toFixed(1)} plies`);
 console.log(`Written to ${flags.out}`);
