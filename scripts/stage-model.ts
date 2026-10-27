@@ -11,6 +11,11 @@
 // The Opening Book needs no copying, since the Bot's worker bundles it from
 // where the pipeline writes it, but a missing book is reported here, with how
 // to build it, rather than as an unresolved import halfway through the build.
+//
+// It also writes public/bot-data.json: the served model's URL and the sha256
+// of the model and of the book the site is built with, keyed by the paths
+// docker/bot-data.sha256 names them by. The checks the monthly refresh runs
+// after deploying read it to confirm production serves the published files.
 
 import { createHash } from 'node:crypto';
 import { access, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
@@ -31,6 +36,8 @@ try {
 
 /** Where pipeline/build_opening_book.py writes the book, and src/engine/bot-worker-entry.ts imports it from. */
 const OPENING_BOOK = 'data/dataset/opening-book.json';
+/** What the site says it is built with, served beside the pages. */
+const BOT_DATA_MANIFEST = 'public/bot-data.json';
 
 try {
   await access(OPENING_BOOK);
@@ -50,3 +57,13 @@ await mkdir(SERVED_MODEL_DIRECTORY, { recursive: true });
 await writeFile(join(SERVED_MODEL_DIRECTORY, servedName), model);
 
 console.log(`Serving ${SERVED_MODEL_SOURCE} as ${join(SERVED_MODEL_DIRECTORY, servedName)}`);
+
+const book = await readFile(OPENING_BOOK);
+const manifest = {
+  modelUrl: `/models/${servedName}`,
+  sha256: {
+    [SERVED_MODEL_SOURCE]: createHash('sha256').update(model).digest('hex'),
+    [OPENING_BOOK]: createHash('sha256').update(book).digest('hex'),
+  },
+};
+await writeFile(BOT_DATA_MANIFEST, JSON.stringify(manifest, null, 1) + '\n');

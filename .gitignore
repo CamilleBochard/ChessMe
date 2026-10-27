@@ -31,6 +31,7 @@ notes/
 tools/
 models/
 public/models/
+public/bot-data.json
 public/stockfish/
 
 # Session Games received by pipeline/serve_session_games.py, kept on the VPS
