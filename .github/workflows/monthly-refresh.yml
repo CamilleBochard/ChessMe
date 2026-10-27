@@ -314,6 +314,10 @@ jobs:
           PRODUCTION_URL: ${{ secrets.PRODUCTION_URL }}
           FAIL_ON_PURPOSE: ${{ inputs.fail_checks_after_deploying }}
         run: |
+          # GitHub masks the secret where its exact text appears; an error
+          # naming the bare host would print it, so the host is masked too.
+          host="${PRODUCTION_URL#https://}"
+          echo "::add-mask::${host%/}"
           extra=()
           if [ "$FAIL_ON_PURPOSE" = "true" ]; then
             extra+=(--fail-on-purpose)
