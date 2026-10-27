@@ -6,8 +6,9 @@ from pathlib import Path
 import pytest
 from chess.engine import Cp
 
+from pipeline.dated_files import dated_files_in_order
 from pipeline.extract_blunder_profile import REPOSITORY_ROOT
-from pipeline.refresh_games import Engine, RefreshPaths, RefreshTools, refresh, site_yardstick_commands, summary_files_in_order
+from pipeline.refresh_games import Engine, RefreshPaths, RefreshTools, refresh, site_yardstick_commands
 from pipeline.stockfish_analysis import Analysis
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -185,4 +186,4 @@ def test_never_writes_over_a_summary_of_the_same_day_and_reads_the_last_one_writ
 
     assert (paths.summaries_dir / "2026-10-27.json").read_bytes() == first
     assert sorted(path.name for path in paths.summaries_dir.iterdir()) == ["2026-10-27-2.json", "2026-10-27-3.json", "2026-10-27.json"]
-    assert summary_files_in_order(paths.summaries_dir)[-1].name == "2026-10-27-3.json"
+    assert dated_files_in_order(paths.summaries_dir)[-1].name == "2026-10-27-3.json"
