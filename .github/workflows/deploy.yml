@@ -119,7 +119,7 @@ jobs:
     # The SSH secrets live in this environment, not in the repository.
     environment:
       name: production
-      url: https://echecs.camillebochard.fr
+      url: https://chessme.camillebochard.fr
     # Talks to the VPS only: no access to the repository or the registry.
     permissions: {}
 
