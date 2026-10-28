@@ -1,8 +1,8 @@
 """Brings everything built from Camille's games up to date with the games he has played since the last run.
 
 Run from the repository root, with Stockfish installed (scripts/fetch_stockfish.sh),
-the Node packages installed, the served model in models/onnx and the Lichess
-token in the environment:
+the Node packages installed, the served and the untrained model in
+models/onnx and the Lichess token in the environment:
 
     export LICHESS_TOKEN="$(cat ~/.config/chessme/lichess-token)"
     python -m pipeline.refresh_games
@@ -12,19 +12,22 @@ In order:
 1. New games are fetched from Chess.com and Lichess into new dated files in
    data/raw (pipeline/fetch_games.py); the files already there are never
    rewritten.
-2. The dataset is rebuilt from every export. When it holds moves an engine's
-   cache does not, that engine first analyses a sample of its cached moves
-   again and the run stops on any difference, so one cache never mixes two
-   machines' measures.
-3. The Level Break is looked for again (pipeline/level_break.py), then the
+2. When the dataset would hold moves an engine's cache does not, that
+   engine first analyses a sample of its cached moves again and the run
+   stops on any difference, so one cache never mixes two machines' measures.
+3. The served model and the untrained Maia-3 5M are measured on the new
+   games, before anything is trained or built on them
+   (pipeline/new_games_matching.py), into docs/experiments/monthly/. Then
+   the dataset is rebuilt from every export.
+4. The Level Break is looked for again (pipeline/level_break.py), then the
    Opening Book is rebuilt from every training game, and the Blunder
    Profile, at the pipeline's depth and at the browser's, from the games
    since the Level Break. Stockfish analyses only moves its cache does not
    hold.
-4. The served model's records on the Test Set are extended with new
+5. The served model's records on the Test Set are extended with new
    positions only, and the site's improbability and loss yardsticks written
    again from the games since the Level Break.
-5. A summary of what changed is printed and written to docs/refreshes/, for
+6. A summary of what changed is printed and written to docs/refreshes/, for
    the report of each run.
 
 A second run with no new game writes no game file, analyses nothing and
@@ -44,14 +47,23 @@ from typing import Callable
 
 from pipeline import build_dataset as dataset_build
 from pipeline import build_opening_book
+from pipeline.dated_files import dated_files_in_order, new_dated_file
 from pipeline.dataset import FIRST_DAY_KEPT, Dataset, build_dataset, read_dataset
 from pipeline.extract_blunder_profile import REPOSITORY_ROOT, ProgressPrinter, extract, running_stockfish
 from pipeline.fetch_games import fetch_new_games, http_get
 from pipeline.measure_level_break import measure as measure_level_break
+from pipeline.new_games_matching import (
+    UNTRAINED_MODEL,
+    FirstChoiceMatches,
+    MeasuredModels,
+    first_choices_under_node,
+    measure_new_games,
+    positions_of_new_games,
+)
 from pipeline.refresh_summary import book_changes, new_games_summary, profile_movement
 from pipeline.stockfish_analysis import Analyser, differences_from_the_cache, moves_not_cached
 
-FORMAT_VERSION = 1
+FORMAT_VERSION = 2
 
 # The depth the browser's analysis mode searches to (src/analysis/browser-engine.ts).
 BROWSER_DEPTH = 14
@@ -69,16 +81,23 @@ class RefreshPaths:
     analysis_dir: Path
     summaries_dir: Path
     site_dir: Path
+    monthly_dir: Path
+    served_model: Path
+    untrained_model: Path
 
     @classmethod
     def under(cls, root: Path) -> "RefreshPaths":
         """The repository's layout, under root."""
+        served_model_file, _ = served_model()
         return cls(
             raw_dir=root / "data" / "raw",
             dataset_dir=root / "data" / "dataset",
             analysis_dir=root / "data" / "analysis",
             summaries_dir=root / "docs" / "refreshes",
             site_dir=root / "src" / "explanation",
+            monthly_dir=root / "docs" / "experiments" / "monthly",
+            served_model=root / served_model_file,
+            untrained_model=root / UNTRAINED_MODEL,
         )
 
     @property
@@ -136,6 +155,9 @@ class RefreshTools:
     # write_yardsticks(since) writes the site's two yardsticks from the games
     # begun at since or later, every game when since is None.
     write_yardsticks: Callable[[str | None], None]
+    # first_choice_matches(model, rating, positions) says, position by
+    # position, whether the model's most likely move is the one Camille played.
+    first_choice_matches: FirstChoiceMatches
     report_progress: Callable[[int, int], None] | None = field(default=None)
 
 
@@ -164,6 +186,15 @@ def refresh(
         if moves_not_cached(every_position, engine.analysers, engine.cache_path):
             compared = _stop_on_a_difference(engine)
             identity_checks[_engine_name(engine)] = {"compared": compared, "differences": 0}
+
+    # Before the dataset, the Opening Book or anything else takes the new
+    # games in, so the served model is measured on games it has never seen.
+    _, served_rating = served_model()
+    models = MeasuredModels(served=paths.served_model, untrained=paths.untrained_model, rating=served_rating)
+    new_positions = positions_of_new_games(pgn_paths, new_files)
+    new_games_matching = measure_new_games(
+        new_positions, day, new_files, models, tools.first_choice_matches, paths.monthly_dir
+    )
 
     before = _what_was_built(paths)
     deep_lines_before = _line_count(tools.deep.cache_path)
@@ -225,36 +256,11 @@ def refresh(
         },
         "opening_book": book_changes(before["book"], after["book"]),
         "profiles": profile_movement(before["profiles"], after["profiles"]),
+        "new_games_matching": new_games_matching,
     }
     paths.summaries_dir.mkdir(parents=True, exist_ok=True)
-    _new_summary_path(paths.summaries_dir, day).write_text(json.dumps(summary, indent=1), encoding="utf-8")
+    new_dated_file(paths.summaries_dir, day).write_text(json.dumps(summary, indent=1), encoding="utf-8")
     return summary
-
-
-def _new_summary_path(summaries_dir: Path, day: date) -> Path:
-    """A file for the day's summary that no earlier summary holds: a second run the same day writes <day>-2.json."""
-    path = summaries_dir / f"{day.isoformat()}.json"
-    copy = 2
-    while path.exists():
-        path = summaries_dir / f"{day.isoformat()}-{copy}.json"
-        copy += 1
-    return path
-
-
-def summary_files_in_order(summaries_dir: Path) -> list[Path]:
-    """Every summary, in the order the runs wrote them: by day, then by number within a day."""
-    if not summaries_dir.exists():
-        return []
-
-    def written_order(path: Path) -> tuple[str, int]:
-        # "2026-10-27" is the day's first summary, "2026-10-27-2" its second.
-        day = path.stem[:10]
-        copy = 1
-        if len(path.stem) > 10:
-            copy = int(path.stem[11:])
-        return day, copy
-
-    return sorted(summaries_dir.glob("*.json"), key=written_order)
 
 
 def _engine_name(engine: Engine) -> str:
@@ -306,7 +312,7 @@ def _line_count(path: Path) -> int:
 
 def _previous_level_break(summaries_dir: Path) -> str | None:
     """The Level Break the last refresh found; None before the first refresh, as no break had been found then."""
-    summaries = summary_files_in_order(summaries_dir)
+    summaries = dated_files_in_order(summaries_dir)
     if not summaries:
         return None
     return json.loads(summaries[-1].read_text(encoding="utf-8"))["level_break"]["at"]
@@ -373,6 +379,15 @@ def summary_tables(summary: dict) -> str:
     lines.append(f"New games: {new['games']} (files written: {files}); moves per Phase: {new['moves']}")
     lines.append(f"Identity checks: {summary['identity_checks'] or 'none needed, nothing new to analyse'}")
     lines.append(f"Analyses added: {summary['analyses_added']}; model records added: {summary['model_records_added']}")
+    matching = summary["new_games_matching"]
+    if "skipped" in matching:
+        lines.append(f"New games' Move-Matching: skipped, {matching['skipped']}")
+    else:
+        status = matching["group"]["status"]
+        lines.append(
+            f"New games' Move-Matching: {matching['games']} games, {matching['moves']} moves, {status} "
+            f"(docs/experiments/monthly/README.md)"
+        )
     level_break = summary["level_break"]
     verdict = "none found" if level_break["at"] is None else f"games begun at {level_break['at']} or later"
     lines.append(f"Level Break: {verdict} (new: {'yes' if level_break['is_new'] else 'no'})")
@@ -426,9 +441,10 @@ if __name__ == "__main__":
             browser=Engine(browser_analysers, browser_cache),
             place_moves=place_moves_with_the_served_model,
             write_yardsticks=lambda since: write_the_site_yardsticks(paths, since),
+            first_choice_matches=first_choices_under_node(REPOSITORY_ROOT),
             report_progress=ProgressPrinter(),
         )
         written = refresh(paths, date.today(), tools, fetch=not arguments.no_fetch, fetched=arguments.fetched)
 
     print(summary_tables(written))
-    print(f"Written to {summary_files_in_order(paths.summaries_dir)[-1]}")
+    print(f"Written to {dated_files_in_order(paths.summaries_dir)[-1]}")

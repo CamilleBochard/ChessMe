@@ -68,7 +68,7 @@ class _Outcome:
 
 
 @dataclass
-class _GameTally:
+class GameTally:
     # The sum of the game's outcome values: its matches, or its net gain.
     total: int = 0
     positions: int = 0
@@ -164,7 +164,7 @@ def _score(outcomes: list[_Outcome]) -> MoveMatchingScore:
         matched=matched,
         positions=positions,
         games=len(tallies),
-        standard_error=_clustered_standard_error(tallies),
+        standard_error=clustered_standard_error(tallies),
     )
 
 
@@ -179,19 +179,19 @@ def _gain(outcomes: list[_Outcome]) -> Gain:
     positions = sum(tally.positions for tally in tallies)
     if positions == 0:
         return Gain(gain=float("nan"), standard_error=float("nan"))
-    return Gain(gain=net_gain / positions, standard_error=_clustered_standard_error(tallies))
+    return Gain(gain=net_gain / positions, standard_error=clustered_standard_error(tallies))
 
 
-def _tally_by_game(outcomes: list[_Outcome]) -> list[_GameTally]:
-    tallies: dict[str, _GameTally] = {}
+def _tally_by_game(outcomes: list[_Outcome]) -> list[GameTally]:
+    tallies: dict[str, GameTally] = {}
     for outcome in outcomes:
-        tally = tallies.setdefault(outcome.position.game_id, _GameTally())
+        tally = tallies.setdefault(outcome.position.game_id, GameTally())
         tally.positions = tally.positions + 1
         tally.total = tally.total + outcome.value
     return list(tallies.values())
 
 
-def _clustered_standard_error(games: list[_GameTally]) -> float:
+def clustered_standard_error(games: list[GameTally]) -> float:
     """The cluster-robust standard error of a mean per position, with games as clusters.
 
     Each game contributes how far its total strays from what the overall mean

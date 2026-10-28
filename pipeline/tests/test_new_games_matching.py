@@ -1,0 +1,132 @@
+import math
+
+from pipeline.dataset import Position
+from pipeline.new_games_matching import cumulative_table, figures, game_tallies, table_groups
+
+
+def position(game_id: str, ply: int, phase: str) -> Position:
+    # Only the game, the ply and the Phase matter here: whether each model
+    # matched Camille's move is given beside the positions.
+    return Position(game_id=game_id, source="lichess", ply=ply, phase=phase, fen="unused", move="e2e4")
+
+
+def test_the_gain_is_measured_position_by_position_with_its_error_clustered_by_game():
+    positions = [
+        position("a", 3, "opening"),
+        position("a", 15, "middlegame"),
+        position("b", 4, "opening"),
+        position("b", 40, "endgame"),
+    ]
+    # Game a: the served model matches both moves, the untrained one the first.
+    # Game b: each model matches one move, the same one.
+    served = [True, True, True, False]
+    untrained = [True, False, True, False]
+
+    overall = figures(game_tallies(positions, served, untrained))["all"]
+
+    assert (overall["games"], overall["moves"]) == (2, 4)
+    assert math.isclose(overall["served"]["share"], 0.75)
+    assert math.isclose(overall["untrained"]["share"], 0.5)
+    assert math.isclose(overall["gain"]["share"], 0.25)
+    # Game a gains one match, game b none: against the 0.5 a game of two
+    # moves is expected to gain at 0.25 a move, each strays by 0.5, so the
+    # variance is 2/1 * (0.25 + 0.25) / 4^2 and the error 0.25.
+    assert math.isclose(overall["gain"]["standard_error"], 0.25)
+    # The untrained model matched one move in each game, just as expected.
+    assert math.isclose(overall["untrained"]["standard_error"], 0.0)
+
+
+def test_each_phase_counts_only_the_games_with_moves_in_it_and_gives_no_error_for_a_single_game():
+    positions = [
+        position("a", 3, "opening"),
+        position("a", 15, "middlegame"),
+        position("b", 4, "opening"),
+        position("b", 40, "endgame"),
+    ]
+    served = [True, True, False, False]
+    untrained = [False, True, False, True]
+
+    by_slice = figures(game_tallies(positions, served, untrained))
+
+    opening = by_slice["opening"]
+    assert (opening["games"], opening["moves"]) == (2, 2)
+    assert math.isclose(opening["served"]["share"], 0.5)
+    assert math.isclose(opening["gain"]["share"], 0.5)
+    endgame = by_slice["endgame"]
+    assert (endgame["games"], endgame["moves"]) == (1, 1)
+    assert math.isclose(endgame["gain"]["share"], -1.0)
+    # One game's spread cannot be measured; the record says so with null,
+    # which JSON can hold, rather than NaN, which it cannot.
+    assert endgame["gain"]["standard_error"] is None
+
+
+def game(game_id: str, played_at: str, moves: int, served: int, untrained: int) -> dict:
+    """One game's tallies, every move in the middlegame."""
+    by_phase = {
+        "opening": {"moves": 0, "served": 0, "untrained": 0},
+        "middlegame": {"moves": moves, "served": served, "untrained": untrained},
+        "endgame": {"moves": 0, "served": 0, "untrained": 0},
+    }
+    return {"game_id": game_id, "played_at": played_at, "by_phase": by_phase}
+
+
+def measurement(measured_on: str, games: list[dict], served_model: str = "served-sha") -> dict:
+    return {"measured_on": measured_on, "served_model": {"sha256": served_model}, "games": games}
+
+
+def test_a_month_below_the_minimum_is_pooled_with_the_next_and_the_last_one_waits_for_more():
+    measurements = [
+        measurement("2026-11-01", [game("a", "2026-10-03T10:00:00", 40, 20, 10), game("b", "2026-10-20T10:00:00", 30, 15, 15)]),
+        measurement("2026-12-01", [game("c", "2026-11-12T10:00:00", 20, 10, 5)]),
+        measurement("2027-01-01", [game("d", "2026-12-02T10:00:00", 30, 12, 12), game("e", "2026-12-24T10:00:00", 10, 4, 4)]),
+        measurement("2027-02-01", [game("f", "2027-01-05T10:00:00", 25, 10, 10)]),
+    ]
+
+    groups = table_groups(measurements, minimum=50)
+
+    assert [group["measured_on"] for group in groups] == [
+        ["2026-11-01"],
+        ["2026-12-01", "2027-01-01"],
+        ["2027-02-01"],
+    ]
+    assert [group["status"] for group in groups] == ["reported", "pooled", "waiting"]
+    assert groups[1]["months"] == ["2026-11", "2026-12"]
+    assert (groups[1]["figures"]["all"]["games"], groups[1]["figures"]["all"]["moves"]) == (3, 60)
+    # 26 matches against 21 over 60 moves.
+    assert math.isclose(groups[1]["figures"]["all"]["gain"]["share"], 5 / 60)
+    # Below the minimum, nothing is reported: only how many moves are waiting.
+    assert groups[2]["moves"] == 25
+    assert groups[2]["figures"] is None
+
+
+def test_months_measured_on_two_different_served_models_are_never_pooled():
+    measurements = [
+        measurement("2026-11-01", [game("a", "2026-10-03T10:00:00", 20, 10, 5)], served_model="before-retraining"),
+        measurement("2026-12-01", [game("b", "2026-11-12T10:00:00", 60, 30, 30)], served_model="after-retraining"),
+    ]
+
+    groups = table_groups(measurements, minimum=50)
+
+    # The first model's short month can no longer be completed: it stays
+    # unreported rather than mixing two models in one gain.
+    assert [group["measured_on"] for group in groups] == [["2026-11-01"], ["2026-12-01"]]
+    assert [group["status"] for group in groups] == ["below the minimum", "reported"]
+    assert groups[0]["figures"] is None
+
+
+def test_the_table_gives_each_row_its_months_figures_in_percent_and_gain_in_points_and_says_what_waits():
+    measurements = [
+        measurement("2026-11-01", [game("a", "2026-10-03T10:00:00", 40, 20, 10), game("b", "2026-10-20T10:00:00", 40, 22, 18)]),
+        measurement("2026-12-01", [game("c", "2026-11-12T10:00:00", 20, 10, 5)]),
+    ]
+
+    table = cumulative_table(table_groups(measurements, minimum=50))
+
+    lines = table.splitlines()
+    # Served 42 of 80, untrained 28 of 80: a gain of 17.5 points. The games
+    # stray by 1, 4 and 3 matches from what each figure predicts for them,
+    # so the errors are 2.5, 10 and 7.5 points.
+    assert "| 2026-10 | 2026-11-01 | All | 2 | 80 | 52.50 ± 2.50 | 35.00 ± 10.00 | +17.50 ± 7.50 |" in lines
+    # The Phase rows of a group leave its months and dates blank.
+    assert "|  |  | Middlegame (11-30) | 2 | 80 | 52.50 ± 2.50 | 35.00 ± 10.00 | +17.50 ± 7.50 |" in lines
+    assert "| 2026-11 | 2026-12-01 | Waiting for the next month | 1 | 20 |  |  |  |" in lines

@@ -25,7 +25,7 @@ Each stage is a job that runs only when the one before it succeeded.
 
 | Stage | What it does | What it guards against |
 |---|---|---|
-| 1. Refresh | Restores the caches, checks Stockfish against them, rebuilds what the site was built from, fetches the new games, runs `pipeline/refresh_games.py`, and commits the result on a branch named after the day and the run. A run with no new game stops here. | A runner whose Stockfish scores moves differently: the identity check runs before anything else and fails the run before any move is analysed. |
+| 1. Refresh | Restores the caches, checks Stockfish against them, rebuilds what the site was built from, fetches the new games, runs `pipeline/refresh_games.py`, and commits the result on a branch named after the day and the run. Before anything is rebuilt with the new games, the served model is measured on them (`docs/experiments/monthly/`). A run with no new game stops here. | A runner whose Stockfish scores moves differently: the identity check runs before anything else and fails the run before any move is analysed. |
 | 2. Checks | The test suites and the typecheck; `npm run check-opening-book`; the site's build; 20 games of the Bot with the new Opening Book, which must all finish; and the regression gate. | A book built wrong, code that no longer builds or runs, and a book that makes the Bot match Camille's moves less often. |
 | 3. Publish | The next `bot-data-N` release (the served model and the new book), its name and checksums in `docker/bot-data-release` and `docker/bot-data.sha256`, and the refresh's commits put on master. | Master moving meanwhile: the push only moves master forward, so it fails rather than overwrite anything. |
 | 4. Deploy | `deploy.yml`, called with the published commit: both images built and deployed by the VPS's deploy script, which restores the previous image of a container that fails its health check. | A container that does not start. |
@@ -40,6 +40,16 @@ answer the same Test Set positions (`npm run compare-bots` with
 second falls below the first's by more than two standard errors of the change,
 the change measured position by position and its standard error clustered by
 game. A change whose spread cannot be measured fails too.
+
+**The new games' Move-Matching.** The games a run fetches are new to the
+served model. Before the dataset, the Opening Book or anything else takes
+them in, the served model and the untrained Maia-3 5M answer their
+positions, and the gain of the first over the second is recorded in
+`docs/experiments/monthly/` with a cumulative table, committed with the
+refresh. A month with fewer than 1,500 of Camille's moves is pooled with
+the next. The method is in [the new games' Move-Matching](experiments/new-games-matching.md).
+The untrained model comes from the `untrained-maia3-5m` release, checked
+against `scripts/monthly-refresh/untrained-model.sha256`.
 
 **The 20 games** are played against the served model at 1100, since the
 runner holds no other model. They check that the Bot runs with the new book,
@@ -86,6 +96,11 @@ gh secret set LICHESS_TOKEN < ~/.config/chessme/lichess-token
 printf '%s' "https://<the production host>" | gh secret set PRODUCTION_URL --env production
 # The first copy of the caches and records, from a machine that holds them:
 python -m pipeline.pipeline_state save --stamp "$(date -u +%Y-%m-%d)-setup"
+# The untrained model the new games are measured against, from a machine
+# that converted it (python -m pipeline.convert_maia3):
+sha256sum --check scripts/monthly-refresh/untrained-model.sha256
+gh release create untrained-maia3-5m models/onnx/maia3-5m.onnx --latest=false \
+  --title "Untrained Maia-3 5M" --notes "Maia-3 5M as published, converted to ONNX."
 ```
 
 ## Running it by hand
@@ -102,7 +117,8 @@ gh workflow run monthly-refresh.yml -f continue_without_new_games=true -f fail_c
 
 Each stage can also be run on its own machine, from the repository root:
 `python -m pipeline.check_engines`, `python -m pipeline.fetch_games`,
-`python -m pipeline.refresh_games --no-fetch`, `npm run check-opening-book`,
+`python -m pipeline.refresh_games --no-fetch`,
+`python -m pipeline.new_games_matching <game files>`, `npm run check-opening-book`,
 `npm run compare-bots` then `npm run regression-gate`, and
 `python -m pipeline.check_production https://<the production host>`.
 
