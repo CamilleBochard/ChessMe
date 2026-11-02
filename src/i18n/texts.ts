@@ -187,6 +187,18 @@ export interface UpdatesTexts {
   shortDay(day: Date): string;
   /** What the value axis counts, written at its top. */
   axis: string;
+  /** The button under the chart that opens the last twelve months. */
+  openYear: string;
+  /** The title of the view of the last twelve months. */
+  yearTitle: string;
+  /** A month short enough to stand under a column. */
+  shortMonth(month: Date): string;
+  /** A month written out, for a screen reader and the hover tip. */
+  month(month: Date): string;
+  /** One month read out whole. */
+  monthReading(month: string, games: number): string;
+  dayHeader: string;
+  gamesHeader: string;
   /** One column read out whole, for a screen reader and the hover tip. */
   bar(day: string, games: number): string;
   /** What an update changes, and what it leaves as it is. */
@@ -455,6 +467,13 @@ const ENGLISH: Texts = {
     day: (day) => day.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }),
     shortDay: (day) => day.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit', timeZone: 'UTC' }),
     axis: 'Games',
+    openYear: 'See the last 12 months',
+    yearTitle: 'Updates over the last 12 months',
+    shortMonth: (month) => month.toLocaleDateString('en-GB', { month: 'short', year: '2-digit', timeZone: 'UTC' }),
+    month: (month) => month.toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' }),
+    monthReading: (month, games) => `${month}: ${english(games, 'game', 'games')} added`,
+    dayHeader: 'Update',
+    gamesHeader: 'Games',
     bar: (day, games) => `${day}: ${english(games, 'game', 'games')} added`,
     scope:
       "Each month, Camille's new games join those his Opening Book and his figures are built from. " +
@@ -746,6 +765,13 @@ const FRENCH: Texts = {
     day: (day) => day.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }),
     shortDay: (day) => day.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: '2-digit', timeZone: 'UTC' }),
     axis: 'Parties',
+    openYear: 'Voir les 12 derniers mois',
+    yearTitle: 'Mises à jour des 12 derniers mois',
+    shortMonth: (month) => month.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit', timeZone: 'UTC' }),
+    month: (month) => month.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'UTC' }),
+    monthReading: (month, games) => `${month}${NO_BREAK}: ${french(games, 'partie ajoutée', 'parties ajoutées')}`,
+    dayHeader: 'Mise à jour',
+    gamesHeader: 'Parties',
     bar: (day, games) => `${day}${NO_BREAK}: ${french(games, 'partie ajoutée', 'parties ajoutées')}`,
     scope:
       'Chaque mois, les nouvelles parties de Camille rejoignent celles dont sont tirés son livre ' +
