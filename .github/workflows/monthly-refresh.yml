@@ -106,12 +106,12 @@ jobs:
       # What the site was built from, rebuilt from the repository and the
       # caches, so the summary compares the refresh with it. Nothing is
       # analysed, and no game file being named as fetched, nothing is
-      # measured on new games; the summary and yardsticks it writes are
-      # dropped, and the committed ones restored.
+      # measured on new games; the summary, yardsticks and record it writes
+      # are dropped, and the committed ones restored.
       - name: Rebuild what was served
         run: |
           python -m pipeline.refresh_games --no-fetch --workers 4
-          git checkout -- docs/refreshes src/explanation
+          git checkout -- docs/refreshes src/explanation src/record/player-record.json
           git clean -fq -- docs/refreshes
 
       # The only step that sees the Lichess token.
@@ -146,7 +146,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git switch -c "$branch"
-          git add data/raw docs/refreshes docs/experiments/monthly src/explanation
+          git add data/raw docs/refreshes docs/experiments/monthly src/explanation src/record/player-record.json
           git commit -m "Refresh Camille's games on $(date -u +%Y-%m-%d)" -m "Written by the monthly refresh, run ${GITHUB_RUN_ID}."
           git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "$branch"
           echo "branch=$branch" >> "$GITHUB_OUTPUT"
