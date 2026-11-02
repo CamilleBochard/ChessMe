@@ -43,6 +43,7 @@ export interface Texts {
   panel: PanelTexts;
   report: ReportTexts;
   played: PlayedTexts;
+  updates: UpdatesTexts;
   /** A share as a percentage with the given number of decimals, as the language writes it. */
   percent(share: number, decimals: number): string;
   /** A number with the given number of decimals, as the language writes it. */
@@ -175,6 +176,35 @@ export interface PlayedTexts {
   scope(engine: string, depth: number, camilleGames: number): string;
 }
 
+/** The words of the monthly updates, under Camille's record. */
+export interface UpdatesTexts {
+  title: string;
+  /** How many games every update added, and over how many updates. */
+  summary(games: number, updates: number): string;
+  /** The day an update ran, as the language writes a date. */
+  day(day: Date): string;
+  /** The day short enough to stand under a column. */
+  shortDay(day: Date): string;
+  /** What the value axis counts, written at its top. */
+  axis: string;
+  /** The button under the chart that opens the last twelve months. */
+  openYear: string;
+  /** The title of the view of the last twelve months. */
+  yearTitle: string;
+  /** A month short enough to stand under a column. */
+  shortMonth(month: Date): string;
+  /** A month written out, for a screen reader and the hover tip. */
+  month(month: Date): string;
+  /** One month read out whole. */
+  monthReading(month: string, games: number): string;
+  dayHeader: string;
+  gamesHeader: string;
+  /** One column read out whole, for a screen reader and the hover tip. */
+  bar(day: string, games: number): string;
+  /** What an update changes, and what it leaves as it is. */
+  scope: string;
+}
+
 /** The page's fixed words, each placed where an element's data-text names it. */
 export type PageText =
   | 'intro'
@@ -296,7 +326,7 @@ const NO_BREAK = ' ';
 
 const ENGLISH: Texts = {
   page: {
-    intro: 'Play a game against a bot that imitates Camille.',
+    intro: 'Play a game against the Cam-bot.',
     language: 'Language',
     close: 'Close',
     gameSettings: 'Game settings',
@@ -430,6 +460,24 @@ const ENGLISH: Texts = {
     scope: (engine, depth, camilleGames) =>
       `The games visitors finished on this site without analysis mode, measured by ${engine} at depth ${depth}, ` +
       `in positions still open. Camille: his ${camilleGames} games.`,
+  },
+  updates: {
+    title: 'Monthly updates',
+    summary: (games, updates) => `${english(games, 'game', 'games')} added over ${english(updates, 'update', 'updates')}`,
+    day: (day) => day.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }),
+    shortDay: (day) => day.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit', timeZone: 'UTC' }),
+    axis: 'Games',
+    openYear: 'See the last 12 months',
+    yearTitle: 'Updates over the last 12 months',
+    shortMonth: (month) => month.toLocaleDateString('en-GB', { month: 'short', year: '2-digit', timeZone: 'UTC' }),
+    month: (month) => month.toLocaleDateString('en-GB', { month: 'long', year: 'numeric', timeZone: 'UTC' }),
+    monthReading: (month, games) => `${month}: ${english(games, 'game', 'games')} added`,
+    dayHeader: 'Update',
+    gamesHeader: 'Games',
+    bar: (day, games) => `${day}: ${english(games, 'game', 'games')} added`,
+    scope:
+      "Each month, Camille's new games join those his Opening Book and his figures are built from. " +
+      'The model itself is not trained again.',
   },
   report: {
     guessed: (games) => `of Camille's moves are the ones the Bot plays in his place, on ${games} of his games it never saw.`,
@@ -575,7 +623,7 @@ function englishTimes(count: number): string {
 
 const FRENCH: Texts = {
   page: {
-    intro: 'Jouez une partie contre un bot qui imite Camille.',
+    intro: 'Jouez une partie contre le Cam-bot.',
     language: 'Langue',
     close: 'Fermer',
     gameSettings: 'Réglages de la partie',
@@ -709,6 +757,25 @@ const FRENCH: Texts = {
     scope: (engine, depth, camilleGames) =>
       `Les parties que les visiteurs ont terminées sur ce site sans le mode analyse, mesurées par ${engine} ` +
       `à la profondeur ${depth}, dans les positions encore ouvertes. Camille${NO_BREAK}: ses ${camilleGames} parties.`,
+  },
+  updates: {
+    title: 'Mises à jour mensuelles',
+    summary: (games, updates) =>
+      `${french(games, 'partie ajoutée', 'parties ajoutées')} en ${french(updates, 'mise à jour', 'mises à jour')}`,
+    day: (day) => day.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }),
+    shortDay: (day) => day.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: '2-digit', timeZone: 'UTC' }),
+    axis: 'Parties',
+    openYear: 'Voir les 12 derniers mois',
+    yearTitle: 'Mises à jour des 12 derniers mois',
+    shortMonth: (month) => month.toLocaleDateString('fr-FR', { month: 'short', year: '2-digit', timeZone: 'UTC' }),
+    month: (month) => month.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'UTC' }),
+    monthReading: (month, games) => `${month}${NO_BREAK}: ${french(games, 'partie ajoutée', 'parties ajoutées')}`,
+    dayHeader: 'Mise à jour',
+    gamesHeader: 'Parties',
+    bar: (day, games) => `${day}${NO_BREAK}: ${french(games, 'partie ajoutée', 'parties ajoutées')}`,
+    scope:
+      'Chaque mois, les nouvelles parties de Camille rejoignent celles dont sont tirés son livre ' +
+      'd’ouvertures et ses statistiques. Le modèle lui-même n’est pas réentraîné.',
   },
   report: {
     guessed: (games) =>

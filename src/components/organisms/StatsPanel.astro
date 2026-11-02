@@ -1,7 +1,8 @@
 ---
 // The stats of both players, a tab each, so that one set of figures is in
 // view at a time: Camille's record over the games the Bot is built from,
-// built into JSON by pipeline/build_player_record.py, and the Bot's over the
+// built into JSON by pipeline/build_player_record.py, with how many games each
+// monthly update added under it (monthly-updates-view.ts), and the Bot's over the
 // games visitors finished on the site, read from the Session Game service
 // when its tab is first opened and again once a game on the page ends. Both
 // are laid out by record-view.ts. Under the Bot's live record, its tab shows
@@ -64,10 +65,24 @@ const tabs = [
   </div>
 </AdaptiveDialog>
 
+<!-- The monthly updates over the last twelve months, opened from the chart
+     in Camille's tab. Its title and body are written by the script below. -->
+<dialog class="updates-dialog" data-updates-dialog>
+  <div class="updates-head">
+    <h2 data-updates-title></h2>
+    <button type="button" class="updates-close" data-updates-close aria-label={english.close} data-text-label="close">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+    </button>
+  </div>
+  <div data-updates-body></div>
+</dialog>
+
 <script>
   import { adaptiveDialog } from '../adaptive-dialog';
   import { recordView, type ExtraFigure } from '../record-view';
   import { playedGamesView } from '../played-games-view';
+  import { monthlyUpdatesView, yearView } from '../monthly-updates-view';
+  import { SHIPPED_MONTHLY_UPDATES } from '../../record/shipped-monthly-updates';
   import { LANGUAGE_CHANGED, pageLanguage, pageTexts } from '../../i18n/page-language';
   import { readBotRecord, type PlayerRecord } from '../../record/player-record';
   import builtRecord from '../../record/player-record.json';
@@ -93,6 +108,25 @@ const tabs = [
   const playedGames = playedGamesFile as PlayedGamesRecord;
   const tabs = [...document.querySelectorAll<HTMLButtonElement>('[data-stats-tab]')];
   const camillePanel = document.querySelector<HTMLElement>('[data-stats-panel="camille"]')!;
+  // The view of the year, opened from the chart in Camille's tab.
+  const updatesDialog = document.querySelector<HTMLDialogElement>('[data-updates-dialog]')!;
+  updatesDialog.querySelector('[data-updates-close]')!.addEventListener('click', () => {
+    updatesDialog.close();
+  });
+  // A click on the backdrop closes it too. The backdrop's clicks reach the
+  // dialog itself, as do those on its padding, so the box tells them apart.
+  updatesDialog.addEventListener('click', (event) => {
+    if (event.target !== updatesDialog) {
+      return;
+    }
+    const box = updatesDialog.getBoundingClientRect();
+    const isInside =
+      event.clientX >= box.left && event.clientX <= box.right && event.clientY >= box.top && event.clientY <= box.bottom;
+    if (!isInside) {
+      updatesDialog.close();
+    }
+  });
+
   const botPanel = document.querySelector<HTMLElement>('[data-stats-panel="bot"]')!;
   // The Bot's tab in two parts: the record the service answers, read again
   // as games end, and the games as Stockfish measured them, shipped with
@@ -165,9 +199,29 @@ const tabs = [
     }
   }
 
+  function openYear(): void {
+    // Opened first, so the body has the width the chart is drawn at.
+    updatesDialog.showModal();
+    showYear();
+  }
+
+  /** Writes the open view of the year in the page's language, its chart at the body's width. */
+  function showYear(): void {
+    const texts = pageTexts();
+    const title = updatesDialog.querySelector<HTMLElement>('[data-updates-title]')!;
+    title.textContent = texts.updates.yearTitle;
+    updatesDialog.setAttribute('aria-label', texts.updates.yearTitle);
+    const body = updatesDialog.querySelector<HTMLElement>('[data-updates-body]')!;
+    body.replaceChildren(yearView(SHIPPED_MONTHLY_UPDATES, texts, body.clientWidth));
+  }
+
   function showCamille(): void {
     const texts = pageTexts();
-    camillePanel.replaceChildren(recordView(camilleRecord, texts, [], texts.page.recordScope, CAMILLE_OPENINGS_SHOWN));
+    const record = recordView(camilleRecord, texts, [], texts.page.recordScope, CAMILLE_OPENINGS_SHOWN);
+    camillePanel.replaceChildren(record, monthlyUpdatesView(SHIPPED_MONTHLY_UPDATES, texts, openYear));
+    if (updatesDialog.open) {
+      showYear();
+    }
   }
 
   function showMeasured(): void {
@@ -451,6 +505,170 @@ const tabs = [
   .tab-panel :global(.openings td + td),
   .tab-panel :global(.openings th + th) {
     padding-left: 8px;
+  }
+
+  /* The monthly updates under Camille's record, set off by a rule. */
+  .tab-panel :global(.monthly-updates) {
+    margin-top: 8px;
+    padding-top: 16px;
+    border-top: var(--line);
+  }
+
+  /* The updates' charts, in the tab and in the view of the year, drawn like
+     the page's other charts: recessive grid and axis labels, the columns in
+     the accent colour, their counts in ink. */
+  :global(.column-chart) {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  :global(.column-chart .gridline) {
+    stroke: var(--ink-faint);
+    stroke-width: 1;
+  }
+
+  :global(.column-chart .axis-label) {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    fill: var(--ink-soft);
+  }
+
+  :global(.column-chart .column) {
+    fill: var(--accent);
+  }
+
+  :global(.column-chart .cap-label) {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    fill: var(--ink);
+  }
+
+  /* The small chart opens the year on a click, like the button under it. */
+  .tab-panel :global(.opens-year) {
+    cursor: pointer;
+  }
+
+  .tab-panel :global(.open-year) {
+    justify-self: start;
+    padding: 6px 10px;
+    border: var(--line);
+    background: var(--paper-light);
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+
+  .tab-panel :global(.open-year:hover),
+  .tab-panel :global(.open-year:focus-visible) {
+    outline: none;
+    background: var(--accent);
+  }
+
+  /* The view of the year: a modal over the page, bordered in ink, no wider
+     than a phone's screen leaves room for. */
+  .updates-dialog {
+    width: min(560px, calc(100vw - 32px));
+    max-height: calc(100dvh - 32px);
+    padding: 18px 20px 24px;
+    overflow-y: auto;
+    border: var(--line);
+    background: var(--paper-light);
+    color: var(--ink);
+  }
+
+  .updates-dialog::backdrop {
+    background: color-mix(in srgb, var(--paper) 86%, transparent);
+  }
+
+  .updates-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .updates-head h2 {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .updates-close {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: var(--line);
+    background: var(--paper);
+    color: var(--ink);
+    cursor: pointer;
+  }
+
+  .updates-close svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+  }
+
+  .updates-close:hover,
+  .updates-close:focus-visible {
+    outline: none;
+    background: var(--accent);
+  }
+
+  .updates-dialog :global(.year-view) {
+    display: grid;
+    gap: 16px;
+  }
+
+  .updates-dialog :global(.group-summary) {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--ink-soft);
+  }
+
+  .updates-dialog :global(.year-table) {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .updates-dialog :global(.year-table th) {
+    padding: 0 0 4px;
+    border-bottom: var(--line);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 400;
+    text-align: right;
+    color: var(--ink-soft);
+  }
+
+  .updates-dialog :global(.year-table td) {
+    padding: 6px 0;
+    border-bottom: 1px solid var(--ink-faint);
+    font-family: var(--font-mono);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .updates-dialog :global(.year-table th:first-child),
+  .updates-dialog :global(.year-table td:first-child) {
+    font-family: var(--font-body);
+    text-align: left;
   }
 
   /* The Bot's tab in two parts, each under a heading in ink, the measured
