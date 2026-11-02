@@ -31,6 +31,7 @@ Each stage is a job that runs only when the one before it succeeded.
 | 4. Deploy | `deploy.yml`, called with the published commit: both images built and deployed by the VPS's deploy script, which restores the previous image of a container that fails its health check. | A container that does not start. |
 | 5. Production | `pipeline/check_production.py` against the production address, each check retried for five minutes. | A site that deployed but does not work: the page, the published model and book, the Session Games service, and the Bot answering three moves in a real browser. |
 | 6. Rollback | After a failure at stage 4 or 5: the previous commit's images deployed again, the publication reverted on master, the release marked as not deployed, and an issue opened naming the failed stage, with a link to its log. | A bad version staying live, and master saying something other than what the site serves. |
+| Failure report | After any other failure: in stages 1 to 3, in saving the caches, or in the rollback itself. Opens an issue listing the failed jobs, saying whether the refresh was published, with a link to the run (`scripts/monthly-refresh/report-failure.sh`). | A failed run noticed only when someone opens the Actions tab. |
 
 **The regression gate.** The served Bot (the served model at its temperature
 and opening cut, with the served book) and the same Bot with the new book

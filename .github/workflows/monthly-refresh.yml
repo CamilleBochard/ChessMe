@@ -12,6 +12,7 @@
 #   5. production   the checks against production, with retries
 #   6. rollback     after a failure once published: the previous images,
 #                   master reverted, the release marked, an issue opened
+# Any other failure opens an issue too, so no failed run goes unnoticed.
 # The Stockfish caches and the served model's records persist between runs
 # as assets of the pipeline-state release, saved again only after a run
 # that deployed.
@@ -408,3 +409,30 @@ jobs:
           ROLLBACK_DEPLOY_RESULT: ${{ needs.rollback-deploy.result }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: scripts/monthly-refresh/rollback.sh
+
+  # Every other failure: in stages 1 to 3, in saving the caches, or in the
+  # rollback itself. A rollback that ran opened its own issue already.
+  report-failure:
+    name: Open an issue for a failure the rollback did not report
+    needs: [refresh, checks, publish, deploy, production, save-state, rollback-deploy, rollback-record]
+    if: ${{ always() && contains(needs.*.result, 'failure') && needs.rollback-record.result != 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    # Reads the run's jobs, opens the issue.
+    permissions:
+      contents: read
+      actions: read
+      issues: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Open the issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PUBLISH_RESULT: ${{ needs.publish.result }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: scripts/monthly-refresh/report-failure.sh
