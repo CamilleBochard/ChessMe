@@ -17,7 +17,7 @@ fi
 if [ "$PUBLISH_RESULT" = "success" ]; then
   state="The refresh was published: master and the latest bot-data release hold it, and no rollback reported this failure. Check what production serves before anything else (docs/monthly-refresh.md, Rolling back by hand)."
 else
-  state="Nothing was published: master, the bot-data releases and the site are as they were before the run."
+  state="Master and the site are as they were before the run. If 3. Publish failed after creating its bot-data release, that release stays unserved, and the next refresh is numbered after it."
 fi
 
 body="The monthly refresh failed.
