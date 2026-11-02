@@ -7,12 +7,12 @@ function summary(day: string, games: number) {
 }
 
 describe('the monthly updates', () => {
-  it('lists each update with the games it added, newest first', () => {
-    const updates = monthlyUpdates([summary('2026-10-27', 114), summary('2026-11-02', 20)]);
+  it('lists each update with the games it added, oldest first', () => {
+    const updates = monthlyUpdates([summary('2026-11-02', 20), summary('2026-10-27', 114)]);
 
     expect(updates.updates.map((update) => [update.day, update.games])).toEqual([
-      ['2026-11-02', 20],
       ['2026-10-27', 114],
+      ['2026-11-02', 20],
     ]);
   });
 
@@ -31,6 +31,6 @@ describe('the monthly updates', () => {
   it('sizes each update against the one that added the most games', () => {
     const updates = monthlyUpdates([summary('2026-10-27', 100), summary('2026-11-02', 25)]);
 
-    expect(updates.updates.map((update) => update.shareOfLargest)).toEqual([0.25, 1]);
+    expect(updates.updates.map((update) => update.shareOfLargest)).toEqual([1, 0.25]);
   });
 });

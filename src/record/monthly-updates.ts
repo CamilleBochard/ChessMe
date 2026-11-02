@@ -19,7 +19,7 @@ export interface MonthlyUpdate {
 }
 
 export interface MonthlyUpdates {
-  /** Newest first. */
+  /** Oldest first. */
   updates: MonthlyUpdate[];
   /** The games every update added, together. */
   totalGames: number;
@@ -36,7 +36,8 @@ export function monthlyUpdates(summaries: RefreshSummary[]): MonthlyUpdates {
     }
     updates.push({ day: summary.day, games, shareOfLargest: 0 });
   }
-  updates.sort((first, second) => second.day.localeCompare(first.day));
+  // Oldest first: the chart reads left to right along time.
+  updates.sort((first, second) => first.day.localeCompare(second.day));
 
   let totalGames = 0;
   let largest = 0;

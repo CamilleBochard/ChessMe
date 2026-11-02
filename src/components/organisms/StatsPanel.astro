@@ -464,55 +464,34 @@ const tabs = [
     border-top: var(--line);
   }
 
-  /* A bar per update in the accent colour, its length the share of the
-     largest update, the count at its tip in ink. The track keeps room for
-     the count, so the longest bar's figure still fits beside it. */
-  .tab-panel :global(.update-bars) {
-    display: grid;
-    gap: 6px;
-    margin: 0;
-    padding: 0;
-    list-style: none;
+  /* The updates' chart, drawn like the page's other charts: recessive grid
+     and axis labels, the columns in the accent colour, their counts in ink. */
+  .tab-panel :global(.updates-chart) {
+    display: block;
+    width: 100%;
+    height: auto;
   }
 
-  .tab-panel :global(.update-bars li) {
-    position: relative;
-    display: grid;
-    grid-template-columns: 8.5em minmax(0, 1fr);
-    align-items: center;
-    gap: 8px;
-    font-size: 12px;
+  .tab-panel :global(.updates-chart .gridline) {
+    stroke: var(--ink-faint);
+    stroke-width: 1;
   }
 
-  /* The sentence a screen reader reads for the bar: out of sight and out
-     of the row's grid. */
-  .tab-panel :global(.update-bars .visually-hidden) {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-  }
-
-  .tab-panel :global(.update-track) {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .tab-panel :global(.update-bar) {
-    flex: 0 0 calc(var(--share) * (100% - 3.5em));
-    min-width: 2px;
-    height: 12px;
-    background: var(--accent);
-  }
-
-  .tab-panel :global(.update-games) {
+  .tab-panel :global(.updates-chart .axis-label) {
     font-family: var(--font-mono);
+    font-size: 9px;
+    fill: var(--ink-soft);
+  }
+
+  .tab-panel :global(.updates-chart .column) {
+    fill: var(--accent);
+  }
+
+  .tab-panel :global(.updates-chart .cap-label) {
+    font-family: var(--font-mono);
+    font-size: 10px;
     font-weight: 700;
-    font-variant-numeric: tabular-nums;
-    color: var(--ink);
+    fill: var(--ink);
   }
 
   /* The Bot's tab in two parts, each under a heading in ink, the measured

@@ -183,7 +183,11 @@ export interface UpdatesTexts {
   summary(games: number, updates: number): string;
   /** The day an update ran, as the language writes a date. */
   day(day: Date): string;
-  /** One bar read out whole, for a screen reader and the hover tip. */
+  /** The day short enough to stand under a column. */
+  shortDay(day: Date): string;
+  /** What the value axis counts, written at its top. */
+  axis: string;
+  /** One column read out whole, for a screen reader and the hover tip. */
   bar(day: string, games: number): string;
   /** What an update changes, and what it leaves as it is. */
   scope: string;
@@ -449,6 +453,8 @@ const ENGLISH: Texts = {
     title: 'Monthly updates',
     summary: (games, updates) => `${english(games, 'game', 'games')} added over ${english(updates, 'update', 'updates')}`,
     day: (day) => day.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }),
+    shortDay: (day) => day.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit', timeZone: 'UTC' }),
+    axis: 'Games',
     bar: (day, games) => `${day}: ${english(games, 'game', 'games')} added`,
     scope:
       "Each month, Camille's new games join those his Opening Book and his figures are built from. " +
@@ -738,6 +744,8 @@ const FRENCH: Texts = {
     summary: (games, updates) =>
       `${french(games, 'partie ajoutée', 'parties ajoutées')} en ${french(updates, 'mise à jour', 'mises à jour')}`,
     day: (day) => day.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }),
+    shortDay: (day) => day.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: '2-digit', timeZone: 'UTC' }),
+    axis: 'Parties',
     bar: (day, games) => `${day}${NO_BREAK}: ${french(games, 'partie ajoutée', 'parties ajoutées')}`,
     scope:
       'Chaque mois, les nouvelles parties de Camille rejoignent celles dont sont tirés son livre ' +
