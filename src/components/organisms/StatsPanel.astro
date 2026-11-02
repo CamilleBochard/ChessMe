@@ -18,6 +18,15 @@ import { TEXTS } from '../../i18n/texts';
 
 const english = TEXTS.en.page;
 
+// The monthly updates' chart is drawn from the refreshes' summaries, bundled
+// into the page's script. A build that finds none is missing the folder, as
+// an image built without docs/refreshes would be: checked here, while the
+// site is built, it stops the build rather than ship a chart of nothing.
+const refreshSummaries = import.meta.glob('../../../docs/refreshes/*.json');
+if (Object.keys(refreshSummaries).length === 0) {
+  throw new Error('No refresh summary in docs/refreshes: the monthly updates cannot be shown.');
+}
+
 const tabs = [
   { name: 'camille', textKey: 'camilleTab' },
   { name: 'bot', textKey: 'botTab' },
