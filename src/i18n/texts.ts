@@ -310,7 +310,7 @@ const NO_BREAK = ' ';
 
 const ENGLISH: Texts = {
   page: {
-    intro: 'Play a game against a bot that imitates Camille.',
+    intro: 'Play a game against the Cam-bot.',
     language: 'Language',
     close: 'Close',
     gameSettings: 'Game settings',
@@ -598,7 +598,7 @@ function englishTimes(count: number): string {
 
 const FRENCH: Texts = {
   page: {
-    intro: 'Jouez une partie contre un bot qui imite Camille.',
+    intro: 'Jouez une partie contre le Cam-bot.',
     language: 'Langue',
     close: 'Fermer',
     gameSettings: 'Réglages de la partie',
