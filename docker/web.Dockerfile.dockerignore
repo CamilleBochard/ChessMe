@@ -10,6 +10,7 @@
 !models/onnx/maia3-5m-fine-tuned.onnx
 !data/dataset/opening-book.json
 !docs/experiments/results/
+!docs/refreshes/
 !src/
 !public/fonts/
 !public/pieces/

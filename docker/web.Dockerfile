@@ -22,6 +22,8 @@ COPY scripts/stage-model.ts scripts/stage-stockfish.ts ./scripts/
 COPY models/onnx/maia3-5m-fine-tuned.onnx ./models/onnx/
 COPY data/dataset/opening-book.json ./data/dataset/
 COPY docs/experiments/results ./docs/experiments/results
+# The monthly refreshes' summaries, which the stats panel charts.
+COPY docs/refreshes ./docs/refreshes
 COPY src ./src
 # The fonts and the piece sets the site serves as they are. The model and
 # Stockfish are staged into public/ by the build.
