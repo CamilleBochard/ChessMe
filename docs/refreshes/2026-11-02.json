@@ -1,0 +1,155 @@
+{
+ "format_version": 2,
+ "day": "2026-11-02",
+ "new_game_files": [
+  "chesscom-2026-11-02.pgn",
+  "lichess-2026-11-02.pgn"
+ ],
+ "new_games": {
+  "games": 20,
+  "moves": {
+   "opening": 100,
+   "middlegame": 199,
+   "endgame": 330
+  }
+ },
+ "identity_checks": {
+  "Stockfish 19 at depth 18": {
+   "compared": 300,
+   "differences": 0
+  },
+  "Stockfish 19 Lite WASM at depth 14": {
+   "compared": 300,
+   "differences": 0
+  }
+ },
+ "analyses_added": {
+  "Stockfish 19 at depth 18": 562,
+  "Stockfish 19 Lite WASM at depth 14": 566
+ },
+ "model_records_added": 111,
+ "level_break": {
+  "at": null,
+  "previous": null,
+  "is_new": false,
+  "training_games": 918,
+  "searches": [
+   {
+    "first_game": 0,
+    "first_game_at": "2025-06-01T15:18:44",
+    "games": 918,
+    "split": 729,
+    "split_at": "2026-06-24T16:45:50",
+    "level_before": 0.12451993008540327,
+    "level_after": 0.10258180166421794,
+    "difference": 0.021938128421184894,
+    "threshold": 0.0316402848542081,
+    "is_break": false
+   }
+  ]
+ },
+ "opening_book": {
+  "positions_before": 204,
+  "positions_after": 205,
+  "added": 2,
+  "dropped": 1,
+  "changed": 0
+ },
+ "profiles": {
+  "blunder_profile": {
+   "opening mean loss, open positions": {
+    "before": 24.88620272837161,
+    "after": 25.103547784756408
+   },
+   "middlegame mean loss, open positions": {
+    "before": 103.13404353867531,
+    "after": 102.6435004093514
+   },
+   "endgame mean loss, open positions": {
+    "before": 125.95802161263508,
+    "after": 125.27306775621382
+   }
+  },
+  "improbability": {
+   "opening share at or below 1%": {
+    "before": 0.04198473282442748,
+    "after": 0.0419047619047619
+   },
+   "opening middle 80% of games, low": {
+    "before": null,
+    "after": null
+   },
+   "opening middle 80% of games, high": {
+    "before": null,
+    "after": null
+   },
+   "middlegame share at or below 1%": {
+    "before": 0.022737022737022737,
+    "after": 0.022968949383241174
+   },
+   "middlegame middle 80% of games, low": {
+    "before": 0,
+    "after": 0
+   },
+   "middlegame middle 80% of games, high": {
+    "before": 0.1,
+    "after": 0.1
+   },
+   "endgame share at or below 1%": {
+    "before": 0.030325443786982247,
+    "after": 0.02973168963016679
+   },
+   "endgame middle 80% of games, low": {
+    "before": 0,
+    "after": 0
+   },
+   "endgame middle 80% of games, high": {
+    "before": 0.09090909090909091,
+    "after": 0.09090909090909091
+   }
+  },
+  "loss": {
+   "opening middle 80% of games, low": {
+    "before": null,
+    "after": null
+   },
+   "opening middle 80% of games, high": {
+    "before": null,
+    "after": null
+   },
+   "middlegame middle 80% of games, low": {
+    "before": 23.1,
+    "after": 23.1
+   },
+   "middlegame middle 80% of games, high": {
+    "before": 157.6,
+    "after": 156.7
+   },
+   "endgame middle 80% of games, low": {
+    "before": 44.46153846153846,
+    "after": 44.46153846153846
+   },
+   "endgame middle 80% of games, high": {
+    "before": 208.07142857142858,
+    "after": 207.48275862068965
+   }
+  }
+ },
+ "new_games_matching": {
+  "measurement": "2026-11-02.json",
+  "games": 20,
+  "moves": 629,
+  "group": {
+   "measured_on": [
+    "2026-11-02"
+   ],
+   "months": [
+    "2026-10"
+   ],
+   "status": "waiting",
+   "games": 20,
+   "moves": 629,
+   "figures": null
+  }
+ }
+}

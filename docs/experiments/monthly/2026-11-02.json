@@ -1,0 +1,440 @@
+{
+ "format_version": 1,
+ "measured_on": "2026-11-02",
+ "game_files": [
+  "chesscom-2026-11-02.pgn",
+  "lichess-2026-11-02.pgn"
+ ],
+ "served_model": {
+  "file": "maia3-5m-fine-tuned.onnx",
+  "sha256": "ec6359a069fcee8f208ff4a5b2552d41f00b09a5ae2a6e89791d979e32bc54f6",
+  "rating": 1100
+ },
+ "untrained_model": {
+  "file": "maia3-5m.onnx",
+  "sha256": "f9725c961e03e49043d507e2386ee29ceb35c2cf9c1fda19e0987cae0e7ddd06",
+  "rating": 1100
+ },
+ "games": [
+  {
+   "game_id": "chesscom:186279410146",
+   "played_at": "2026-10-31T13:15:19",
+   "by_phase": {
+    "opening": {
+     "moves": 5,
+     "served": 1,
+     "untrained": 1
+    },
+    "middlegame": {
+     "moves": 10,
+     "served": 4,
+     "untrained": 4
+    },
+    "endgame": {
+     "moves": 33,
+     "served": 21,
+     "untrained": 18
+    }
+   }
+  },
+  {
+   "game_id": "lichess:t5ecI95d",
+   "played_at": "2026-10-31T13:47:56",
+   "by_phase": {
+    "opening": {
+     "moves": 5,
+     "served": 3,
+     "untrained": 3
+    },
+    "middlegame": {
+     "moves": 10,
+     "served": 5,
+     "untrained": 6
+    },
+    "endgame": {
+     "moves": 1,
+     "served": 1,
+     "untrained": 1
+    }
+   }
+  },
+  {
+   "game_id": "lichess:VJ0xPTWt",
+   "played_at": "2026-10-31T13:43:04",
+   "by_phase": {
+    "opening": {
+     "moves": 5,
+     "served": 3,
+     "untrained": 3
+    },
+    "middlegame": {
+     "moves": 10,
+     "served": 8,
+     "untrained": 6
+    },
+    "endgame": {
+     "moves": 7,
+     "served": 6,
+     "untrained": 6
+    }
+   }
+  },
+  {
+   "game_id": "lichess:v1fLceMg",
+   "played_at": "2026-10-31T12:54:29",
+   "by_phase": {
+    "opening": {
+     "moves": 5,
+     "served": 4,
+     "untrained": 3
+    },
+    "middlegame": {
+     "moves": 10,
+     "served": 7,
+     "untrained": 6
+    },
+    "endgame": {
+     "moves": 19,
+     "served": 9,
+     "untrained": 11
+    }
+   }
+  },
+  {
+   "game_id": "lichess:KPtxJ6mE",
+   "played_at": "2026-10-31T12:40:13",
+   "by_phase": {
+    "opening": {
+     "moves": 5,
+     "served": 4,
+     "untrained": 3
+    },
+    "middlegame": {
+     "moves": 10,
+     "served": 5,
+     "untrained": 5
+    },
+    "endgame": {
+     "moves": 29,
+     "served": 17,
+     "untrained": 17
+    }
+   }
+  },
+  {
+   "game_id": "lichess:bsbMje9C",
+   "played_at": "2026-10-31T10:20:45",
+   "by_phase": {
+    "opening": {
+     "moves": 5,
+     "served": 5,
+     "untrained": 3
+    },
+    "middlegame": {
+     "moves": 10,
+     "served": 5,
+     "untrained": 4
+    },
+    "endgame": {
+     "moves": 5,
+     "served": 5,
+     "untrained": 5
+    }
+   }
+  },
+  {
+   "game_id": "lichess:fNUwMt0d",
+   "played_at": "2026-10-31T10:03:06",
+   "by_phase": {
+    "opening": {
+     "moves": 5,
+     "served": 4,
+     "untrained": 3
+    },
+    "middlegame": {
+     "moves": 10,
+     "served": 7,
+     "untrained": 6
+    },
+    "endgame": {
+     "moves": 16,
+     "served": 10,
+     "untrained": 8
+    }
+   }
+  },
+  {
+   "game_id": "lichess:rePXQPjr",
+   "played_at": "2026-10-28T11:35:28",
+   "by_phase": {
+    "opening": {
+     "moves": 5,
+     "served": 3,
+     "untrained": 1
+    },
+    "middlegame": {
+     "moves": 10,
+     "served": 6,
+     "untrained": 2
+    },
+    "endgame": {
+     "moves": 22,
+     "served": 14,
+     "untrained": 14
+    }
+   }
+  },
+  {
+   "game_id": "lichess:yMBWBKrn",
+   "played_at": "2026-10-28T11:22:33",
+   "by_phase": {
+    "opening": {
+     "moves": 5,
+     "served": 3,
+     "untrained": 2
+    },
+    "middlegame": {
+     "moves": 10,
+     "served": 3,
+     "untrained": 3
+    },
+    "endgame": {
+     "moves": 4,
+     "served": 1,
+     "untrained": 1
+    }
+   }
+  },
+  {
+   "game_id": "lichess:02MjxhDe",
+   "played_at": "2026-10-28T11:12:51",
+   "by_phase": {
+    "opening": {
+     "moves": 5,
+     "served": 3,
+     "untrained": 1
+    },
+    "middlegame": {
+     "moves": 10,
+     "served": 5,
+     "untrained": 6
+    },
+    "endgame": {
+     "moves": 14,
+     "served": 7,
+     "untrained": 8
+    }
+   }
+  },
+  {
+   "game_id": "lichess:Coocvc0E",
+   "played_at": "2026-10-28T11:07:56",
+   "by_phase": {
+    "opening": {
+     "moves": 5,
+     "served": 0,
+     "untrained": 1
+    },
+    "middlegame": {
+     "moves": 10,
+     "served": 5,
+     "untrained": 5
+    },
+    "endgame": {
+     "moves": 4,
+     "served": 3,
+     "untrained": 3
+    }
+   }
+  },
+  {
+   "game_id": "lichess:VSIWKAEY",
+   "played_at": "2026-10-28T10:57:29",
+   "by_phase": {
+    "opening": {
+     "moves": 5,
+     "served": 5,
+     "untrained": 4
+    },
+    "middlegame": {
+     "moves": 10,
+     "served": 6,
+     "untrained": 5
+    },
+    "endgame": {
+     "moves": 18,
+     "served": 7,
+     "untrained": 6
+    }
+   }
+  },
+  {
+   "game_id": "lichess:jBERQeZd",
+   "played_at": "2026-10-28T10:45:22",
+   "by_phase": {
+    "opening": {
+     "moves": 5,
+     "served": 3,
+     "untrained": 2
+    },
+    "middlegame": {
+     "moves": 10,
+     "served": 3,
+     "untrained": 5
+    },
+    "endgame": {
+     "moves": 10,
+     "served": 7,
+     "untrained": 6
+    }
+   }
+  },
+  {
+   "game_id": "lichess:tOpm7ewu",
+   "played_at": "2026-10-28T10:34:52",
+   "by_phase": {
+    "opening": {
+     "moves": 5,
+     "served": 2,
+     "untrained": 2
+    },
+    "middlegame": {
+     "moves": 10,
+     "served": 3,
+     "untrained": 3
+    },
+    "endgame": {
+     "moves": 37,
+     "served": 17,
+     "untrained": 19
+    }
+   }
+  },
+  {
+   "game_id": "lichess:iInfLsUp",
+   "played_at": "2026-10-28T10:25:04",
+   "by_phase": {
+    "opening": {
+     "moves": 5,
+     "served": 4,
+     "untrained": 4
+    },
+    "middlegame": {
+     "moves": 10,
+     "served": 7,
+     "untrained": 7
+    },
+    "endgame": {
+     "moves": 22,
+     "served": 12,
+     "untrained": 12
+    }
+   }
+  },
+  {
+   "game_id": "lichess:y7Xyn0ei",
+   "played_at": "2026-10-28T10:20:43",
+   "by_phase": {
+    "opening": {
+     "moves": 5,
+     "served": 4,
+     "untrained": 3
+    },
+    "middlegame": {
+     "moves": 10,
+     "served": 6,
+     "untrained": 7
+    },
+    "endgame": {
+     "moves": 2,
+     "served": 1,
+     "untrained": 1
+    }
+   }
+  },
+  {
+   "game_id": "lichess:eilt3a8S",
+   "played_at": "2026-10-28T10:14:53",
+   "by_phase": {
+    "opening": {
+     "moves": 5,
+     "served": 2,
+     "untrained": 1
+    },
+    "middlegame": {
+     "moves": 9,
+     "served": 5,
+     "untrained": 4
+    },
+    "endgame": {
+     "moves": 0,
+     "served": 0,
+     "untrained": 0
+    }
+   }
+  },
+  {
+   "game_id": "lichess:undIlqP5",
+   "played_at": "2026-10-28T10:08:48",
+   "by_phase": {
+    "opening": {
+     "moves": 5,
+     "served": 4,
+     "untrained": 3
+    },
+    "middlegame": {
+     "moves": 10,
+     "served": 5,
+     "untrained": 5
+    },
+    "endgame": {
+     "moves": 6,
+     "served": 2,
+     "untrained": 2
+    }
+   }
+  },
+  {
+   "game_id": "lichess:cm2VnXmn",
+   "played_at": "2026-10-31T13:02:37",
+   "by_phase": {
+    "opening": {
+     "moves": 5,
+     "served": 4,
+     "untrained": 2
+    },
+    "middlegame": {
+     "moves": 10,
+     "served": 6,
+     "untrained": 6
+    },
+    "endgame": {
+     "moves": 45,
+     "served": 32,
+     "untrained": 31
+    }
+   }
+  },
+  {
+   "game_id": "lichess:Pg20CPSW",
+   "played_at": "2026-10-28T11:26:06",
+   "by_phase": {
+    "opening": {
+     "moves": 5,
+     "served": 4,
+     "untrained": 4
+    },
+    "middlegame": {
+     "moves": 10,
+     "served": 5,
+     "untrained": 6
+    },
+    "endgame": {
+     "moves": 36,
+     "served": 23,
+     "untrained": 22
+    }
+   }
+  }
+ ]
+}
