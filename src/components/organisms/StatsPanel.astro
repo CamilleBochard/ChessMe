@@ -1,7 +1,8 @@
 ---
 // The stats of both players, a tab each, so that one set of figures is in
 // view at a time: Camille's record over the games the Bot is built from,
-// built into JSON by pipeline/build_player_record.py, and the Bot's over the
+// built into JSON by pipeline/build_player_record.py, with how many games each
+// monthly update added under it (monthly-updates-view.ts), and the Bot's over the
 // games visitors finished on the site, read from the Session Game service
 // when its tab is first opened and again once a game on the page ends. Both
 // are laid out by record-view.ts. Under the Bot's live record, its tab shows
@@ -68,6 +69,8 @@ const tabs = [
   import { adaptiveDialog } from '../adaptive-dialog';
   import { recordView, type ExtraFigure } from '../record-view';
   import { playedGamesView } from '../played-games-view';
+  import { monthlyUpdatesView } from '../monthly-updates-view';
+  import { SHIPPED_MONTHLY_UPDATES } from '../../record/shipped-monthly-updates';
   import { LANGUAGE_CHANGED, pageLanguage, pageTexts } from '../../i18n/page-language';
   import { readBotRecord, type PlayerRecord } from '../../record/player-record';
   import builtRecord from '../../record/player-record.json';
@@ -167,7 +170,8 @@ const tabs = [
 
   function showCamille(): void {
     const texts = pageTexts();
-    camillePanel.replaceChildren(recordView(camilleRecord, texts, [], texts.page.recordScope, CAMILLE_OPENINGS_SHOWN));
+    const record = recordView(camilleRecord, texts, [], texts.page.recordScope, CAMILLE_OPENINGS_SHOWN);
+    camillePanel.replaceChildren(record, monthlyUpdatesView(SHIPPED_MONTHLY_UPDATES, texts));
   }
 
   function showMeasured(): void {
@@ -397,7 +401,8 @@ const tabs = [
     gap: 8px;
   }
 
-  .tab-panel :global(.openings) {
+  .tab-panel :global(.openings),
+  .tab-panel :global(.updates-table) {
     width: 100%;
     border-collapse: collapse;
     table-layout: fixed;
@@ -407,6 +412,11 @@ const tabs = [
   .tab-panel :global(.openings th:nth-child(2)),
   .tab-panel :global(.openings th:nth-child(3)) {
     width: 4.5em;
+  }
+
+  /* Wide enough for the French header, "Parties", in one line. */
+  .tab-panel :global(.updates-table th:nth-child(2)) {
+    width: 6em;
   }
 
   .tab-panel :global(.openings caption) {
@@ -423,7 +433,8 @@ const tabs = [
     color: var(--ink);
   }
 
-  .tab-panel :global(.openings th) {
+  .tab-panel :global(.openings th),
+  .tab-panel :global(.updates-table th) {
     padding: 0 0 4px;
     border-bottom: var(--line);
     font-family: var(--font-mono);
@@ -433,7 +444,8 @@ const tabs = [
     color: var(--ink-soft);
   }
 
-  .tab-panel :global(.openings td) {
+  .tab-panel :global(.openings td),
+  .tab-panel :global(.updates-table td) {
     padding: 4px 0;
     border-bottom: 1px solid var(--ink-faint);
     font-family: var(--font-mono);
@@ -442,15 +454,26 @@ const tabs = [
   }
 
   .tab-panel :global(.openings th:first-child),
-  .tab-panel :global(.openings td:first-child) {
+  .tab-panel :global(.openings td:first-child),
+  .tab-panel :global(.updates-table th:first-child),
+  .tab-panel :global(.updates-table td:first-child) {
     padding-right: 8px;
     font-family: var(--font-body);
     text-align: left;
   }
 
   .tab-panel :global(.openings td + td),
-  .tab-panel :global(.openings th + th) {
+  .tab-panel :global(.openings th + th),
+  .tab-panel :global(.updates-table td + td),
+  .tab-panel :global(.updates-table th + th) {
     padding-left: 8px;
+  }
+
+  /* The monthly updates under Camille's record, set off by a rule. */
+  .tab-panel :global(.monthly-updates) {
+    margin-top: 8px;
+    padding-top: 16px;
+    border-top: var(--line);
   }
 
   /* The Bot's tab in two parts, each under a heading in ink, the measured

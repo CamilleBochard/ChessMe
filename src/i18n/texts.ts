@@ -43,6 +43,7 @@ export interface Texts {
   panel: PanelTexts;
   report: ReportTexts;
   played: PlayedTexts;
+  updates: UpdatesTexts;
   /** A share as a percentage with the given number of decimals, as the language writes it. */
   percent(share: number, decimals: number): string;
   /** A number with the given number of decimals, as the language writes it. */
@@ -173,6 +174,19 @@ export interface PlayedTexts {
   margin: string;
   /** Which games are counted and how they were measured. */
   scope(engine: string, depth: number, camilleGames: number): string;
+}
+
+/** The words of the monthly updates, under Camille's record. */
+export interface UpdatesTexts {
+  title: string;
+  /** How many games every update added, and over how many updates. */
+  summary(games: number, updates: number): string;
+  dayHeader: string;
+  gamesHeader: string;
+  /** The day an update ran, as the language writes a date. */
+  day(day: Date): string;
+  /** What an update changes, and what it leaves as it is. */
+  scope: string;
 }
 
 /** The page's fixed words, each placed where an element's data-text names it. */
@@ -430,6 +444,16 @@ const ENGLISH: Texts = {
     scope: (engine, depth, camilleGames) =>
       `The games visitors finished on this site without analysis mode, measured by ${engine} at depth ${depth}, ` +
       `in positions still open. Camille: his ${camilleGames} games.`,
+  },
+  updates: {
+    title: 'Monthly updates',
+    summary: (games, updates) => `${english(games, 'game', 'games')} added over ${english(updates, 'update', 'updates')}`,
+    dayHeader: 'Update',
+    gamesHeader: 'Games',
+    day: (day) => day.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }),
+    scope:
+      "Each month, Camille's new games join those his Opening Book and his figures are built from. " +
+      'The model itself is not trained again.',
   },
   report: {
     guessed: (games) => `of Camille's moves are the ones the Bot plays in his place, on ${games} of his games it never saw.`,
@@ -709,6 +733,17 @@ const FRENCH: Texts = {
     scope: (engine, depth, camilleGames) =>
       `Les parties que les visiteurs ont terminées sur ce site sans le mode analyse, mesurées par ${engine} ` +
       `à la profondeur ${depth}, dans les positions encore ouvertes. Camille${NO_BREAK}: ses ${camilleGames} parties.`,
+  },
+  updates: {
+    title: 'Mises à jour mensuelles',
+    summary: (games, updates) =>
+      `${french(games, 'partie ajoutée', 'parties ajoutées')} en ${french(updates, 'mise à jour', 'mises à jour')}`,
+    dayHeader: 'Mise à jour',
+    gamesHeader: 'Parties',
+    day: (day) => day.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }),
+    scope:
+      'Chaque mois, les nouvelles parties de Camille rejoignent celles dont sont tirés son livre ' +
+      'd’ouvertures et ses statistiques. Le modèle lui-même n’est pas réentraîné.',
   },
   report: {
     guessed: (games) =>
