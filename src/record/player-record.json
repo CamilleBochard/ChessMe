@@ -1,25 +1,25 @@
 {
- "games": 1046,
+ "games": 1180,
  "results": {
-  "wins": 484,
-  "draws": 36,
-  "losses": 526
+  "wins": 549,
+  "draws": 38,
+  "losses": 593
  },
  "white": {
-  "games": 525,
+  "games": 592,
   "results": {
-   "wins": 259,
-   "draws": 19,
-   "losses": 247
+   "wins": 293,
+   "draws": 21,
+   "losses": 278
   },
   "openings": [
    {
     "name": "Scotch Game",
-    "games": 121,
+    "games": 149,
     "results": {
-     "wins": 65,
+     "wins": 83,
      "draws": 4,
-     "losses": 52
+     "losses": 62
     }
    },
    {
@@ -33,84 +33,84 @@
    },
    {
     "name": "Scandinavian Defense",
-    "games": 49,
+    "games": 54,
     "results": {
-     "wins": 20,
+     "wins": 23,
      "draws": 0,
-     "losses": 29
-    }
-   },
-   {
-    "name": "French Defense",
-    "games": 31,
-    "results": {
-     "wins": 16,
-     "draws": 1,
-     "losses": 14
+     "losses": 31
     }
    },
    {
     "name": "Philidor Defense",
-    "games": 29,
+    "games": 36,
     "results": {
-     "wins": 20,
+     "wins": 21,
+     "draws": 3,
+     "losses": 12
+    }
+   },
+   {
+    "name": "French Defense",
+    "games": 34,
+    "results": {
+     "wins": 16,
      "draws": 1,
-     "losses": 8
+     "losses": 17
     }
    }
   ]
  },
  "black": {
-  "games": 521,
+  "games": 588,
   "results": {
-   "wins": 225,
+   "wins": 256,
    "draws": 17,
-   "losses": 279
+   "losses": 315
   },
   "openings": [
    {
     "name": "Sicilian Defense",
-    "games": 142,
+    "games": 165,
     "results": {
-     "wins": 58,
+     "wins": 67,
      "draws": 4,
-     "losses": 80
+     "losses": 94
     }
    },
    {
     "name": "Scandinavian Defense",
-    "games": 109,
+    "games": 113,
     "results": {
-     "wins": 39,
+     "wins": 40,
      "draws": 6,
-     "losses": 64
+     "losses": 67
     }
    },
    {
     "name": "Caro-Kann Defense",
-    "games": 88,
+    "games": 109,
     "results": {
-     "wins": 41,
+     "wins": 50,
      "draws": 4,
-     "losses": 43
+     "losses": 55
     }
    },
    {
     "name": "Queen's Pawn Game",
-    "games": 55,
+    "games": 56,
     "results": {
-     "wins": 25,
+     "wins": 26,
      "draws": 1,
      "losses": 29
     }
    },
    {
     "name": "Benoni Defense",
-    "games": 33,
+    "games": 39,
     "results": {
-     "wins": 15,
+     "wins": 20,
      "draws": 1,
-     "losses": 17
+     "losses": 18
     }
    }
   ]
