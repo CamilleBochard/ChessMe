@@ -50,3 +50,54 @@ export function monthlyUpdates(summaries: RefreshSummary[]): MonthlyUpdates {
   }
   return { updates, totalGames };
 }
+
+/** How many months the detailed view of the updates covers. */
+const MONTHS_SHOWN = 12;
+
+export interface MonthOfUpdates {
+  /** The month, as YYYY-MM. */
+  month: string;
+  /** The games its updates added; 0 when none ran or none found a new game. */
+  games: number;
+}
+
+export interface TwelveMonths {
+  /** Oldest first, ending with the month of the newest update. */
+  months: MonthOfUpdates[];
+  /** The updates that ran in those months, newest first. */
+  updates: MonthlyUpdate[];
+}
+
+/**
+ * The twelve months up to the newest update, each with the games its updates
+ * added. They end at the newest update rather than today, so the site built
+ * from the same summaries always shows the same months.
+ */
+export function lastTwelveMonths(record: MonthlyUpdates): TwelveMonths {
+  if (record.updates.length === 0) {
+    return { months: [], updates: [] };
+  }
+  const newest = record.updates[record.updates.length - 1];
+  const [newestYear, newestMonth] = newest.day.split('-').map(Number);
+
+  const months: MonthOfUpdates[] = [];
+  for (let back = MONTHS_SHOWN - 1; back >= 0; back--) {
+    // Counted in months since year 0, so stepping back crosses years.
+    const monthsSinceYearZero = newestYear * 12 + (newestMonth - 1) - back;
+    const year = Math.floor(monthsSinceYearZero / 12);
+    const month = (monthsSinceYearZero % 12) + 1;
+    months.push({ month: `${year}-${String(month).padStart(2, '0')}`, games: 0 });
+  }
+
+  const updates: MonthlyUpdate[] = [];
+  for (const update of record.updates) {
+    const month = update.day.slice(0, 7);
+    const shown = months.find((candidate) => candidate.month === month);
+    if (shown === undefined) {
+      continue;
+    }
+    shown.games += update.games;
+    updates.unshift(update);
+  }
+  return { months, updates };
+}
