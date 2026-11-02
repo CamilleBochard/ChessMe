@@ -18,7 +18,8 @@ In order:
 3. The served model and the untrained Maia-3 5M are measured on the new
    games, before anything is trained or built on them
    (pipeline/new_games_matching.py), into docs/experiments/monthly/. Then
-   the dataset is rebuilt from every export.
+   the dataset is rebuilt from every export, and Camille's record on the
+   game page with it (pipeline/build_player_record.py).
 4. The Level Break is looked for again (pipeline/level_break.py), then the
    Opening Book is rebuilt from every training game, and the Blunder
    Profile, at the pipeline's depth and at the browser's, from the games
@@ -46,7 +47,7 @@ from pathlib import Path
 from typing import Callable
 
 from pipeline import build_dataset as dataset_build
-from pipeline import build_opening_book
+from pipeline import build_opening_book, build_player_record
 from pipeline.dated_files import dated_files_in_order, new_dated_file
 from pipeline.dataset import FIRST_DAY_KEPT, Dataset, build_dataset, read_dataset
 from pipeline.extract_blunder_profile import REPOSITORY_ROOT, ProgressPrinter, extract, running_stockfish
@@ -82,6 +83,8 @@ class RefreshPaths:
     summaries_dir: Path
     site_dir: Path
     monthly_dir: Path
+    openings_dir: Path
+    player_record: Path
     served_model: Path
     untrained_model: Path
 
@@ -96,6 +99,8 @@ class RefreshPaths:
             summaries_dir=root / "docs" / "refreshes",
             site_dir=root / "src" / "explanation",
             monthly_dir=root / "docs" / "experiments" / "monthly",
+            openings_dir=root / "data" / "openings",
+            player_record=root / "src" / "record" / "player-record.json",
             served_model=root / served_model_file,
             untrained_model=root / UNTRAINED_MODEL,
         )
@@ -203,6 +208,7 @@ def refresh(
     paths.dataset_dir.mkdir(parents=True, exist_ok=True)
     paths.analysis_dir.mkdir(parents=True, exist_ok=True)
     dataset_build.build(paths.raw_dir, paths.dataset_dir, dataset_build.TEST_FRACTION)
+    build_player_record.build(paths.raw_dir, paths.openings_dir, paths.player_record)
 
     level_break = measure_level_break(
         paths.raw_dir, FIRST_DAY_KEPT, tools.deep.analysers, tools.deep.cache_path, tools.report_progress

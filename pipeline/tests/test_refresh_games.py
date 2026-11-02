@@ -104,6 +104,7 @@ def tools_with(deep: FakeAnalyser, browser: FakeAnalyser, paths: RefreshPaths) -
 
 def built_files(paths: RefreshPaths) -> dict[str, bytes]:
     every_file = list(paths.raw_dir.iterdir()) + list(paths.dataset_dir.rglob("*.json*")) + list(paths.analysis_dir.iterdir())
+    every_file.append(paths.player_record)
     return {str(path): path.read_bytes() for path in every_file if path.is_file()}
 
 
@@ -253,3 +254,16 @@ def test_skips_the_measure_with_a_message_when_the_refresh_brings_no_new_game(tm
     assert summary["new_games_matching"] == {"skipped": "no new game"}
     assert "no new game" in capsys.readouterr().out
     assert not paths.monthly_dir.exists()
+
+
+def test_rebuilds_camilles_record_from_every_export_the_new_games_included(tmp_path):
+    paths = repository_under(tmp_path)
+    tools = tools_with(FakeAnalyser("Fake deep engine", 18), FakeAnalyser("Fake browser engine", 14), paths)
+    refresh(paths, date(2026, 10, 27), tools)
+    games_before = json.loads(paths.player_record.read_text(encoding="utf-8"))["games"]
+    shutil.copy(FIXTURES / "responses" / "lichess-games.pgn", paths.raw_dir / "lichess-2026-10-28.pgn")
+
+    refresh(paths, date(2026, 10, 28), tools, fetch=False, fetched=[paths.raw_dir / "lichess-2026-10-28.pgn"])
+
+    record = json.loads(paths.player_record.read_text(encoding="utf-8"))
+    assert (games_before, record["games"]) == (6, 9)
