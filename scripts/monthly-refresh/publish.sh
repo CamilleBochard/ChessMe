@@ -16,9 +16,12 @@ if ! git merge-base --is-ancestor "$previous_commit" HEAD; then
   exit 1
 fi
 
-previous_release="$(cat docker/bot-data-release)"
-number=$(( ${previous_release#bot-data-} + 1 ))
-release="bot-data-${number}"
+# Numbered after every existing bot-data release, not after
+# docker/bot-data-release: a rollback reverts that file but leaves the
+# failed release's tag in place. The runner's python3 suffices, as the
+# module needs the standard library only.
+release="$(gh release list --limit 1000 --json tagName --jq '.[].tagName' | python3 -m pipeline.bot_data_release)"
+number="${release#bot-data-}"
 
 sha256sum models/onnx/maia3-5m-fine-tuned.onnx data/dataset/opening-book.json > docker/bot-data.sha256
 echo "$release" > docker/bot-data-release
