@@ -14,6 +14,8 @@ export interface MonthlyUpdate {
   day: string;
   /** How many games it added to those the Bot is built from. */
   games: number;
+  /** Its games over those of the update that added the most: the length of its bar, from 0 to 1. */
+  shareOfLargest: number;
 }
 
 export interface MonthlyUpdates {
@@ -32,13 +34,18 @@ export function monthlyUpdates(summaries: RefreshSummary[]): MonthlyUpdates {
     if (games === 0) {
       continue;
     }
-    updates.push({ day: summary.day, games });
+    updates.push({ day: summary.day, games, shareOfLargest: 0 });
   }
   updates.sort((first, second) => second.day.localeCompare(first.day));
 
   let totalGames = 0;
+  let largest = 0;
   for (const update of updates) {
     totalGames += update.games;
+    largest = Math.max(largest, update.games);
+  }
+  for (const update of updates) {
+    update.shareOfLargest = update.games / largest;
   }
   return { updates, totalGames };
 }

@@ -401,8 +401,7 @@ const tabs = [
     gap: 8px;
   }
 
-  .tab-panel :global(.openings),
-  .tab-panel :global(.updates-table) {
+  .tab-panel :global(.openings) {
     width: 100%;
     border-collapse: collapse;
     table-layout: fixed;
@@ -412,11 +411,6 @@ const tabs = [
   .tab-panel :global(.openings th:nth-child(2)),
   .tab-panel :global(.openings th:nth-child(3)) {
     width: 4.5em;
-  }
-
-  /* Wide enough for the French header, "Parties", in one line. */
-  .tab-panel :global(.updates-table th:nth-child(2)) {
-    width: 6em;
   }
 
   .tab-panel :global(.openings caption) {
@@ -433,8 +427,7 @@ const tabs = [
     color: var(--ink);
   }
 
-  .tab-panel :global(.openings th),
-  .tab-panel :global(.updates-table th) {
+  .tab-panel :global(.openings th) {
     padding: 0 0 4px;
     border-bottom: var(--line);
     font-family: var(--font-mono);
@@ -444,8 +437,7 @@ const tabs = [
     color: var(--ink-soft);
   }
 
-  .tab-panel :global(.openings td),
-  .tab-panel :global(.updates-table td) {
+  .tab-panel :global(.openings td) {
     padding: 4px 0;
     border-bottom: 1px solid var(--ink-faint);
     font-family: var(--font-mono);
@@ -454,18 +446,14 @@ const tabs = [
   }
 
   .tab-panel :global(.openings th:first-child),
-  .tab-panel :global(.openings td:first-child),
-  .tab-panel :global(.updates-table th:first-child),
-  .tab-panel :global(.updates-table td:first-child) {
+  .tab-panel :global(.openings td:first-child) {
     padding-right: 8px;
     font-family: var(--font-body);
     text-align: left;
   }
 
   .tab-panel :global(.openings td + td),
-  .tab-panel :global(.openings th + th),
-  .tab-panel :global(.updates-table td + td),
-  .tab-panel :global(.updates-table th + th) {
+  .tab-panel :global(.openings th + th) {
     padding-left: 8px;
   }
 
@@ -474,6 +462,57 @@ const tabs = [
     margin-top: 8px;
     padding-top: 16px;
     border-top: var(--line);
+  }
+
+  /* A bar per update in the accent colour, its length the share of the
+     largest update, the count at its tip in ink. The track keeps room for
+     the count, so the longest bar's figure still fits beside it. */
+  .tab-panel :global(.update-bars) {
+    display: grid;
+    gap: 6px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .tab-panel :global(.update-bars li) {
+    position: relative;
+    display: grid;
+    grid-template-columns: 8.5em minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+  }
+
+  /* The sentence a screen reader reads for the bar: out of sight and out
+     of the row's grid. */
+  .tab-panel :global(.update-bars .visually-hidden) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .tab-panel :global(.update-track) {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .tab-panel :global(.update-bar) {
+    flex: 0 0 calc(var(--share) * (100% - 3.5em));
+    min-width: 2px;
+    height: 12px;
+    background: var(--accent);
+  }
+
+  .tab-panel :global(.update-games) {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
   }
 
   /* The Bot's tab in two parts, each under a heading in ink, the measured

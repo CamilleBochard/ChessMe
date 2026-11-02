@@ -1,9 +1,10 @@
-// The monthly updates under Camille's record: how many of his games each
-// update added, newest first, and how many in all. src/record/monthly-updates.ts
-// shapes the figures; this only writes them out.
+// The monthly updates under Camille's record: a bar per update, newest on
+// top, as long as the games it added against the update that added the
+// most, with the count at its tip, and how many games in all.
+// src/record/monthly-updates.ts shapes the figures; this only writes them out.
 
 import type { Texts } from '../i18n/texts';
-import type { MonthlyUpdates } from '../record/monthly-updates';
+import type { MonthlyUpdate, MonthlyUpdates } from '../record/monthly-updates';
 
 /** The updates in the page's language, under a heading of their own. */
 export function monthlyUpdatesView(record: MonthlyUpdates, texts: Texts): HTMLElement {
@@ -16,23 +17,11 @@ export function monthlyUpdatesView(record: MonthlyUpdates, texts: Texts): HTMLEl
   summary.textContent = words.summary(record.totalGames, record.updates.length);
   view.append(title, summary);
 
-  const table = element('table', 'updates-table');
-  const head = element('thead', '');
-  const headRow = element('tr', '');
-  headRow.append(headerCell(words.dayHeader), headerCell(words.gamesHeader));
-  head.append(headRow);
-  const body = element('tbody', '');
+  const bars = element('ol', 'update-bars');
   for (const update of record.updates) {
-    const row = element('tr', '');
-    const day = element('td', '');
-    day.textContent = words.day(new Date(update.day));
-    const games = element('td', '');
-    games.textContent = String(update.games);
-    row.append(day, games);
-    body.append(row);
+    bars.append(updateBar(update, texts));
   }
-  table.append(head, body);
-  view.append(table);
+  view.append(bars);
 
   const scope = element('p', 'scope');
   scope.textContent = words.scope;
@@ -40,11 +29,35 @@ export function monthlyUpdatesView(record: MonthlyUpdates, texts: Texts): HTMLEl
   return view;
 }
 
-function headerCell(text: string): HTMLTableCellElement {
-  const cell = element('th', '');
-  cell.scope = 'col';
-  cell.textContent = text;
-  return cell;
+/**
+ * One update: its day, then its bar with the count at the tip. A screen
+ * reader and the hover tip read the whole sentence; the parts it is made of
+ * are hidden from the first, so the figure is not read twice.
+ */
+function updateBar(update: MonthlyUpdate, texts: Texts): HTMLLIElement {
+  const words = texts.updates;
+  const day = words.day(new Date(update.day));
+  const reading = words.bar(day, update.games);
+
+  const row = element('li', '');
+  row.title = reading;
+  const spoken = element('span', 'visually-hidden');
+  spoken.textContent = reading;
+
+  const dayLabel = element('span', 'update-day');
+  dayLabel.textContent = day;
+  dayLabel.setAttribute('aria-hidden', 'true');
+
+  const track = element('span', 'update-track');
+  track.setAttribute('aria-hidden', 'true');
+  const bar = element('span', 'update-bar');
+  bar.style.setProperty('--share', String(update.shareOfLargest));
+  const games = element('span', 'update-games');
+  games.textContent = String(update.games);
+  track.append(bar, games);
+
+  row.append(spoken, dayLabel, track);
+  return row;
 }
 
 function element<Tag extends keyof HTMLElementTagNameMap>(tag: Tag, className: string): HTMLElementTagNameMap[Tag] {

@@ -181,10 +181,10 @@ export interface UpdatesTexts {
   title: string;
   /** How many games every update added, and over how many updates. */
   summary(games: number, updates: number): string;
-  dayHeader: string;
-  gamesHeader: string;
   /** The day an update ran, as the language writes a date. */
   day(day: Date): string;
+  /** One bar read out whole, for a screen reader and the hover tip. */
+  bar(day: string, games: number): string;
   /** What an update changes, and what it leaves as it is. */
   scope: string;
 }
@@ -448,9 +448,8 @@ const ENGLISH: Texts = {
   updates: {
     title: 'Monthly updates',
     summary: (games, updates) => `${english(games, 'game', 'games')} added over ${english(updates, 'update', 'updates')}`,
-    dayHeader: 'Update',
-    gamesHeader: 'Games',
     day: (day) => day.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }),
+    bar: (day, games) => `${day}: ${english(games, 'game', 'games')} added`,
     scope:
       "Each month, Camille's new games join those his Opening Book and his figures are built from. " +
       'The model itself is not trained again.',
@@ -738,9 +737,8 @@ const FRENCH: Texts = {
     title: 'Mises à jour mensuelles',
     summary: (games, updates) =>
       `${french(games, 'partie ajoutée', 'parties ajoutées')} en ${french(updates, 'mise à jour', 'mises à jour')}`,
-    dayHeader: 'Mise à jour',
-    gamesHeader: 'Parties',
     day: (day) => day.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }),
+    bar: (day, games) => `${day}${NO_BREAK}: ${french(games, 'partie ajoutée', 'parties ajoutées')}`,
     scope:
       'Chaque mois, les nouvelles parties de Camille rejoignent celles dont sont tirés son livre ' +
       'd’ouvertures et ses statistiques. Le modèle lui-même n’est pas réentraîné.',
